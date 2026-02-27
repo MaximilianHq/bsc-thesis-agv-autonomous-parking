@@ -1,4 +1,4 @@
-package com.mycompany.autopark;
+package com.mycompany.agvparking;
 
 import java.io.File;
 import java.util.List;

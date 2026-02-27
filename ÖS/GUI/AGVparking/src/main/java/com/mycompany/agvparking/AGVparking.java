@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.autopark;
+package com.mycompany.agvparking;
 
 /**
  *
@@ -10,14 +10,14 @@ package com.mycompany.autopark;
  */
 
 
-public class Autopark {
+public class AGVparking {
 
     DataStore ds;
     ControlUI cui;
     GuiUpdate gui;
     RobotRead rr;
 
-    Autopark() {
+    AGVparking() {
 
         /*
          * Initialize the DataStore call where all "global" data will be stored
@@ -62,6 +62,6 @@ public class Autopark {
          * All that is done here is to make an instance of the RobotControl class,
          * and thereby, call the RobotControl constructor.
          */
-        Autopark x = new Autopark();
+        AGVparking x = new AGVparking();
     }
 }
