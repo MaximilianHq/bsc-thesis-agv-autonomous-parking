@@ -1,4 +1,4 @@
-package com.mycompany.autopark;
+package com.mycompany.agvparking;
 
 import java.util.Random;
 
