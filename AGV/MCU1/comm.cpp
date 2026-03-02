@@ -1,15 +1,18 @@
-#include <comm.h>
+#include "comm.h"
+#include "types.h"
 #include <Arduino.h>
+#include <BluetoothSerial.h>
 
 uint8_t csum(const Packet &pkt)
 {
     uint8_t crc = 0;
+    crc ^= (uint8_t)pkt.type;
     for (size_t i = 0; i < pkt.data_len; i++)
         crc ^= pkt.data[i];
     return crc;
 }
 
-void read_bt(Packet &out)
+void read_bt(BluetoothSerial &str, Packet &out)
 {
     static enum { WAIT_START,
                   READ_TYPE,
@@ -17,9 +20,9 @@ void read_bt(Packet &out)
     static Packet pkt;
     static size_t i = 0;
 
-    while (SerialBT.available())
+    while (str.available())
     {
-        uint8_t b = (uint8_t)SerialBT.read();
+        uint8_t b = (uint8_t)str.read();
 
         switch (state)
         {
@@ -67,23 +70,27 @@ void read_bt(Packet &out)
             }
             break;
         }
-        if (out != pkt)
+        if (!out.approved)
             Serial.println("BT-Read paused");
     }
 }
 
-bool write_bt(const Packet &pkt)
+bool write_bt(BluetoothSerial &str, const Packet &pkt)
 {
-    if (!SerialBT.hasClient())
+    if (!str.hasClient())
+    {
+        Serial.println("BT-Client missing");
         return false;
+    }
 
-    SerialBT.write((uint8_t)'$');
-    SerialBT.write((uint8_t)pkt.type);
+    str.write((uint8_t)'$');
+    str.write((uint8_t)pkt.type);
 
-    SerialBT.write(pkt.data, pkt.data_len);
+    str.write(pkt.data, pkt.data_len);
 
-    SerialBT.write((pkt.crc != 0) ? pkt.crc : csum(pkt));
+    str.write((pkt.crc != 0) ? pkt.crc : csum(pkt));
 
-    SerialBT.write((uint8_t)'\n');
+    str.write((uint8_t)'\n');
+    Serial.println("BT-Sent packet sucessfully!");
     return true;
 }
