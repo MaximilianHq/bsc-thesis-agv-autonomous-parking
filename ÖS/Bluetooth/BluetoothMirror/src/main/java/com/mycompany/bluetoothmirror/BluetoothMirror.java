@@ -38,30 +38,44 @@ public class BluetoothMirror {
             // bluetooth_in: För att läsa INKOMMANDE data från sändaren
             BufferedReader bluetooth_in = new BufferedReader(new InputStreamReader(anslutning.openInputStream())); 
             
-            // 3. Oändlig loop för att hålla anslutningen öppen och kontinuerligt processa data
+            // 3. Oändlig loop för att hålla anslutningen öppen och kontinuerligt processa data 
             while (true) { 
-                System.out.println("Väntar på meddelande..."); 
+                System.out.println("Väntar på instruktion..."); 
                 
-                // Läser det inkommande meddelandet från sändaren
-                String meddelande = bluetooth_in.readLine(); 
+                // Läser det inkommande meddelandet från sändaren 
+                String Instruktion = bluetooth_in.readLine(); 
+                Int instruktions_Langd = bluetooth_in.readLine(); // Dessa två behöver delas så instruktionen och tiden(?) skiljs 
                 
-                // Om klienten kopplat ifrån (skickar null), bryt loopen och stäng ner
-                if (meddelande == null) { 
+                // Om klienten kopplat ifrån (skickar null), bryt loopen och stäng ner 
+                if (Instruktion == null) { 
                     break; 
                 } 
+                if (Instruktion == Stopp) { 
+                    // Execute [0, 0, 0, 0, aktuell nod, tid/celler] 
+                    bluetooth_ut.println("Stoppades. Vid position: " + AGV_Position); 
+                } 
                 
-                // Skicka tillbaka exakt samma meddelande (ett eko) som en "Ack/Bekräftelse"
-                bluetooth_ut.println(meddelande); 
+                // Skicka tillbaka exakt samma meddelande (ett eko) som en "Ack/Bekräftelse" 
+                bluetooth_ut.println(Instruktion); // Detta kanske är onödigt om vi inte vill lägga så höga prestandakrav på AGV:n 
                 
-                // Skriv ut i vår lokala konsol vad vi precis tog emot och returnerade
-                // Här kan ni byta ut eko-logiken och skicka tillbaka ex. positionsdata istället
-                System.out.println("Mottaget och returnerat: " + meddelande); 
+                // Skriv ut i vår lokala konsol vad vi precis tog emot och returnerade 
+                // Troligtvis onödigt, finns ingen display på AGV:n? 
+                System.out.println("Tog emot instruktion: " + Instruktion); // Eller positionsdata 
+                // bluetooth_ut.println("AGV:ns position: " + AGV_Position); AGV_Position behöver definieras/hämtas på något sätt. Från fyrerna? ED? 
+                
+                /* 
+                Här behövs någon form av execute så AGV:n utför instruktionen "Instruktion" under 
+                if (Instruktion == Instruktion_Forward) { 
+                // Utför den mottagna instruktionen 
+                } 
+                */ 
+                
             } 
             
-            // Stäng anslutningen om klienten kopplar ifrån
+            // Stäng anslutningen om klienten kopplar ifrån 
             anslutning.close(); 
         } catch (IOException e) { 
             System.out.print(e.toString()); 
         } 
     } 
-}
+} 
