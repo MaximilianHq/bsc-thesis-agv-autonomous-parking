@@ -20,7 +20,8 @@ struct dwm_state
 
 struct imu_state
 {
-    int w = 0;
+    int wz = 0; // tmp
+    int dt = 0; // tmp
 };
 
 struct agv_state
@@ -29,3 +30,15 @@ struct agv_state
     float vx = 0, vy = 0; // OBS: tolkat som body-hastigheter (fram/sid) i detta exempel
     long t_ms = 0;
 };
+
+struct agv_motion
+{
+    uint8_t cmd = 0x00; // movement
+    long dur = 0;       // movement duration
+    int32_t pred_x = 0;
+    int32_t prex_y = 0
+};
+
+extern agv_state g_state;
+extern agv_state g_state_prev;
+extern agv_motion g_motion;
