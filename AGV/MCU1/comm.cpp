@@ -12,14 +12,10 @@ uint8_t csum(const Packet &pkt)
     return crc;
 }
 
-void read_bt(BluetoothSerial &str, Packet &out)
-{
-    static enum { WAIT_START,
-                  READ_TYPE,
-                  READ_BODY } state = WAIT_START;
-    static Packet pkt;
-    static size_t i = 0;
+Comm::Comm(Stream &s, const String &dbgn) : str(s), debug_name(dbgn) {}
 
+void Comm::read(Packet &out)
+{
     while (str.available())
     {
         uint8_t b = (uint8_t)str.read();
@@ -27,7 +23,7 @@ void read_bt(BluetoothSerial &str, Packet &out)
         switch (state)
         {
         case WAIT_START:
-            Serial.println("BT-Packet recieving...");
+            Serial.println(debug_name + "-Packet recieving...");
             if (b == '$')
             {
                 pkt = Packet{}; // nollställ
@@ -44,7 +40,7 @@ void read_bt(BluetoothSerial &str, Packet &out)
         case READ_BODY:
             if (b == '\n')
             {
-                Serial.println("BT-packet recieved!");
+                Serial.println(debug_name + "-packet recieved!");
                 if (i >= 1)
                 {
                     pkt.crc = pkt.data[i - 1];
@@ -64,25 +60,19 @@ void read_bt(BluetoothSerial &str, Packet &out)
                 else
                 {
                     // overflow: kasta paket och vänta på ny start
-                    Serial.println("BT-Packet corrupt");
+                    Serial.println(debug_name + "-Packet corrupt");
                     state = WAIT_START;
                 }
             }
             break;
         }
         if (!out.approved)
-            Serial.println("BT-Read paused");
+            Serial.println(debug_name + "-Read paused");
     }
 }
 
-bool write_bt(BluetoothSerial &str, const Packet &pkt)
+bool Comm::write(const Packet &pkt)
 {
-    if (!str.hasClient())
-    {
-        Serial.println("BT-Client missing");
-        return false;
-    }
-
     str.write((uint8_t)'$');
     str.write((uint8_t)pkt.type);
 
@@ -91,6 +81,6 @@ bool write_bt(BluetoothSerial &str, const Packet &pkt)
     str.write((pkt.crc != 0) ? pkt.crc : csum(pkt));
 
     str.write((uint8_t)'\n');
-    Serial.println("BT-Sent packet sucessfully!");
+    Serial.println(debug_name + "-Sent packet sucessfully!");
     return true;
 }

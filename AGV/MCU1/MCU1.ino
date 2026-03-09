@@ -14,6 +14,9 @@ BluetoothSerial SerialBT;
 
 const int UART_BAUD = 115200;
 
+Comm comm_mcu(Serial1, "MCU");
+Comm comm_bt(SerialBT, "BT");
+
 void setup()
 {
     Serial.begin(UART_BAUD);  // PC
@@ -36,7 +39,7 @@ void loop()
     // $TCXXYYTTC\n or $TCCC\n
 
     Packet bt_pkt;
-    read_bt(SerialBT, bt_pkt);
+    comm_bt.read(bt_pkt);
     Packet ans;
     ans.type = 'A';
     ans.data[0] = 'O';
@@ -45,7 +48,7 @@ void loop()
     ans.crc = csum(ans);
     if (bt_pkt.approved)
     {
-        if (write_bt(SerialBT, ans))
+        if (comm_bt.write(ans))
             Serial.println("Sent answer succesfully!");
         else
             Serial.println("Failed to answer :/");

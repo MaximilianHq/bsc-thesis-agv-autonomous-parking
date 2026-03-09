@@ -36,7 +36,7 @@ struct agv_motion
     uint8_t cmd = 0x00; // movement
     long dur = 0;       // movement duration
     int32_t pred_x = 0;
-    int32_t prex_y = 0
+    int32_t prex_y = 0;
 };
 
 extern agv_state g_state;
