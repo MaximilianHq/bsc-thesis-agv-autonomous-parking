@@ -21,7 +21,7 @@ public class GuiUpdate implements Runnable {
     @Override
     public void run() {
         try {
-            cui.appendStatus("GuiUpdate startar... Väntar på RobotRead.\n");
+            cui.appendStatus("GuiUpdate startar... Väntar på information från AGV.\n");
             while (ds.updateUiflag == false) {
                 Thread.sleep(500);
             }
@@ -51,6 +51,12 @@ public class GuiUpdate implements Runnable {
 
                 // --- 3. ÅK TILL MÅLET ---
                 if (ds.currentPath != null) {
+                    
+                    // --- KÖR OPTIMERAREN HÄR ---
+                    RouteOptimizer optimizer = new RouteOptimizer(ds);
+                    optimizer.compressPath(ds.currentPath);
+                    // -----------------------------
+                    
                     moveRobotAlongPath(ds.currentPath);
                     
                     if (ds.isStopped) break;
