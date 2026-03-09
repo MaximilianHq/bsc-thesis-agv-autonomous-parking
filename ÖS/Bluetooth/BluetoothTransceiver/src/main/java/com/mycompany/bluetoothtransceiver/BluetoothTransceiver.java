@@ -18,7 +18,7 @@ import javax.microedition.io.*;
 import javax.bluetooth.*; 
 
 public class BluetoothTransceiver { 
-
+    
     public static void main(String args[]) { 
         try { 
             // 1. Försöker upprätta en anslutning till mottagaren (Servern) 
@@ -30,21 +30,22 @@ public class BluetoothTransceiver {
             PrintStream bluetooth_ut = new PrintStream(anslutning.openOutputStream()); 
             
             // bluetooth_in: För att läsa inkommande svar FRÅN mottagaren 
-            BufferedReader bluetooth_in = new BufferedReader(new InputStreamReader(anslutning.openInputStream()));             
+            BufferedReader bluetooth_in = new BufferedReader(new InputStreamReader(anslutning.openInputStream())); 
             
             // 3. Startar en oändlig loop för kontinuerlig kommunikation 
             while (true) { // tangentbord: För att läsa det användaren skriver lokalt i konsolen 
             BufferedReader tangentbord = new BufferedReader(new InputStreamReader(System.in)); 
             // Den här ska bytas ut mot att "tangentbord" ska vara den instruktion som krävs för att följa linjen 
-            // som tagits fram med vår variant av Dijkstras algoritm. 
+            // som tagits fram med vår variant av Dijkstras algoritm. Det Fredrik har gjort! 
             
             int Instruktion_ut = new Dijkstras_Algoritm(value_for_an_Instruction); 
-            // Dessa är samma tanke! Inte löst det än! 
+            // Dessa är samma tanke! Inte löst hur det ska göras än! 
             vector Instruktion_ut = [x1, x2, x3, x4, Node_for_new_Instruction, Instruktion_Langd]; 
             // = [vänster fram, höger fram, vänster bak, höger bak, Nod där ny rörelse ska påbörjas, tid/celler]; 
             // x1, x2, x3, x4 = [-1, 0 , 1] = [Back, Stilla, Fram] 
                 
                 // Läs en rad text som användaren skriver in via tangentbordet 
+                // Tas bort? 
                 String meddelande_ut = tangentbord.readLine(); 
                 
 
@@ -96,7 +97,7 @@ public class BluetoothTransceiver {
             } 
                 
                 // Skriv ut svaret från mottagaren 
-                System.out.println("Fick tillbaka: " + meddelande_in); 
+                System.out.println("Fick tillbaka position: " + position_in); 
             } 
             
             // Stäng anslutningen om loopen bryts 
