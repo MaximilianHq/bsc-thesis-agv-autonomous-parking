@@ -10,7 +10,7 @@ struct Packet
     bool approved = false; // data integrity
 };
 
-struct dwm_state
+struct DwmState
 {
     int32_t x = 0;
     int32_t y = 0;
@@ -18,20 +18,20 @@ struct dwm_state
     uint8_t q = 0;
 };
 
-struct imu_state
+struct ImuState
 {
     int wz = 0; // tmp
     int dt = 0; // tmp
 };
 
-struct agv_state
+struct AgvState
 {
     float x = 0, y = 0, theta = 0;
     float vx = 0, vy = 0; // OBS: tolkat som body-hastigheter (fram/sid) i detta exempel
     long t_ms = 0;
 };
 
-struct agv_motion
+struct AgvMotion
 {
     uint8_t cmd = 0x00; // movement
     long dur = 0;       // movement duration
@@ -39,7 +39,7 @@ struct agv_motion
     int32_t prex_y = 0;
 };
 
-struct debug
+struct Debug
 {
     const bool uwb = true;
     const bool imu = true;
@@ -49,7 +49,7 @@ struct debug
     const bool mcu2 = true;
 };
 
-extern debug g_debug;
-extern agv_state g_state;
-extern agv_state g_state_prev;
-extern agv_motion g_motion;
+extern Debug g_debug;
+extern AgvState g_state;
+extern AgvState g_state_prev;
+extern AgvMotion g_motion;

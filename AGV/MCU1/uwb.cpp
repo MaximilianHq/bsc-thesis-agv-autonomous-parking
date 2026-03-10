@@ -66,7 +66,7 @@ bool dwm_upd_rate_set(Stream &str, uint16_t period_stationary_ms, uint16_t perio
     return true;
 }
 
-bool dwm_get_pos(Stream &str, dwm_state &s)
+bool dwm_get_pos(Stream &str, DwmState &s)
 {
     uint8_t msg[] = {0x02, 0x00}; // TYPE_POS_XYZ
     str.write(msg, sizeof(msg));

@@ -82,7 +82,7 @@ void Comm::read(Packet &out)
         }
     }
 
-    if (!out.approved && sizeof(out.data_len && g_debug.comm) > 0)
+    if (!out.approved && sizeof(out.data_len) > 0 && g_debug.comm)
         Serial.println(debug_name + "-Read paused");
 }
 

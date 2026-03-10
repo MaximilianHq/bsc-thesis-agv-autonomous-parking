@@ -5,4 +5,4 @@
 float norm_ang(float ang);
 
 // Kalman filter / Luenberger-observer (enkel variant)
-void update_agv_state(const dwm_state &dwm, const imu_state &imu);
+void update_agv_state(const DwmState &dwm, const ImuState &imu);

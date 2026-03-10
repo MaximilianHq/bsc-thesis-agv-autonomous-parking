@@ -17,6 +17,11 @@ const int UART_BAUD = 115200;
 Comm comm_mcu(Serial1, "MCU");
 Comm comm_bt(SerialBT, "BT");
 
+Debug g_debug;
+AgvState g_state;
+AgvState g_state_prev;
+AgvMotion g_motion;
+
 void setup()
 {
     Serial.begin(UART_BAUD);  // PC
