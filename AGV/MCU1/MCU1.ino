@@ -8,7 +8,7 @@
 #include <Arduino.h>
 #include <BluetoothSerial.h>
 #include <WiFi.h>
-#include <ArduinoOTA.h>
+//#include <ArduinoOTA.h>
 
 BluetoothSerial SerialBT;
 
@@ -29,12 +29,12 @@ void setup()
     SerialBT.begin("AGV_BT_G2"); // ÖS
     Serial.println("Bluethooth started");
 
-    ota_begin("QBit", "internet");
+    //ota_begin("QBit", "internet");
 }
 
 void loop()
 {
-    ota_handle();
+    //ota_handle();
     // read BT. packet: ös movement, ös command
     // $TCXXYYTTC\n or $TCCC\n
 
@@ -55,4 +55,5 @@ void loop()
     }
     else
         Serial.println("Recieved packet not approved :/");
+    delay(200);
 }

@@ -22,53 +22,64 @@ void Comm::read(Packet &out)
 
         switch (state)
         {
-        case WAIT_START:
-            Serial.println(debug_name + "-Packet recieving...");
-            if (b == '$')
-            {
-                pkt = Packet{}; // nollställ
-                i = 0;
-                state = READ_TYPE;
-            }
-            break;
-
-        case READ_TYPE:
-            pkt.type = (char)b;
-            state = READ_BODY;
-            break;
-
-        case READ_BODY:
-            if (b == '\n')
-            {
-                Serial.println(debug_name + "-packet recieved!");
-                if (i >= 1)
+            case WAIT_START:
+                Serial.println(debug_name + "-Packet recieving...");
+                if (b == '$')
                 {
-                    pkt.crc = pkt.data[i - 1];
-                    pkt.data_len = i - 1;
-                    pkt.approved = (pkt.crc == csum(pkt));
-
-                    out = pkt; // leverera färdigt paket
+                    pkt = Packet{}; // nollställ
+                    i = 0;
+                    state = READ_TYPE;
                 }
-                state = WAIT_START; // redo för nästa
-            }
-            else
-            {
-                if (i < sizeof(pkt.data))
+                break;
+
+            case READ_TYPE:
+                pkt.type = (char)b;
+                state = READ_BODY;
+                break;
+
+            case READ_BODY:
+                if (b == '\n')
                 {
-                    pkt.data[i++] = b;
+                    Serial.println(debug_name + "-packet recieved!");
+                    if (i >= 2)
+                    {
+                        pkt.data_len = i-1; // points to crc
+                        pkt.crc = pkt.data[pkt.data_len];
+                        pkt.data[pkt.data_len] = 0;
+                        pkt.approved = (pkt.crc == csum(pkt));
+
+                        out = pkt; // leverera färdigt paket
+
+                        // === NY DEBUG: skriv hela paketet ===
+                        Serial.print(debug_name + "-Full message: $");
+                        Serial.print(pkt.type);
+
+                        for (size_t j = 0; j < pkt.data_len; j++)
+                            Serial.write(pkt.data[j]);
+
+                        Serial.write(pkt.crc);
+                        Serial.println();
+                    }
                 }
                 else
                 {
-                    // overflow: kasta paket och vänta på ny start
-                    Serial.println(debug_name + "-Packet corrupt");
-                    state = WAIT_START;
+                    if (i < sizeof(pkt.data))
+                    {
+                        pkt.data[i++] = b;
+                    }
+                    else
+                    {
+                        // overflow: kasta paket och vänta på ny start
+                        Serial.println(debug_name + "-Packet corrupt");
+                        state = WAIT_START;
+                    }
                 }
-            }
-            break;
+                break;
         }
-        if (!out.approved)
-            Serial.println(debug_name + "-Read paused");
     }
+
+    if (!out.approved && sizeof(out.data_len) > 0)
+        Serial.println(debug_name + "-Read paused");
 }
 
 bool Comm::write(const Packet &pkt)
