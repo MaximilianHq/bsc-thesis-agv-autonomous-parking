@@ -39,6 +39,17 @@ struct agv_motion
     int32_t prex_y = 0;
 };
 
+struct debug
+{
+    const bool uwb = true;
+    const bool imu = true;
+    const bool comm = true;
+    const bool uta = true;
+    const bool mcu1 = true;
+    const bool mcu2 = true;
+};
+
+extern debug g_debug;
 extern agv_state g_state;
 extern agv_state g_state_prev;
 extern agv_motion g_motion;

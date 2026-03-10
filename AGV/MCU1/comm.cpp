@@ -23,7 +23,8 @@ void Comm::read(Packet &out)
         switch (state)
         {
             case WAIT_START:
-                Serial.println(debug_name + "-Packet recieving...");
+                if (g_debug.comm)
+                    Serial.println(debug_name + "-Packet recieving...");
                 if (b == '$')
                 {
                     pkt = Packet{}; // nollställ
@@ -40,7 +41,8 @@ void Comm::read(Packet &out)
             case READ_BODY:
                 if (b == '\n')
                 {
-                    Serial.println(debug_name + "-packet recieved!");
+                    if (g_debug.comm)
+                        Serial.println(debug_name + "-packet recieved!");
                     if (i >= 2)
                     {
                         pkt.data_len = i-1; // points to crc
@@ -51,7 +53,8 @@ void Comm::read(Packet &out)
                         out = pkt; // leverera färdigt paket
 
                         // === NY DEBUG: skriv hela paketet ===
-                        Serial.print(debug_name + "-Full message: $");
+                        if (g_debug.comm)
+                            Serial.print(debug_name + "-Full message: $");
                         Serial.print(pkt.type);
 
                         for (size_t j = 0; j < pkt.data_len; j++)
@@ -70,7 +73,8 @@ void Comm::read(Packet &out)
                     else
                     {
                         // overflow: kasta paket och vänta på ny start
-                        Serial.println(debug_name + "-Packet corrupt");
+                        if (g_debug.comm)
+                            Serial.println(debug_name + "-Packet corrupt");
                         state = WAIT_START;
                     }
                 }
@@ -78,7 +82,7 @@ void Comm::read(Packet &out)
         }
     }
 
-    if (!out.approved && sizeof(out.data_len) > 0)
+    if (!out.approved && sizeof(out.data_len && g_debug.comm) > 0)
         Serial.println(debug_name + "-Read paused");
 }
 
@@ -92,6 +96,7 @@ bool Comm::write(const Packet &pkt)
     str.write((pkt.crc != 0) ? pkt.crc : csum(pkt));
 
     str.write((uint8_t)'\n');
-    Serial.println(debug_name + "-Sent packet sucessfully!");
+    if (g_debug.comm)
+        Serial.println(debug_name + "-Sent packet sucessfully!");
     return true;
 }
