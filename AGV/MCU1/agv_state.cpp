@@ -15,9 +15,9 @@ float norm_ang(float ang)
 }
 
 // Kalman filter / Luenberger-observer (enkel variant)
-void update_agv_state(const dwm_state &dwm, const imu_state &imu)
+void update_agv_state(const DwmState &dwm, const ImuState &imu)
 {
-    agv_state pred = g_state;
+    AgvState pred = g_state;
 
     // predicted state
     // x = \cos θ, y = \sin θ
@@ -33,7 +33,7 @@ void update_agv_state(const dwm_state &dwm, const imu_state &imu)
     float err_y = dwm.y - pred.y;
 
     // position correction
-    agv_state upd = pred;
+    AgvState upd = pred;
     upd.x += err_co_uwb * err_x;
     upd.y += err_co_uwb * err_y;
 
