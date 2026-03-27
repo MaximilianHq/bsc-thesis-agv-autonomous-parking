@@ -277,43 +277,13 @@ public:
 
 //EXEMPEL PÅ ANVÄNDNING
 
-KalmanFilter kf(0.01);  // 100 Hz
 
-float readIMU_ax() {
-  return 0;
-}
-float readIMU_ay() {
-  return 0;
-}
-
-float readUWB_x() {
-  return 0;
-}
-float readUWB_y() {
-  return 0;
-}
-
-void setup() {
-  Serial.begin(115200);
-}
-
-void loop() {
-
-  float ax = readIMU_ax();
-  float ay = readIMU_ay();
-
-  float x = readUWB_x();
-  float y = readUWB_y();
-
-  float z[4] = { ax, ay, x, y };
-
+float kalman_position(const ImuState &imu, const DwmState &dwm, int x, int y, int hz = 0.01)
+{
+  KalmanFilter kf(hz);
+  float z[4] = {imu.x, imu.y, dwm.x, dwm.y};
   kf.predict();
   kf.update(z);
-
-  Serial.print("x=");
-  Serial.print(kf.x[0]);
-  Serial.print(" y=");
-  Serial.println(kf.x[3]);
-
-  delay(10);
+  return {kf.x, kf.y};
 }
+
