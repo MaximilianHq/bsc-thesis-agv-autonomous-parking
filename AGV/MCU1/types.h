@@ -15,7 +15,7 @@ struct Position
     int32_t x = 0;
     int32_t y = 0;
     int32_t z = 0;
-}
+};
 
 struct DwmState
 {
@@ -33,6 +33,7 @@ struct AgvState
 {
     Position pos;
     float vx = 0, vy = 0; // OBS: tolkat som body-hastigheter (fram/sid) i detta exempel
+    float theta = 0;
     long t_ms = 0;
 };
 

@@ -84,9 +84,9 @@ bool dwm_get_pos(Stream &str, DwmState &s)
     if (rx[3] != 0x41 || rx[4] != 0x0D)
         return false;
 
-    memcpy(&s.x, &rx[5], 4);
-    memcpy(&s.y, &rx[9], 4);
-    memcpy(&s.z, &rx[13], 4);
+    memcpy(&s.pos.x, &rx[5], 4);
+    memcpy(&s.pos.y, &rx[9], 4);
+    memcpy(&s.pos.z, &rx[13], 4);
     memcpy(&s.q, &rx[18], 1);
 
     return true;
