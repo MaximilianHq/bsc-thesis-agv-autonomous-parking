@@ -1,6 +1,5 @@
 #pragma once
 #include "types.h"
-#include <Arduino.h>
 
 float norm_ang(float ang);
 
