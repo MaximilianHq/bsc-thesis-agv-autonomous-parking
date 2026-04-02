@@ -16,6 +16,9 @@ Comm::Comm(Stream &s, const String &dbgn) : str(s), debug_name(dbgn) {}
 
 void Comm::read(Packet &out)
 {
+    bool packet_delivered = false;
+    bool started_packet = false;
+
     while (str.available())
     {
         uint8_t b = (uint8_t)str.read();
@@ -24,9 +27,10 @@ void Comm::read(Packet &out)
         {
         case WAIT_START:
             if (g_debug.comm)
-                Serial.println("[" + debug_name + "]" + " Packet recieving...");
+                Serial.println("[" + debug_name + "] Packet recieving...");
             if (b == '$')
             {
+                started_packet = true;
                 pkt = Packet{}; // nollställ
                 i = 0;
                 state = READ_TYPE;
@@ -42,7 +46,7 @@ void Comm::read(Packet &out)
             if (b == '\n')
             {
                 if (g_debug.comm)
-                    Serial.println("[" + debug_name + "]" + " Packet recieved!");
+                    Serial.println("[" + debug_name + "] Packet recieved!");
                 if (i >= 2)
                 {
                     pkt.data_len = i - 1; // points to crc
@@ -50,16 +54,16 @@ void Comm::read(Packet &out)
                     pkt.data[pkt.data_len] = 0;
                     if (g_debug.comm)
                     {
-                        
                     }
                     pkt.approved = (pkt.crc == csum(pkt));
 
                     out = pkt; // leverera färdigt paket
+                    packet_delivered = true;
 
                     // === NY DEBUG: skriv hela paketet ===
                     if (g_debug.comm)
                     {
-                        Serial.print("[" + debug_name + "]" + " Full message: $" + pkt.type);
+                        Serial.print("[" + debug_name + "] Full message: $" + pkt.type);
                         for (size_t j = 0; j < pkt.data_len; j++)
                             Serial.write(pkt.data[j]);
 
@@ -83,12 +87,16 @@ void Comm::read(Packet &out)
                 {
                     // overflow: kasta paket och vänta på ny start
                     if (g_debug.comm)
-                        Serial.println("[" + debug_name + "]" + " Packet corrupt");
+                        Serial.println("[" + debug_name + "] Packet corrupt");
                     state = WAIT_START;
                 }
             }
             break;
         }
+    }
+    if (g_debug.comm && started_packet && !packet_delivered)
+    {
+        Serial.println("[" + debug_name + "] Read paused");
     }
 }
 
@@ -103,6 +111,6 @@ bool Comm::write(const Packet &pkt)
 
     str.write((uint8_t)'\n');
     if (g_debug.comm)
-        Serial.println("[" + debug_name + "]" + " Sent packet sucessfully!");
+        Serial.println("[" + debug_name + "] Sent packet sucessfully!");
     return true;
 }
