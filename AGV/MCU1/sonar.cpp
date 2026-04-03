@@ -8,10 +8,10 @@ Sonar::Sonar(int servo_pin, int trig_pin, int echo_pin, float sonar_range, float
 
 bool Sonar::sonar_init()
 {
-    // Servo
     if (g_debug.sonar)
-        Serial.println("[SONAR] Attaching Servos...");
+        Serial.println("[SONAR] Running setup...");
 
+    // Servos
     _servo.attach(_servo_pin, 0);
     enableServoEasingInterrupt();
     _servo.startEaseTo(0, (float)SERVO_SPEED);
@@ -66,6 +66,9 @@ Position Sonar::get_obstacle_position()
     Position p;
     p.x = _distance * sin(ang);
     p.y = _distance * cos(ang);
+
+    if (g_debug.sonar)
+        Serial.println("[SONAR] Obstacle at x: " + String(p.x) + " , y: " + String(p.y));
     return p;
 }
 
