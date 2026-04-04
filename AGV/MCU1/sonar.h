@@ -8,9 +8,9 @@ constexpr float SERVO_SPEED = 20;
 class Sonar
 {
 public:
-    Sonar(int servo_pin, int trig_pin, int echo_pin, float sonar_range, float servo_offset, float min_ang = 90, float max_ang = 90, bool servo_inverted = false);
+    Sonar(int pin_servo, int pin_trig, int pin_echo, float sonar_range, float servo_offset, float min_servo_ang = 90, float max_servo_ang = 90, bool servo_inverted = false);
 
-    bool sonar_init();
+    bool setup();
     bool update();
     Position get_obstacle_position();
     void reset();
@@ -20,12 +20,11 @@ private:
     ServoEasy _servo;
 
     // Ultrasonic
-    float _duration,
-        _distance = 0;
-    int _servo_pin, _trig_pin, _echo_pin;
+    float _duration, _distance = 0;
 
     // Sonar
-    char _sonar_dir = 'R';
-    bool _sonar_scan = true;
-    float _sonar_range;
+    int _pin_servo, _pin_trig, _pin_echo;
+    bool _dir = true; // true = right, false = left
+    bool _scan = true;
+    float _range;
 };

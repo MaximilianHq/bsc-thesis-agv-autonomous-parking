@@ -46,7 +46,7 @@ void setup()
     // ota_begin("QBit", "internet");
 
     // Sonar
-    sonar.sonar_init();
+    sonar.setup();
 }
 
 void loop()
