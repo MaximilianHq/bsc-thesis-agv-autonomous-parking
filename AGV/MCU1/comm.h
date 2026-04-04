@@ -1,7 +1,6 @@
 #pragma once
 #include "types.h"
 #include <Arduino.h>
-#include <BluetoothSerial.h>
 
 uint8_t csum(const Packet &pkt);
 

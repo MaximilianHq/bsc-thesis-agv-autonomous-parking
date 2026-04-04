@@ -1,4 +1,4 @@
-#include "uwb.h"
+#include "dwm.h"
 #include "types.h"
 #include <Arduino.h>
 
@@ -22,7 +22,8 @@ bool dwm_ready(Stream &str)
     size_t n = str.readBytes(rx, sizeof(rx));
     if (n != sizeof(rx))
     {
-        Serial.println("DWM-response (TYPE_CMD_STATUS_GET) corrupt");
+        if (g_debug.dwm)
+            Serial.println("[DWM] Response (TYPE_CMD_STATUS_GET) corrupt");
         return false;
     }
 
@@ -40,6 +41,7 @@ bool dwm_ready(Stream &str)
 
 bool dwm_upd_rate_set(Stream &str, uint16_t period_stationary_ms, uint16_t period_moving_ms)
 {
+
     uint16_t rate_s = period_stationary_ms / 100; // convert to DWM format
     uint16_t rate_m = period_moving_ms / 100;     // convert to DWM format
 
@@ -56,7 +58,8 @@ bool dwm_upd_rate_set(Stream &str, uint16_t period_stationary_ms, uint16_t perio
     size_t n = str.readBytes(rx, sizeof(rx));
     if (n != sizeof(rx))
     {
-        Serial.println("DWM-response (TYPE_CMD_UR_SET) corrupt");
+        if (g_debug.dwm)
+            Serial.println("[DWM] Response (TYPE_CMD_UR_SET) corrupt");
         return false;
     }
 
@@ -75,7 +78,8 @@ bool dwm_get_pos(Stream &str, DwmState &s)
     size_t n = str.readBytes(rx, sizeof(rx));
     if (n != sizeof(rx))
     {
-        Serial.println("DWM-response (TYPE_POS_XYZ) corrupt");
+        if (g_debug.dwm)
+            Serial.println("[DWM] Response (TYPE_POS_XYZ) corrupt");
         return false;
     }
 
@@ -84,9 +88,9 @@ bool dwm_get_pos(Stream &str, DwmState &s)
     if (rx[3] != 0x41 || rx[4] != 0x0D)
         return false;
 
-    memcpy(&s.x, &rx[5], 4);
-    memcpy(&s.y, &rx[9], 4);
-    memcpy(&s.z, &rx[13], 4);
+    memcpy(&s.pos.x, &rx[5], 4);
+    memcpy(&s.pos.y, &rx[9], 4);
+    memcpy(&s.pos.z, &rx[13], 4);
     memcpy(&s.q, &rx[18], 1);
 
     return true;
