@@ -2,6 +2,7 @@
 #include <Arduino.h>
 
 const LEDState StatusLED::_led_states[] = {
+    {{255, 0, 0}, true, 50},   // STATUS_BOOT
     {{0, 255, 0}, false, 500}, // STATUS_READY
     {{0, 0, 255}, true, 500},  // STATUS_BLE_SEARCHING
     {{0, 0, 255}, false, 500}, // STATUS_BLE_CONNECTED
