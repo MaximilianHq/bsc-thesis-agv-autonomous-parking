@@ -1,4 +1,5 @@
 #pragma once
+#include "status_led.h"
 #include <Arduino.h>
 
 struct Packet
@@ -59,3 +60,9 @@ extern Debug g_debug;
 extern AgvState g_state;
 extern AgvState g_state_prev;
 extern AgvMotion g_motion;
+
+struct AgvStatus
+{
+    StatusLED led1, led2;
+};
+extern AgvStatus g_status;

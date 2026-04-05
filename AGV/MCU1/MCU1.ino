@@ -29,6 +29,7 @@ Debug g_debug;
 AgvState g_state;
 AgvState g_state_prev;
 AgvMotion g_motion;
+AgvStatus g_status;
 
 void setup()
 {
