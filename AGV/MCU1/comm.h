@@ -7,13 +7,13 @@ uint8_t csum(const Packet &pkt);
 class Comm
 {
 public:
-    Comm(Stream &s, const String &dbgn);
+    Comm(Stream &s, const String &debug_id);
 
     void read(Packet &out);
     bool write(const Packet &pkt);
 
 private:
-    Stream &str;
+    Stream &_str;
 
     enum ParserState
     {
@@ -22,9 +22,9 @@ private:
         READ_BODY
     };
 
-    ParserState state = WAIT_START;
-    Packet pkt;
+    ParserState _state = WAIT_START;
+    Packet _pkt;
     size_t i = 0;
 
-    const String debug_name;
+    const String _dbg_name;
 };

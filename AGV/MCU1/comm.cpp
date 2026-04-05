@@ -11,83 +11,83 @@ uint8_t csum(const Packet &pkt)
     return crc;
 }
 
-Comm::Comm(Stream &s, const String &dbgn) : str(s), debug_name(dbgn) {}
+Comm::Comm(Stream &s, const String &debug_id) : _str(s), _dbg_name(debug_id) {}
 
 void Comm::read(Packet &out)
 {
     bool packet_delivered = false;
     bool started_packet = false;
 
-    while (str.available())
+    while (_str.available())
     {
-        uint8_t b = (uint8_t)str.read();
+        uint8_t b = (uint8_t)_str.read();
 
-        switch (state)
+        switch (_state)
         {
         case WAIT_START:
             if (g_debug.comm)
-                Serial.println("[" + debug_name + "] Packet recieving...");
+                Serial.println("[" + _dbg_name + "] Packet recieving...");
             if (b == '$')
             {
                 started_packet = true;
-                pkt = Packet{}; // nollställ
+                _pkt = Packet{}; // nollställ
                 i = 0;
-                state = READ_TYPE;
+                _state = READ_TYPE;
             }
             break;
 
         case READ_TYPE:
-            pkt.type = (char)b;
-            state = READ_BODY;
+            _pkt.type = (char)b;
+            _state = READ_BODY;
             break;
 
         case READ_BODY:
             if (b == '\n')
             {
                 if (g_debug.comm)
-                    Serial.println("[" + debug_name + "] Packet recieved!");
+                    Serial.println("[" + _dbg_name + "] Packet recieved!");
                 if (i >= 2)
                 {
-                    pkt.data_len = i - 1; // points to crc
-                    pkt.crc = pkt.data[pkt.data_len];
-                    pkt.data[pkt.data_len] = 0;
+                    _pkt.data_len = i - 1; // points to crc
+                    _pkt.crc = _pkt.data[_pkt.data_len];
+                    _pkt.data[_pkt.data_len] = 0;
                     if (g_debug.comm)
                     {
                     }
-                    pkt.approved = (pkt.crc == csum(pkt));
+                    _pkt.approved = (_pkt.crc == csum(_pkt));
 
-                    out = pkt; // leverera färdigt paket
+                    out = _pkt; // leverera färdigt paket
                     packet_delivered = true;
 
                     // === NY DEBUG: skriv hela paketet ===
                     if (g_debug.comm)
                     {
-                        Serial.print("[" + debug_name + "] Full message: $" + pkt.type);
-                        for (size_t j = 0; j < pkt.data_len; j++)
-                            Serial.write(pkt.data[j]);
+                        Serial.print("[" + _dbg_name + "] Full message: $" + _pkt.type);
+                        for (size_t j = 0; j < _pkt.data_len; j++)
+                            Serial.write(_pkt.data[j]);
 
                         Serial.println();
                         Serial.print("Received crc: ");
-                        Serial.println(pkt.crc, HEX);
+                        Serial.println(_pkt.crc, HEX);
 
                         Serial.print("Calculated crc: ");
-                        Serial.println(csum(pkt), HEX);
+                        Serial.println(csum(_pkt), HEX);
                     }
                 }
-                state = WAIT_START;
+                _state = WAIT_START;
             }
             else
             {
-                if (i < sizeof(pkt.data))
+                if (i < sizeof(_pkt.data))
                 {
-                    pkt.data[i++] = b;
+                    _pkt.data[i++] = b;
                 }
                 else
                 {
                     // overflow: kasta paket och vänta på ny start
                     if (g_debug.comm)
-                        Serial.println("[" + debug_name + "] Packet corrupt");
-                    state = WAIT_START;
+                        Serial.println("[" + _dbg_name + "] Packet corrupt");
+                    _state = WAIT_START;
                 }
             }
             break;
@@ -95,21 +95,21 @@ void Comm::read(Packet &out)
     }
     if (g_debug.comm && started_packet && !packet_delivered)
     {
-        Serial.println("[" + debug_name + "] Read paused");
+        Serial.println("[" + _dbg_name + "] Read paused");
     }
 }
 
 bool Comm::write(const Packet &pkt)
 {
-    str.write((uint8_t)'$');
-    str.write((uint8_t)pkt.type);
+    _str.write((uint8_t)'$');
+    _str.write((uint8_t)pkt.type);
 
-    str.write(pkt.data, pkt.data_len);
+    _str.write(pkt.data, pkt.data_len);
 
-    str.write((pkt.crc != 0) ? pkt.crc : csum(pkt));
+    _str.write((pkt.crc != 0) ? pkt.crc : csum(pkt));
 
-    str.write((uint8_t)'\n');
+    _str.write((uint8_t)'\n');
     if (g_debug.comm)
-        Serial.println("[" + debug_name + "] Sent packet sucessfully!");
+        Serial.println("[" + _dbg_name + "] Sent packet sucessfully!");
     return true;
 }
