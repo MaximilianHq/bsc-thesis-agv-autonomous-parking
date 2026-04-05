@@ -7,19 +7,13 @@
 
 struct MotorChannelConfig
 {
-    int pin_dir;
-    int pin_pwm;
+    int pin_dir, pin_pwm;
 };
 
 struct MotorDriverConfig
 {
-    MotorChannelConfig c1;
-    MotorChannelConfig c2;
-    MotorChannelConfig c3;
-    MotorChannelConfig c4;
-    int pin_drv;
-    int pin_en;
-    int pin_err;
+    MotorChannelConfig c1, c2, c3, c4;
+    int pin_drv, pin_en, pin_err;
 };
 
 class MotorChannel
@@ -34,8 +28,7 @@ public:
 
 private:
     void _setup();
-    int _pin_dir;
-    int _pin_pwm;
+    int _pin_dir, _pin_pwm;
 
     friend class MotorDriver;
 };
@@ -71,11 +64,7 @@ public:
     void move(uint8_t cmd, uint8_t spd_percent = 50, unsigned long duration_ms = 0);
 
 private:
-    int _pin_drv;
-    int _pin_en;
-    int _pin_err;
-
-    unsigned long _move_start_time;
-    unsigned long _move_duration;
+    int _pin_drv, _pin_en, _pin_err;
+    unsigned long _move_start_time, _move_duration;
     bool _timed_move_active = false;
 };
