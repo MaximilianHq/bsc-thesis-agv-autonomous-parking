@@ -1,4 +1,5 @@
 #pragma once
+#include "sreg_handler.h"
 #include <Arduino.h>
 
 struct Color
@@ -34,7 +35,7 @@ public:
         STATUS_RETURNING      // Returning to home/base
     };
 
-    StatusLED(int pin_r, int pin_g, int pin_b, LED status = STATUS_READY);
+    StatusLED(SRegHandler sreg, int pin_r, int pin_g, int pin_b, LED status = STATUS_READY, bool boolean_return = true);
 
     void setup();
     void update();
@@ -47,11 +48,17 @@ private:
     LED _status = STATUS_READY;
     bool _blinking = false;
     bool _led_on = true;
+
+    // Implementation specific
+    bool _led_boolean_return;
+    SRegHandler _sreg;
+
     unsigned long _last_toggle;
     unsigned long _interval;
 
     void _set_color(uint8_t r, uint8_t g, uint8_t b);
     void _set_color(Color c);
+    void _this_function_sucks(Color c); // Implementation specific
     void _blinking_routine();
 
     static const LEDState _led_states[];

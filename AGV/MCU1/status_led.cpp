@@ -1,4 +1,5 @@
 #include "led_easy.h"
+#include "sreg_handler.h"
 #include <Arduino.h>
 
 const LEDState StatusLED::_led_states[] = {
@@ -16,14 +17,17 @@ const LEDState StatusLED::_led_states[] = {
     {{255, 255, 0}, true, 500}  // STATUS_RETURNING
 };
 
-StatusLED::StatusLED(int pin_r, int pin_g, int pin_b, LED status)
-    : _pin_r(pin_r), _pin_g(pin_g), _pin_b(pin_b), _status(status) {}
+StatusLED::StatusLED(SRegHandler sreg, int pin_r, int pin_g, int pin_b, LED status, bool boolean_return)
+    : _sreg(sreg), _pin_r(pin_r), _pin_g(pin_g), _pin_b(pin_b), _status(status), _led_boolean_return(boolean_return) {}
 
 void StatusLED::setup()
 {
-    pinMode(_pin_r, OUTPUT);
-    pinMode(_pin_g, OUTPUT);
-    pinMode(_pin_b, OUTPUT);
+    if (!_led_boolean_return)
+    {
+        pinMode(_pin_r, OUTPUT);
+        pinMode(_pin_g, OUTPUT);
+        pinMode(_pin_b, OUTPUT);
+    }
     set_status(_status);
 }
 
@@ -38,13 +42,24 @@ void StatusLED::_blinking_routine()
 
     if (now - _last_toggle >= _interval)
     {
+        const LEDState &state = _led_states[_status];
         _last_toggle = now;
         _led_on = !_led_on;
 
         if (_led_on)
-            _set_color(_led_states[_status].color);
+        {
+            if (_led_boolean_return) // Implementation specific
+                _this_function_sucks(state.color);
+            else
+                _set_color(state.color);
+        }
         else
-            _set_color(0, 0, 0);
+        {
+            if (_led_boolean_return) // Implementation specific
+                _this_function_sucks({0, 0, 0});
+            else
+                _set_color(0, 0, 0);
+        }
     }
 }
 
@@ -59,7 +74,10 @@ void StatusLED::set_status(LED status)
     _last_toggle = millis();
     _led_on = true;
 
-    _set_color(state.color);
+    if (_led_boolean_return) // Implementation specific
+        _this_function_sucks(state.color);
+    else
+        _set_color(state.color);
 }
 
 void StatusLED::_set_color(uint8_t r, uint8_t g, uint8_t b)
@@ -70,3 +88,11 @@ void StatusLED::_set_color(uint8_t r, uint8_t g, uint8_t b)
 }
 
 void StatusLED::_set_color(Color c) { _set_color(c.r, c.g, c.b); }
+
+void StatusLED::_this_function_sucks(Color c) // Implementation specific
+{
+    _sreg.set_pin(static_cast<sreg_pin>(_pin_r), c.r > 0, false);
+    _sreg.set_pin(static_cast<sreg_pin>(_pin_g), c.g > 0, false);
+    _sreg.set_pin(static_cast<sreg_pin>(_pin_b), c.b > 0, false);
+    _sreg.apply();
+}
