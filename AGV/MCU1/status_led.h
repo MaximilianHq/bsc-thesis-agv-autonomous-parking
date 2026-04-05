@@ -7,7 +7,7 @@ struct Color
     uint8_t r, g, b;
 };
 
-struct LEDState
+struct LEDConfig
 {
     Color color;
     bool blinking;
@@ -17,7 +17,7 @@ struct LEDState
 class StatusLED
 {
 public:
-    enum LED
+    enum State
     {
         // --- SYSTEM STATUS ---
         STATUS_BOOT,          // AGV booting
@@ -35,31 +35,38 @@ public:
         STATUS_RETURNING      // Returning to home/base
     };
 
-    StatusLED(SRegHandler sreg, int pin_r, int pin_g, int pin_b, LED status = STATUS_READY, bool boolean_return = true);
+    // Om boolean_return = false:
+    //   pin_r/pin_g/pin_b = vanliga PWM/GPIO-pins
+    //
+    // Om boolean_return = true:
+    //   pin_r/pin_g/pin_b = ID i det kopplade shiftregistret
+    //   Ex: LED1 = 0,1,2  LED2 = 3,4,5
+
+    StatusLED(SRegHandler sreg, int pin_r, int pin_g, int pin_b, bool boolean_return = true,
+              State state = STATUS_BOOT);
 
     void setup();
+    void update(StatusLED::State state);
     void update();
-
-    void set_status(LED status);
+    void set_status(State state);
 
 private:
     int _pin_r, _pin_g, _pin_b;
 
-    LED _status = STATUS_READY;
+    State _state = STATUS_READY;
     bool _blinking = false;
     bool _led_on = true;
 
-    // Implementation specific
     bool _led_boolean_return;
     SRegHandler _sreg;
 
-    unsigned long _last_toggle;
-    unsigned long _interval;
+    unsigned long _last_toggle = 0;
+    unsigned long _interval = 500;
 
     void _set_color(uint8_t r, uint8_t g, uint8_t b);
     void _set_color(Color c);
-    void _this_function_sucks(Color c); // Implementation specific
+    void _write_sreg_color(Color c);
     void _blinking_routine();
 
-    static const LEDState _led_states[];
+    static const LEDConfig _led_states[];
 };

@@ -1,9 +1,9 @@
-#include "led_easy.h"
+#include "status_led.h"
 #include "sreg_handler.h"
 #include <Arduino.h>
 
-const LEDState StatusLED::_led_states[] = {
-    {{255, 0, 0}, true, 50},   // STATUS_BOOT
+const LEDConfig StatusLED::_led_states[] = {
+    {{255, 0, 0}, false, 500}, // STATUS_BOOT
     {{0, 255, 0}, false, 500}, // STATUS_READY
     {{0, 0, 255}, true, 500},  // STATUS_BLE_SEARCHING
     {{0, 0, 255}, false, 500}, // STATUS_BLE_CONNECTED
@@ -17,23 +17,39 @@ const LEDState StatusLED::_led_states[] = {
     {{255, 255, 0}, true, 500}  // STATUS_RETURNING
 };
 
-StatusLED::StatusLED(SRegHandler sreg, int pin_r, int pin_g, int pin_b, LED status, bool boolean_return)
-    : _sreg(sreg), _pin_r(pin_r), _pin_g(pin_g), _pin_b(pin_b), _status(status), _led_boolean_return(boolean_return) {}
+StatusLED::StatusLED(SRegHandler sreg, int pin_r, int pin_g, int pin_b, bool boolean_return, State state)
+    : _sreg(sreg),
+      _pin_r(pin_r),
+      _pin_g(pin_g),
+      _pin_b(pin_b),
+      _state(state),
+      _led_boolean_return(boolean_return)
+{
+}
 
 void StatusLED::setup()
 {
     if (!_led_boolean_return)
     {
+        // Vanligt GPIO/PWM-läge
         pinMode(_pin_r, OUTPUT);
         pinMode(_pin_g, OUTPUT);
         pinMode(_pin_b, OUTPUT);
     }
-    set_status(_status);
+
+    set_status(_state);
+}
+
+void StatusLED::update(StatusLED::State state)
+{
+    _state = state;
+    update();
 }
 
 void StatusLED::update()
 {
-    _blinking_routine();
+    if (_blinking)
+        _blinking_routine();
 }
 
 void StatusLED::_blinking_routine()
@@ -42,42 +58,41 @@ void StatusLED::_blinking_routine()
 
     if (now - _last_toggle >= _interval)
     {
-        const LEDState &state = _led_states[_status];
+        const LEDConfig &s = _led_states[_state];
         _last_toggle = now;
         _led_on = !_led_on;
 
         if (_led_on)
         {
-            if (_led_boolean_return) // Implementation specific
-                _this_function_sucks(state.color);
+            if (_led_boolean_return)
+                _write_sreg_color(s.color);
             else
-                _set_color(state.color);
+                _set_color(s.color);
         }
         else
         {
-            if (_led_boolean_return) // Implementation specific
-                _this_function_sucks({0, 0, 0});
+            if (_led_boolean_return)
+                _write_sreg_color({0, 0, 0});
             else
                 _set_color(0, 0, 0);
         }
     }
 }
 
-void StatusLED::set_status(LED status)
+void StatusLED::set_status(State state)
 {
-    _status = status;
+    _state = state;
 
-    const LEDState &state = _led_states[status];
-
-    _blinking = state.blinking;
-    _interval = state.interval;
+    const LEDConfig &s = _led_states[_state];
+    _blinking = s.blinking;
+    _interval = s.interval;
     _last_toggle = millis();
     _led_on = true;
 
-    if (_led_boolean_return) // Implementation specific
-        _this_function_sucks(state.color);
+    if (_led_boolean_return)
+        _write_sreg_color(s.color);
     else
-        _set_color(state.color);
+        _set_color(s.color);
 }
 
 void StatusLED::_set_color(uint8_t r, uint8_t g, uint8_t b)
@@ -87,12 +102,16 @@ void StatusLED::_set_color(uint8_t r, uint8_t g, uint8_t b)
     ledcWrite(_pin_b, b);
 }
 
-void StatusLED::_set_color(Color c) { _set_color(c.r, c.g, c.b); }
-
-void StatusLED::_this_function_sucks(Color c) // Implementation specific
+void StatusLED::_set_color(Color c)
 {
-    _sreg.set_pin(static_cast<sreg_pin>(_pin_r), c.r > 0, false);
-    _sreg.set_pin(static_cast<sreg_pin>(_pin_g), c.g > 0, false);
-    _sreg.set_pin(static_cast<sreg_pin>(_pin_b), c.b > 0, false);
+    _set_color(c.r, c.g, c.b);
+}
+
+void StatusLED::_write_sreg_color(Color c)
+{
+    // Här är _pin_r/_pin_g/_pin_b ID i shiftregistret, inte GPIO-pins
+    _sreg.set_pin((uint8_t)_pin_r, c.r > 0, false);
+    _sreg.set_pin((uint8_t)_pin_g, c.g > 0, false);
+    _sreg.set_pin((uint8_t)_pin_b, c.b > 0, false);
     _sreg.apply();
 }

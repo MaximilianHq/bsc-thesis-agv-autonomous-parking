@@ -63,6 +63,6 @@ extern AgvMotion g_motion;
 
 struct AgvStatus
 {
-    StatusLED led1, led2;
+    StatusLED::State sys, cmd;
 };
-extern AgvStatus g_status;
+extern AgvStatus g_led_status;
