@@ -56,8 +56,14 @@ AgvStatus g_led_status = {
 
 // ========== LED STATUS ==========
 SRegHandler sreg(PIN_SHREG_DATA, PIN_SHREG_CLK, PIN_SHREG_LATCH);
-StatusLED led_sys(sreg, 0, 1, 2, true);
-StatusLED led_cmd(sreg, 3, 4, 5, true);
+StatusLED led_sys(sreg, SRegHandler::pin_sreg::QA,
+                  SRegHandler::pin_sreg::QB,
+                  SRegHandler::pin_sreg::QC,
+                  true);
+StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
+                  SRegHandler::pin_sreg::QE,
+                  SRegHandler::pin_sreg::QF,
+                  true);
 
 // ========== PROTOTYPES ==========
 void blt_status_routine();

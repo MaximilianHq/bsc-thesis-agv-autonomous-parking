@@ -34,7 +34,7 @@ void SRegHandler::setup()
 
 void SRegHandler::apply() { _write_register(); }
 
-void SRegHandler::set_pin(sreg_pin pin, bool state, bool write_now) { set_pin(static_cast<uint8_t>(pin), state, write_now); }
+void SRegHandler::set_pin(pin_sreg pin, bool state, bool write_now) { set_pin(static_cast<uint8_t>(pin), state, write_now); }
 
 void SRegHandler::set_pin(uint8_t pin, bool state, bool write_now)
 {
@@ -50,7 +50,7 @@ void SRegHandler::set_pin(uint8_t pin, bool state, bool write_now)
         _write_register();
 }
 
-void SRegHandler::toggle_pin(sreg_pin pin, bool write_now) { toggle_pin(static_cast<uint8_t>(pin), write_now); }
+void SRegHandler::toggle_pin(pin_sreg pin, bool write_now) { toggle_pin(static_cast<uint8_t>(pin), write_now); }
 
 void SRegHandler::toggle_pin(uint8_t pin, bool write_now)
 {
@@ -89,7 +89,7 @@ void SRegHandler::set_all_high(bool write_now)
 
 uint8_t SRegHandler::get_state() const { return _reg_state; }
 
-bool SRegHandler::get_pin(sreg_pin pin) const { return get_pin(static_cast<uint8_t>(pin)); }
+bool SRegHandler::get_pin(pin_sreg pin) const { return get_pin(static_cast<uint8_t>(pin)); }
 
 bool SRegHandler::get_pin(uint8_t pin) const
 {
