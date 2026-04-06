@@ -3,12 +3,12 @@
 #include "servo_easy.h"
 #include <Arduino.h>
 
-constexpr float SERVO_SPEED = 20;
-
 class Sonar
 {
 public:
-    Sonar(int pin_servo, int pin_trig, int pin_echo, float sonar_range, float servo_offset, float min_servo_ang = 90, float max_servo_ang = 90, bool servo_inverted = false);
+    Sonar(int pin_servo, int pin_trig, int pin_echo, float sonar_range,
+          float sonar_speed, float sonar_angle, float servo_offset,
+          float min_servo_ang = 0, float max_servo_ang = 180, bool servo_inverted = false);
 
     bool setup();
     bool update();
@@ -26,5 +26,5 @@ private:
     int _pin_servo, _pin_trig, _pin_echo;
     bool _dir = true; // true = right, false = left
     bool _scan = true;
-    float _range;
+    float _sonar_range, _sonar_speed, _sonar_angle;
 };
