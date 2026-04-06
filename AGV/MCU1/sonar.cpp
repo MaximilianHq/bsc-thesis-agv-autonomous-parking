@@ -3,8 +3,12 @@
 #include "servo_easy.h"
 #include <Arduino.h>
 
-Sonar::Sonar(int pin_servo, int pin_trig, int pin_echo, float sonar_range, float servo_offset, float min_servo_ang, float max_servo_ang, bool servo_inverted)
-    : _servo(servo_offset, min_servo_ang, max_servo_ang, servo_inverted), _pin_servo(pin_servo), _pin_trig(pin_trig), _pin_echo(pin_echo), _range(sonar_range) {}
+Sonar::Sonar(int pin_servo, int pin_trig, int pin_echo, float sonar_range,
+             float sonar_speed, float sonar_angle, float servo_offset,
+             float min_servo_ang, float max_servo_ang, bool servo_inverted)
+    : _servo(servo_offset, min_servo_ang, max_servo_ang, servo_inverted),
+      _pin_servo(pin_servo), _pin_trig(pin_trig), _pin_echo(pin_echo),
+      _sonar_range(sonar_range), _sonar_speed(sonar_speed), _sonar_angle(sonar_angle) {}
 
 bool Sonar::setup()
 {
@@ -14,7 +18,7 @@ bool Sonar::setup()
     // Servos
     _servo.attach(_pin_servo, 0);
     enableServoEasingInterrupt();
-    _servo.startEaseTo(0, (float)SERVO_SPEED);
+    _servo.startEaseTo(0, _sonar_speed);
 
     // Ultrasonic
     pinMode(_pin_trig, OUTPUT);
@@ -36,10 +40,13 @@ bool Sonar::update()
     delayMicroseconds(10);
     digitalWrite(_pin_trig, LOW);
 
-    _duration = pulseIn(_pin_echo, HIGH);
-    _distance = (_duration * .0343) / 2;
+    uint32_t timeout = static_cast<uint32_t>((2.0 * 1.3 * _sonar_range) / 0.343);
+    _duration = pulseIn(_pin_echo, HIGH, timeout);
+    if (_duration == 0)
+        return false;
+    _distance = _duration * .343 / 2; // mm
 
-    if (_distance <= _range)
+    if (_distance <= _sonar_range)
     {
         stopAllServos();
         _scan = false;
@@ -56,7 +63,7 @@ bool Sonar::update()
     else if (!_dir)
         _dir = true;
 
-    _servo.startEaseTo((_dir == true) ? _servo.get_min_angle() : _servo.get_max_angle(), (float)SERVO_SPEED);
+    _servo.startEaseTo((_dir == true) ? _sonar_angle : -_sonar_angle, _sonar_speed);
     return false;
 }
 

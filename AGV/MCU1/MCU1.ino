@@ -36,13 +36,17 @@
 
 // ========== DEFINITIONS ==========
 #define UART_BAUD 115200
-constexpr int32_t SONAR_RANGE = 200; // mm
+
+constexpr int SONAR_RANGE = 200; // mm
+constexpr int SONAR_SPEED = 100; // mm
+constexpr int SONAR_ANGLE = 70;  // ∓ deg
 
 BluetoothSerial SerialBT;
 
 Comm comm_mcu(Serial1, "MCU");
 Comm comm_bt(SerialBT, "BT");
-Sonar sonar(PIN_SONAR_SERVO, PIN_SONAR_TRIG, PIN_SONAR_ECHO, SONAR_RANGE, 0, -90, 90, false);
+Sonar sonar(PIN_SONAR_SERVO, PIN_SONAR_TRIG, PIN_SONAR_ECHO,
+            SONAR_RANGE, SONAR_SPEED, SONAR_ANGLE, 90, 0, 180, false);
 
 // ========== GLOBALS ==========
 Debug g_debug;
@@ -103,7 +107,14 @@ void setup()
 void loop()
 {
     // ========== UPDATES ==========
-    sonar.update();
+    Position pos;
+    if (sonar.update())
+    {
+        g_led_status.cmd = StatusLED::State::STATUS_OBSTACLE;
+        pos = sonar.get_obstacle_position();
+        sonar.reset();
+    }
+
     led_sys.update(g_led_status.sys);
     led_cmd.update(g_led_status.cmd);
 
