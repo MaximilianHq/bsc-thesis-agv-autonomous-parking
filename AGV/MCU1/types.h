@@ -26,8 +26,18 @@ struct DwmState
 
 struct ImuState
 {
-    int wz = 0; // tmp
-    int dt = 0; // tmp
+    //accelerometer
+    float ax = 0;
+    float ay = 0;
+    float az = 0;
+
+    //gyro
+    float gx = 0;
+    float gy = 0;
+    float gz = 0;
+
+    //temperatur
+    float temperature = 0;
 };
 
 struct AgvState
@@ -66,3 +76,5 @@ struct AgvStatus
     StatusLED::State sys, cmd;
 };
 extern AgvStatus g_led_status;
+
+extern ImuState g_imu;

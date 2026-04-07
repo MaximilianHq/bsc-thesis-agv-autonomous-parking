@@ -8,7 +8,6 @@
 imuData::imuData() {}
 
 bool imuData::begin() {
-    Serial.println("Sensor test!");
 
     if (!imu.begin()) {
         if(g_debug.imu)
@@ -21,40 +20,28 @@ bool imuData::begin() {
     imu.setAccelerometerRange(MPU6050_RANGE_8_G);
     imu.setGyroRange(MPU6050_RANGE_500_DEG);
     imu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-
-    printSettings();
-
+    
     return true;
 }
 
-void imuData::read_print() {
+
+void imuData::update() {
     sensors_event_t a;
     sensors_event_t g;
     sensors_event_t temp;
 
     imu.getEvent(&a, &g, &temp);
 
-    Serial.print("Acceleration X: ");
-    Serial.print(a.acceleration.x);
-    Serial.print(", Y: ");
-    Serial.print(a.acceleration.y);
-    Serial.print(", Z: ");
-    Serial.print(a.acceleration.z);
-    Serial.println(" m/s^2");
+    ax = a.acceleration.x;
+    ay = a.acceleration.y;
+    az = a.acceleration.z;
 
-    Serial.print("Rotation X: ");
-    Serial.print(g.gyro.x);
-    Serial.print(", Y: ");
-    Serial.print(g.gyro.y);
-    Serial.print(", Z: ");
-    Serial.print(g.gyro.z);
-    Serial.println(" rad/s");
+    gx = g.gyro.x;
+    gy = g.gyro.y;
+    gz = g.gyro.z;
 
-    Serial.print("Temperature: ");
-    Serial.print(temp.temperature);
-    Serial.println(" degC");
+    temperature = temp.temperature;
 
-    Serial.println("");
 }
 
 

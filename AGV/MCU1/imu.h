@@ -4,9 +4,6 @@
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 
-#ifndef MPU6050
-#define MPU6050
-
 class imuData {
     public:
         imuData();
@@ -22,7 +19,7 @@ class imuData {
         float gy;
         float gz;
 
-        float temp;
+        float temperature;
 
     private:
     Adafruit_MPU6050 imu;

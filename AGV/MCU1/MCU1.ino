@@ -50,6 +50,7 @@ Sonar sonar(PIN_SONAR_SERVO, PIN_SONAR_TRIG, PIN_SONAR_ECHO,
 
 // ========== GLOBALS ==========
 Debug g_debug;
+imuData imu; //detta har mia lagt till
 AgvState g_state;
 AgvState g_state_prev;
 AgvMotion g_motion;
@@ -91,6 +92,17 @@ void setup()
 
     Serial.println("[MAIN] Running setup...");
 
+    // ========== imu ========== jag vet inte om detta behövs /mia
+    if (!imu.begin()) {
+        if (g_debug.mcu1)
+            Serial.println("[IMU] Failed to init");
+            while(1);
+    }
+
+    if (g_debug.mcu1) {
+        Serial.println("[IMU] Init OK");
+    }
+
     // ========== Network ==========
     SerialBT.begin("AGV_BT_G2"); // ÖS
     Serial.println("Bluethooth started");
@@ -107,6 +119,8 @@ void setup()
 void loop()
 {
     // ========== UPDATES ==========
+    imu.update();
+
     Position pos;
     if (sonar.update())
     {
