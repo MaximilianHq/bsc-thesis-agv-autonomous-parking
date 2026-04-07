@@ -11,7 +11,8 @@ bool imuData::begin() {
     Serial.println("Sensor test!");
 
     if (!imu.begin()) {
-        Serial.println("Failed to find MPU6050 chip");
+        if(g_debug.imu)
+            Serial.println("Failed to find MPU6050 chip");
         return false;
     }
 

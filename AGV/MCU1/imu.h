@@ -12,11 +12,20 @@ class imuData {
         imuData();
 
         bool begin();
-        void read_print();
+        void update();
+
+        float ax;
+        float ay;
+        float az;
+
+        float gx;
+        float gy;
+        float gz;
+
+        float temp;
 
     private:
-    Adafruit_MPU6050 mpu;
-    void printSettings();
+    Adafruit_MPU6050 imu;
 };
 
 
