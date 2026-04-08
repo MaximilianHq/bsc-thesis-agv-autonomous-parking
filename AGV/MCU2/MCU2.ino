@@ -3,18 +3,20 @@
 #include <Arduino.h>
 
 #define PIN_ERR 34
-#define PIN_EN 18
-#define PIN_DRV 19
-#define PIN_DIR1 21
-#define PIN_DIR2 22
-#define PIN_DIR3 23
-#define PIN_DIR4 25
-#define PIN_PWM1 26
-#define PIN_PWM2 27
-#define PIN_PWM3 32
-#define PIN_PWM4 33
+#define PIN_EN 21
+#define PIN_DRV 32
+#define PIN_DIR1 33
+#define PIN_DIR2 25
+#define PIN_DIR3 26
+#define PIN_DIR4 27
+#define PIN_PWM1 19
+#define PIN_PWM2 18
+#define PIN_PWM3 17
+#define PIN_PWM4 16
 
-MotorDriverConfig cfg = {
+#define UART_BAUD 115200
+
+MotorDriver::MotorDriverConfig cfg = {
     {PIN_DIR1, PIN_PWM1},
     {PIN_DIR2, PIN_PWM2},
     {PIN_DIR3, PIN_PWM3},
@@ -32,8 +34,12 @@ AgvMotion g_motion;
 
 void setup()
 {
+    Serial.begin(UART_BAUD); // PC
     md.setup();
-    md.move(0x00, 50, 5000);
+    // md.temperature_error_reset_all();
+    md.outputs_enable();
+    md.drivers_enable();
+    md.move(0x00, 20, 5000000);
 }
 
 void loop()

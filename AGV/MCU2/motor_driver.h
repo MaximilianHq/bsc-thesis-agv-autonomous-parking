@@ -2,23 +2,17 @@
 #include "types.h"
 
 // CAUTION DO NOT CHANGE
-#define PWM_FREQ 20000
+#define PWM_FREQ 1000
 #define PWM_RES 10
-
-struct MotorChannelConfig
-{
-    int pin_dir, pin_pwm;
-};
-
-struct MotorDriverConfig
-{
-    MotorChannelConfig c1, c2, c3, c4;
-    int pin_drv, pin_en, pin_err;
-};
 
 class MotorChannel
 {
 public:
+    struct MotorChannelConfig
+    {
+        int pin_dir, pin_pwm;
+    };
+
     MotorChannel(MotorChannelConfig &cfg);
 
     void execute_move(bool dir, uint8_t percent);
@@ -36,12 +30,15 @@ private:
 class MotorDriver
 {
 public:
+    struct MotorDriverConfig
+    {
+        MotorChannel::MotorChannelConfig c1, c2, c3, c4;
+        int pin_drv, pin_en, pin_err;
+    };
+
     MotorDriver(MotorDriverConfig &cfg);
 
-    MotorChannel c1;
-    MotorChannel c2;
-    MotorChannel c3;
-    MotorChannel c4;
+    MotorChannel c1, c2, c3, c4;
 
     void setup();
     void update();
@@ -59,6 +56,8 @@ public:
     // CHANNELS
     void channels_stop_all();
 
+    // ERRORS
+    bool has_error();
     void temperature_error_reset_all();
 
     void move(uint8_t cmd, uint8_t spd_percent = 50, unsigned long duration_ms = 0);

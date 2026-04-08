@@ -56,6 +56,9 @@ void MotorDriver::setup()
 
 void MotorDriver::update()
 {
+    if (g_debug.driver && has_error())
+        Serial.println("[DRIVER] Error detected");
+
     if (_timed_move_active)
     {
         if (millis() - _move_start_time >= _move_duration)
@@ -96,6 +99,15 @@ void MotorDriver::channels_stop_all()
     c2.stop();
     c3.stop();
     c4.stop();
+}
+
+bool MotorDriver::has_error()
+{
+    return (!digitalRead(_pin_err) && // IF SPAM CHANGE TO HIGH
+            digitalRead(_pin_en) &&
+            digitalRead(_pin_drv))
+               ? true
+               : false;
 }
 
 void MotorDriver::temperature_error_reset_all()
