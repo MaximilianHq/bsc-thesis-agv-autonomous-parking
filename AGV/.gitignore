@@ -39,3 +39,25 @@
 
 # debug information files
 *.dwo
+
+# ----------------------------
+# Altium Designer
+# ----------------------------
+
+# Cache / previews
+**/History/
+**/__Previews/
+
+# Logs and generated outputs
+Project Logs*/
+Project Outputs*/
+
+# Misc generated files
+debug.log
+Status Report.txt
+*.PcbDoc.htm
+*.SchDocPreview
+*.PcbDocPreview
+
+# Lock files
+.~lock.*
