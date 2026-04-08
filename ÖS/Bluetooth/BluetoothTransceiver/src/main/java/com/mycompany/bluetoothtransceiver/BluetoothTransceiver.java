@@ -2,44 +2,56 @@ package com.mycompany.bluetoothtransceiver;
 
 import java.io.*;
 import javax.microedition.io.*;
-import javax.bluetooth.*;
 
 public class BluetoothTransceiver {
 
+    // Gör ut-strömmen statisk så att metoder som skickaACK också kommer åt den
+    static OutputStream bluetooth_ut; 
+
     public static void main(String args[]) {
         try {
-            // 1. Försöker upprätta en anslutning till mottagaren (Servern)
+            // 1. Upprätta anslutning
+            System.out.println("Ansluter till AGV...");
             StreamConnection anslutning = (StreamConnection) Connector.open("btspp://3c71bfcf083e:1");
+            System.out.println("Ansluten!");
 
-            // 2. Förbereder strömmar (ÄNDRING: Ändrat till InputStream för att hantera bytes)
-            PrintStream bluetooth_ut = new PrintStream(anslutning.openOutputStream());
+            // 2. Förbered strömmar (rena data-strömmar för bytes)
+            bluetooth_ut = anslutning.openOutputStream();
             InputStream bluetooth_in = anslutning.openInputStream(); 
             BufferedReader tangentbord = new BufferedReader(new InputStreamReader(System.in));
 
-            // 3. Startar en oändlig loop för kontinuerlig kommunikation
+            // 3. Huvudloop (Ping-pong testning)
             while (true) {
-                // Läs en rad text som användaren skriver in via tangentbordet
+                // --- SÄNDA DATA (TEST) ---
+                System.out.println("\nSkriv testdata (t.ex. 'M123') eller tryck Enter för att vänta på mottagning:");
                 String meddelande_ut = tangentbord.readLine();
                 
-                if (meddelande_ut == null || meddelande_ut.isEmpty()) {
-                    break;
+                if (meddelande_ut != null && !meddelande_ut.isEmpty()) {
+                    if (meddelande_ut.equalsIgnoreCase("exit")) break;
+
+                    // Bygg ett testpaket (För testning från tangentbord)
+                    byte typeByte = (byte) meddelande_ut.charAt(0);
+                    byte[] dataBytes = meddelande_ut.substring(1).getBytes();
+
+                    // 3A. Skapa en temporär array (Typ + Data) för att använda vår checksumme-funktion
+                    byte[] dataForChecksumma = new byte[1 + dataBytes.length];
+                    dataForChecksumma[0] = typeByte;
+                    System.arraycopy(dataBytes, 0, dataForChecksumma, 1, dataBytes.length);
+
+                    // 3B. BERÄKNA CHECKSUMMA VID SÄNDNING
+                    byte checksum = beraknaChecksumma(dataForChecksumma);
+                    System.out.println("Skickar paket med checksum: " + checksum);
+
+                    // 3C. Skicka iväg paketet
+                    bluetooth_ut.write('$');
+                    bluetooth_ut.write(typeByte);
+                    bluetooth_ut.write(dataBytes);
+                    bluetooth_ut.write(checksum);
+                    bluetooth_ut.write('\n');
+                    bluetooth_ut.flush();
                 }
 
-                String meddelande_ut_type = meddelande_ut.substring(0, 1);
-                byte typeByte = (byte) meddelande_ut.charAt(0);
-                String dataStrang = meddelande_ut.substring(1);
-                byte[] dataBytes = dataStrang.getBytes();
-
-                Packet pkt = new Packet(typeByte, dataBytes);
-                byte checksum = csum(pkt);
-                System.out.println("Beräknad checksum: " + checksum);
-
-                // Skickar data till AGV
-                bluetooth_ut.print("$" + meddelande_ut); 
-                bluetooth_ut.write(checksum);
-                bluetooth_ut.print("\n");
-
-                // --- NYTT SÄTT ATT LÄSA MOTTAGET MEDDELANDE BYTE FÖR BYTE ---
+                // --- TA EMOT DATA (BYTE FÖR BYTE) ---
                 ByteArrayOutputStream mottagarBuffer = new ByteArrayOutputStream();
                 int inkommandeByte;
                 boolean startHittad = false;
@@ -48,23 +60,20 @@ public class BluetoothTransceiver {
                 while ((inkommandeByte = bluetooth_in.read()) != -1) {
                     if (inkommandeByte == '$') {
                         startHittad = true;
-                        mottagarBuffer.reset(); // Rensa ifall det fanns gammalt skräp
+                        mottagarBuffer.reset(); // Rensa gammalt skräp
                     }
                     
                     if (startHittad) {
                         mottagarBuffer.write(inkommandeByte);
                         
                         if (inkommandeByte == '\n') {
-                            break; // Hela meddelandet är nu inläst! Hoppa ur while-loopen.
+                            break; // Hela meddelandet är nu inläst!
                         }
                     }
                 }
 
-                // Konvertera bufferten till en faktisk byte-array
                 byte[] fardigtMeddelande = mottagarBuffer.toByteArray();
                 
-                System.out.println("Mottog paket med längd: " + fardigtMeddelande.length + " bytes");
-
                 // Tolka och konvertera meddelandet till variabler 
                 hanteraInkommandeMeddelande(fardigtMeddelande);
             }
@@ -72,88 +81,118 @@ public class BluetoothTransceiver {
             // Stäng anslutningen snyggt om loopen bryts
             anslutning.close();
         } catch (Exception e) {
-            System.out.print(e.toString());
+            System.out.print("Ett fel uppstod: " + e.toString());
         }
     }
 
-    // Metod för att beräkna checksum (csum)
-    public static byte csum(Packet pkt) {
-        byte crc = 0;
-        crc ^= pkt.type;  // XOR med typen
-        for (int i = 0; i < pkt.dataLen; i++) {
-            crc ^= pkt.data[i];  // XOR med varje byte i data
-        }
-        return crc;
-    }
-
-    // Packet-klass som representerar en packet
-    public static class Packet {
-        public byte type;    // Tänk på att byte motsvarar uint8_t
-        public byte[] data;  // data arrayen är samma som pkt.data
-        public int dataLen;  // data_len motsvaras av längden på data-arrayen
-
-        public Packet(byte type, byte[] data) {
-            this.type = type;
-            this.data = data;
-            this.dataLen = data.length;
-        }
-    }
-
-    // --- ÄNDRAD METOD FÖR ATT HANTERA BYTE-ARRAY ISTÄLLET FÖR STRING ---
+    // --- METOD FÖR ATT TOLKA INKOMMANDE MEDDELANDEN ---
     public static void hanteraInkommandeMeddelande(byte[] data) {
-        // Kontrollera att meddelandet har en rimlig minimilängd (ex: $, Typ, C, \n)
-        if (data == null || data.length < 4) {
-            System.out.println("Ogiltigt eller för kort meddelande.");
-            return;
-        }
+        if (data == null || data.length < 4) return;
         
-        // Kontrollera att det börjar med $
         if (data[0] != '$') {
             System.out.println("Ogiltigt meddelande, saknar startbyte.");
             return;
         }
 
-        byte meddelandeTyp = data[1]; // Andra byten är typen (M, H etc)
+        byte meddelandeTyp = data[1];
+        byte mottagenChecksumma = data[data.length - 2]; // Näst sista byten är alltid C
 
-        // '& 0xFF' används för att göra om Javas signed byte (-128 till 127) till 0-255.
-        if (meddelandeTyp == 'M') {
-            // Kontrollera längden utifrån Tabell 2: $, M, XX, YY, L, S, C, \n (8 bytes)
-            if (data.length >= 8) {
-                int posX = data[2] & 0xFF;
-                int posY = data[3] & 0xFF;
-                int status = data[4] & 0xFF;
-                int sekvensnummer = data[5] & 0xFF;
-                int checksum = data[6] & 0xFF; // Om du vill skriva ut den som positiv siffra
+        // 1. BERÄKNA CHECKSUMMA VID MOTTAGNING FÖR ATT VALIDERA
+        // Vi plockar ut all data mellan $ och C (dvs Typ, Positioner, Status, Sekvens)
+        int dataLangd = data.length - 3; 
+        byte[] dataForChecksumma = new byte[dataLangd];
+        System.arraycopy(data, 1, dataForChecksumma, 0, dataLangd);
 
-                System.out.println("--- POSITION UPPDATERAD ---");
-                System.out.println("X: " + posX + ", Y: " + posY);
-                System.out.println("Status: " + status + ", Sekvensnummer: " + sekvensnummer);
-                System.out.println("Checksum: " + checksum);
-                
-                // uppdateraKarta(posX, posY, status); 
-            } else {
-                System.out.println("Saknar parametrar för meddelandetyp Positionsuppdatering.");
-            }
-        } 
-        else if (meddelandeTyp == 'H') {
-            // Kontrollera längden utifrån Tabell 2: $, H, XX, YY, S, C, \n (7 bytes)
-            if (data.length >= 7) {
-                int posX = data[2] & 0xFF;
-                int posY = data[3] & 0xFF;
-                // Status för Hinder fanns inte med i tabell 2, men låt oss anta att den finns om du lade in den
-                // Om er struct ser annorlunda ut, justera indexen nedan:
-                int sekvensnummer = data[4] & 0xFF;
-
-                System.out.println("--- Akta HINDER!!! ---");
-                System.out.println("Hinder vid X: " + posX + ", Y: " + posY);
-
-                // hanteraHinder(posX, posY); 
-            } else {
-                System.out.println("Saknar parametrar för meddelandetyp Hinderdetektion.");
-            }
-        } 
-        else {
-            System.out.println("Okänd meddelandetyp: " + (char)meddelandeTyp);
+        if (beraknaChecksumma(dataForChecksumma) != mottagenChecksumma) {
+            System.out.println("Felaktig checksumma mottagen! Kastar paketet.");
+            
+            // Frivilligt: Här hade ni kunnat svara med ett NACK för fel checksumma
+            // skickaACK(bluetooth_ut, (byte) 3, data[data.length - 3]); 
+            return;
         }
+
+        // 2. TOLKA MEDDELANDET (Nu vet vi att det är helt och felfritt)
+        switch (meddelandeTyp) {
+            case 'M':
+                if (data.length == 8) { // Protokoll: $, M, XX, YY, L, S, C, \n
+                    int posX = data[2] & 0xFF;
+                    int posY = data[3] & 0xFF;
+                    int status = data[4] & 0xFF;
+                    int sekvensnummer = data[5] & 0xFF;
+                    
+                    System.out.println("--- POSITION UPPDATERAD ---");
+                    System.out.println("X: " + posX + ", Y: " + posY);
+                    System.out.println("Status: " + status + ", Sekvens: " + sekvensnummer);
+                    
+                    // SKICKA ACK! (Status 1 = Godkänt)
+                    skickaACK(bluetooth_ut, (byte) 1, sekvensnummer);
+                }   break;
+            case 'H':
+                if (data.length == 7) { // Protokoll: $, H, XX, YY, S, C, \n
+                    int posX = data[2] & 0xFF;
+                    int posY = data[3] & 0xFF;
+                    int sekvensnummer = data[4] & 0xFF;
+                    
+                    System.out.println("--- Akta HINDER!!! ---");
+                    System.out.println("Hinder vid X: " + posX + ", Y: " + posY);
+                    
+                    // SKICKA ACK! (Status 1 = Godkänt)
+                    skickaACK(bluetooth_ut, (byte) 1, sekvensnummer);
+                }   break;
+            case 'A':
+                // Om AGV:n skickar en ACK/NACK till oss
+                if (data.length == 6) { // Protokoll: $, A, B, S, C, \n
+                    int statusB = data[2] & 0xFF;
+                    int sekvensnummer = data[3] & 0xFF;
+                    System.out.println("Mottog svarsmeddelande från AGV! Statuskod: " + statusB + " för sekvens: " + sekvensnummer);
+                }   break;
+            default:
+                System.out.println("Okänd meddelandetyp: " + (char)meddelandeTyp);
+                break;
+        }
+    }
+
+    // --- METOD FÖR ATT SKICKA SVAR (ACK/NACK) ---
+    public static void skickaACK(OutputStream ut, byte status, int sekvensnummer) {
+        try {
+            byte sekvensByte = (byte) sekvensnummer;
+            
+            // 1. Skapa array för de bytes som ska ingå i checksumman
+            byte[] dataForChecksumma = new byte[] { 'A', status, sekvensByte };
+            
+            // 2. BERÄKNA CHECKSUMMA IGEN (För svarsmeddelandet)
+            byte checksum = beraknaChecksumma(dataForChecksumma);
+            
+            // 3. Bygg det kompletta paketet
+            byte[] ackPaket = new byte[] {
+                '$', 
+                'A', 
+                status, 
+                sekvensByte, 
+                checksum, 
+                '\n'
+            };
+            
+            // 4. Skicka iväg det
+            ut.write(ackPaket);
+            ut.flush(); 
+            
+            if (status == 1) {
+                System.out.println("-> Skickade ACK för sekvens: " + sekvensnummer);
+            } else {
+                System.out.println("-> Skickade NACK (Felkod " + status + ") för sekvens: " + sekvensnummer);
+            }
+            
+        } catch (Exception e) {
+            System.out.println("Kunde inte skicka svarsmeddelande: " + e.getMessage());
+        }
+    }
+
+    public static byte beraknaChecksumma(byte[] data) {
+        byte crc = 0;
+        for (byte b : data) {
+            crc ^= b; 
+        }
+        return crc;
     }
 }
