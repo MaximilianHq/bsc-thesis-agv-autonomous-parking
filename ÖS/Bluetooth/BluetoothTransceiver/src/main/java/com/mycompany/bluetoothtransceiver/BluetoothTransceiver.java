@@ -1,67 +1,3 @@
-///*
-// * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
-// */
-//
-//package com.mycompany.bluetoothtransceiver;
-//
-///**
-// * Interaktiv klient för tvåvägskommunikation (chatt-klient).
-// * Denna kod körs hos sändaren och ansluter till en server (t.ex. BluetoothMirror).
-// * Den läser in text från tangentbordet, skickar det, och väntar därefter på 
-// * att få ett svar (ACK) tillbaka från servern innan nästa meddelande kan skickas.
-// * Följande kod kräver att Linux körs som OS hos både sändare och mottagare.
-// * * @author kts
-// */
-//
-//import java.io.*;
-//import javax.microedition.io.*;
-//import javax.bluetooth.*;
-//
-//public class BluetoothTransceiver {
-//
-//    public static void main(String args[]) {
-//        try { 
-//            // 1. Försöker upprätta en anslutning till mottagaren (Servern)
-//            // Byt ut MAC-adressen till mottagarens aktuella adress och kanal
-//            StreamConnection anslutning = (StreamConnection) Connector.open("btspp://3c71bfcf083e:1"); 
-//            
-//            // 2. Förbereder strömmar för kommunikation:
-//            // bluetooth_ut: För att skicka text TILL mottagaren
-//            PrintStream bluetooth_ut = new PrintStream(anslutning.openOutputStream());
-//            
-//            // bluetooth_in: För att läsa inkommande svar FRÅN mottagaren
-//            BufferedReader bluetooth_in = new BufferedReader(new InputStreamReader(anslutning.openInputStream()));
-//
-//            // tangentbord: För att läsa det användaren skriver lokalt i konsolen
-//            BufferedReader tangentbord = new BufferedReader(new InputStreamReader(System.in));
-//            
-//            // 3. Startar en oändlig loop för kontinuerlig kommunikation
-//            while (true) { 
-//                // Läs en rad text som användaren skriver in via tangentbordet
-//                String meddelande_ut = tangentbord.readLine();
-//                
-//                // Om användaren avbryter (t.ex. Ctrl+C), bryt loopen
-//                if (meddelande_ut == null) {
-//                    break;
-//                }
-//                
-//                // Skicka tangentbordsinmatningen över Bluetooth till mottagaren
-//                bluetooth_ut.println(meddelande_ut); 
-//                
-//                // Blockerar (väntar) tills mottagaren skickar ett svar tillbaka
-//                String meddelande_in = bluetooth_in.readLine(); 
-//                
-//                // Skriv ut svaret från mottagaren
-//                System.out.println("Mottaget: " + meddelande_in); 
-//            }
-//            
-//            // Stäng anslutningen snyggt om loopen bryts
-//            anslutning.close(); 
-//        } catch (Exception e) {
-//            System.out.print(e.toString());
-//        }
-//    }
-//}
 package com.mycompany.bluetoothtransceiver;
 
 import java.io.*;
@@ -73,64 +9,64 @@ public class BluetoothTransceiver {
     public static void main(String args[]) {
         try {
             // 1. Försöker upprätta en anslutning till mottagaren (Servern)
-            // Byt ut MAC-adressen till mottagarens aktuella adress och kanal
             StreamConnection anslutning = (StreamConnection) Connector.open("btspp://3c71bfcf083e:1");
 
-            // 2. Förbereder strömmar för kommunikation:
-            // bluetooth_ut: För att skicka text TILL mottagaren
+            // 2. Förbereder strömmar (ÄNDRING: Ändrat till InputStream för att hantera bytes)
             PrintStream bluetooth_ut = new PrintStream(anslutning.openOutputStream());
-
-            // bluetooth_in: För att läsa inkommande svar FRÅN mottagaren
-            BufferedReader bluetooth_in = new BufferedReader(new InputStreamReader(anslutning.openInputStream()));
-
-            // tangentbord: För att läsa det användaren skriver lokalt i konsolen
+            InputStream bluetooth_in = anslutning.openInputStream(); 
             BufferedReader tangentbord = new BufferedReader(new InputStreamReader(System.in));
 
             // 3. Startar en oändlig loop för kontinuerlig kommunikation
             while (true) {
                 // Läs en rad text som användaren skriver in via tangentbordet
                 String meddelande_ut = tangentbord.readLine();
-                String meddelande_ut_type = meddelande_ut.substring(0, 1);
-
-                // Om användaren avbryter (t.ex. Ctrl+C), bryt loopen
-                // Om användaren avbryter (t.ex. Ctrl+C) eller skickar tom sträng
+                
                 if (meddelande_ut == null || meddelande_ut.isEmpty()) {
                     break;
                 }
 
-                // 1. Plocka ut FÖRSTA tecknet som en ensam 'byte' till type
+                String meddelande_ut_type = meddelande_ut.substring(0, 1);
                 byte typeByte = (byte) meddelande_ut.charAt(0);
-
-                // 2. Klipp ut RESTEN av meddelandet (från index 1) till data-arrayen
                 String dataStrang = meddelande_ut.substring(1);
                 byte[] dataBytes = dataStrang.getBytes();
 
-                // 3. Nu matchar argumenten konstruktorn perfekt: (byte, byte[])
                 Packet pkt = new Packet(typeByte, dataBytes);
-
-                // Beräkna checksumma med csum-metoden
                 byte checksum = csum(pkt);
                 System.out.println("Beräknad checksum: " + checksum);
 
-                // Skicka tangentbordsinmatningen över Bluetooth till mottagaren
-                // Obs: La till ett mellanslag eller separator om det behövs innan checksumman?
-                // 1. Skicka inledningen och meddelandet som vanlig text
+                // Skickar data till AGV
                 bluetooth_ut.print("$" + meddelande_ut); 
-
-                // 2. Skicka checksumman som ETT ENSAMT RÅTT MATEMATISKT VÄRDE (1 byte)
                 bluetooth_ut.write(checksum);
-
-                // 3. Skicka radbrytningen ("newline") som text för att avsluta paketet
                 bluetooth_ut.print("\n");
 
-                // Blockera (väntar) tills mottagaren skickar ett svar tillbaka
-                String meddelande_in = bluetooth_in.readLine();
+                // --- NYTT SÄTT ATT LÄSA MOTTAGET MEDDELANDE BYTE FÖR BYTE ---
+                ByteArrayOutputStream mottagarBuffer = new ByteArrayOutputStream();
+                int inkommandeByte;
+                boolean startHittad = false;
 
-                // Skriv ut svaret från mottagaren
-                System.out.println("Mottagen rådata: " + meddelande_in);
+                // Läs en byte i taget. Avbryt loopen när vi hittar '\n'
+                while ((inkommandeByte = bluetooth_in.read()) != -1) {
+                    if (inkommandeByte == '$') {
+                        startHittad = true;
+                        mottagarBuffer.reset(); // Rensa ifall det fanns gammalt skräp
+                    }
+                    
+                    if (startHittad) {
+                        mottagarBuffer.write(inkommandeByte);
+                        
+                        if (inkommandeByte == '\n') {
+                            break; // Hela meddelandet är nu inläst! Hoppa ur while-loopen.
+                        }
+                    }
+                }
 
-                //Tolka och konvertera meddelandet till variabler 
-                hanteraInkommandeMeddelande(meddelande_in);
+                // Konvertera bufferten till en faktisk byte-array
+                byte[] fardigtMeddelande = mottagarBuffer.toByteArray();
+                
+                System.out.println("Mottog paket med längd: " + fardigtMeddelande.length + " bytes");
+
+                // Tolka och konvertera meddelandet till variabler 
+                hanteraInkommandeMeddelande(fardigtMeddelande);
             }
 
             // Stäng anslutningen snyggt om loopen bryts
@@ -152,12 +88,10 @@ public class BluetoothTransceiver {
 
     // Packet-klass som representerar en packet
     public static class Packet {
-
         public byte type;    // Tänk på att byte motsvarar uint8_t
         public byte[] data;  // data arrayen är samma som pkt.data
         public int dataLen;  // data_len motsvaras av längden på data-arrayen
 
-        // Konstruktor för Packet-klassen
         public Packet(byte type, byte[] data) {
             this.type = type;
             this.data = data;
@@ -165,67 +99,61 @@ public class BluetoothTransceiver {
         }
     }
 
-    public static void hanteraInkommandeMeddelande(String meddelande) {
-        // Kollar så meddelandet inte är tomt och börjat med "$" 
-        if (meddelande == null || !meddelande.trim().startsWith("$")) {
-            System.out.println("Ogiltigt meddelande, saknar startbyte: " + meddelande);
+    // --- ÄNDRAD METOD FÖR ATT HANTERA BYTE-ARRAY ISTÄLLET FÖR STRING ---
+    public static void hanteraInkommandeMeddelande(byte[] data) {
+        // Kontrollera att meddelandet har en rimlig minimilängd (ex: $, Typ, C, \n)
+        if (data == null || data.length < 4) {
+            System.out.println("Ogiltigt eller för kort meddelande.");
             return;
         }
-        // Dela upp meddelandet i en array baserat på mellanslag 
-        // Exempel: "$ M 10 20 1 2 255" blir ["$", "M", "10", "20", "1", "2", "255"] 
-        String[] delar = meddelande.trim().split("\\s+");
-
-        if (delar.length < 2) {
-            System.out.println("För kort meddelande");
+        
+        // Kontrollera att det börjar med $
+        if (data[0] != '$') {
+            System.out.println("Ogiltigt meddelande, saknar startbyte.");
             return;
         }
 
-        String meddelandeTyp = delar[1]; // M eller H 
+        byte meddelandeTyp = data[1]; // Andra byten är typen (M, H etc)
 
-        try {
-            // Positionsuppdatering 
-            if (meddelandeTyp.equals("M")) {
-                if (delar.length >= 7) { // Säkerställ att alla parametrar finns 
+        // '& 0xFF' används för att göra om Javas signed byte (-128 till 127) till 0-255.
+        if (meddelandeTyp == 'M') {
+            // Kontrollera längden utifrån Tabell 2: $, M, XX, YY, L, S, C, \n (8 bytes)
+            if (data.length >= 8) {
+                int posX = data[2] & 0xFF;
+                int posY = data[3] & 0xFF;
+                int status = data[4] & 0xFF;
+                int sekvensnummer = data[5] & 0xFF;
+                int checksum = data[6] & 0xFF; // Om du vill skriva ut den som positiv siffra
 
-                    int posX = Integer.parseInt(delar[2]);
-                    int posY = Integer.parseInt(delar[3]);
-                    int status = Integer.parseInt(delar[4]);
-                    int sekvensnummer = Integer.parseInt(delar[5]);
-                    int checksum = Integer.parseInt(delar[6]);
-
-                    // Tveksamt om det här behövs? 
-                    System.out.println("--- POSITION UPPDATERAD ---");
-                    System.out.println("X: " + posX + ", Y: " + posY);
-                    System.out.println("Status: " + status + ", Sekvensnummer: " + sekvensnummer);
-                    System.out.println("Checksum: " + checksum);
-
-                    // Här ska variablerna skickas till övriga delar av programmet/ÖS!! 
-                    // t.ex uppdateraKarta(posX, posY, status); 
-                } else {
-                    System.out.println("Saknar parametrar för meddelandetyp Positionsuppdatering.");
-                }
-            } // Hinderdetektering 
-            else if (meddelandeTyp.equals("H")) {
-                if (delar.length >= 5) {
-                    int posX = Integer.parseInt(delar[2]);
-                    int posY = Integer.parseInt(delar[3]);
-                    int status = Integer.parseInt(delar[4]);
-
-                    System.out.println("--- Akta HINDER!!! ---");
-                    System.out.println("Hinder vid X: " + posX + ", Y: " + posY);
-                    System.out.println("Status: " + status);
-
-                    // Här ska variablerna skickas till övriga delar av programmet/ÖS!! 
-                    // t.ex hanteraHinder(posX, posY); 
-                } else {
-                    System.out.println("Saknar parametrar för meddelandetyp Hinderdetektion.");
-                }
-            } // Okänd meddelandetyp 
-            else {
-                System.out.println("Okänd meddelandetyp: " + meddelandeTyp);
+                System.out.println("--- POSITION UPPDATERAD ---");
+                System.out.println("X: " + posX + ", Y: " + posY);
+                System.out.println("Status: " + status + ", Sekvensnummer: " + sekvensnummer);
+                System.out.println("Checksum: " + checksum);
+                
+                // uppdateraKarta(posX, posY, status); 
+            } else {
+                System.out.println("Saknar parametrar för meddelandetyp Positionsuppdatering.");
             }
-        } catch (NumberFormatException e) {
-            System.out.println("Kunde inte konvertera data till siffror: " + e.getMessage());
+        } 
+        else if (meddelandeTyp == 'H') {
+            // Kontrollera längden utifrån Tabell 2: $, H, XX, YY, S, C, \n (7 bytes)
+            if (data.length >= 7) {
+                int posX = data[2] & 0xFF;
+                int posY = data[3] & 0xFF;
+                // Status för Hinder fanns inte med i tabell 2, men låt oss anta att den finns om du lade in den
+                // Om er struct ser annorlunda ut, justera indexen nedan:
+                int sekvensnummer = data[4] & 0xFF;
+
+                System.out.println("--- Akta HINDER!!! ---");
+                System.out.println("Hinder vid X: " + posX + ", Y: " + posY);
+
+                // hanteraHinder(posX, posY); 
+            } else {
+                System.out.println("Saknar parametrar för meddelandetyp Hinderdetektion.");
+            }
+        } 
+        else {
+            System.out.println("Okänd meddelandetyp: " + (char)meddelandeTyp);
         }
     }
 }
