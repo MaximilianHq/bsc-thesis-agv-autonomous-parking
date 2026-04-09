@@ -43,8 +43,11 @@ constexpr int SONAR_ANGLE = 70;  // ∓ deg
 
 BluetoothSerial SerialBT;
 
-Comm comm_mcu(Serial1, "MCU");
 Comm comm_bt(SerialBT, "BT");
+Comm comm_mcu(Serial1, "MCU");
+BTPacketHandler bt_pkt_handler(comm_bt);
+MCUPacketHandler mcu_pkt_handler(comm_mcu);
+
 Sonar sonar(PIN_SONAR_SERVO, PIN_SONAR_TRIG, PIN_SONAR_ECHO,
             SONAR_RANGE, SONAR_SPEED, SONAR_ANGLE, 90, 0, 180, false);
 
@@ -71,7 +74,7 @@ StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
 
 // ========== PROTOTYPES ==========
 void blt_status_routine();
-void bt_test();
+void bt_test2();
 
 void setup()
 {
@@ -127,6 +130,8 @@ void loop()
     blt_status_routine();
 
     // ========== CODE ==========
+
+    bt_test2();
 }
 
 void blt_status_routine()
@@ -137,24 +142,13 @@ void blt_status_routine()
         g_led_status.sys = StatusLED::State::STATUS_BLE_SEARCHING;
 }
 
-void bt_test()
+void bt_test2()
 {
-    Packet bt_pkt;
-    comm_bt.read(bt_pkt);
-    Packet ans;
-    ans.type = 'A';
-    ans.data[0] = 'O';
-    ans.data[1] = 'K';
-    ans.data_len = 2;
-    ans.crc = csum(ans);
-    if (bt_pkt.approved)
-    {
-        if (comm_bt.write(ans))
-            Serial.println("Sent answer succesfully!");
-        else
-            Serial.println("Failed to answer :/");
-    }
-    else
-        Serial.println("Recieved packet not approved :/");
+    Comm::Packet bt_pkt;
+    if (comm_bt.read(bt_pkt))
+        return;
+
+    bt_pkt_handler.handle(bt_pkt);
+
     delay(200);
 }
