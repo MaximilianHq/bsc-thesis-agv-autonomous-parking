@@ -96,7 +96,7 @@ void setup()
 
     // ========== Network ==========
     SerialBT.begin("AGV_BT_G2"); // ÖS
-    Serial.println("Bluethooth started");
+    Serial.println("[BT] Bluethooth active");
     // ota_begin("QBit", "internet");
 
     // ========== Sonar ==========
@@ -145,7 +145,7 @@ void blt_status_routine()
 void bt_test2()
 {
     Comm::Packet bt_pkt;
-    if (comm_bt.read(bt_pkt))
+    if (!comm_bt.read(bt_pkt))
         return;
 
     bt_pkt_handler.handle(bt_pkt);
