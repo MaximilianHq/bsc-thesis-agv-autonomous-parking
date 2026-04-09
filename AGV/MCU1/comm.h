@@ -1,5 +1,6 @@
 #pragma once
 #include "types.h"
+#include "static_vector.h"
 #include <Arduino.h>
 
 class Comm
@@ -54,6 +55,8 @@ protected:
     void respond(const Comm::Packet &pkt);
 
     Comm &_comm;
+
+    StaticVector<Comm::Packet> pkt_buffer_sent(10);
 };
 
 class BTPacketHandler : public PacketHandler

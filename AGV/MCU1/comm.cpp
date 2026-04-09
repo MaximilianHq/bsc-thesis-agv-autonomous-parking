@@ -144,6 +144,7 @@ void PacketHandler::handle(const Comm::Packet &pkt)
 {
     if (pkt.type != 'A')
         respond(pkt);
+    // TODO remove packet from packet buffer
 
     if (!pkt.approved)
     {
@@ -181,8 +182,13 @@ void BTPacketHandler::handle_approved(const Comm::Packet &pkt)
 {
     switch (pkt.type)
     {
-    case 'T': // test
-
+    case 'D':
+        break;
+    case 'K':
+        break;
+    case 'X':
+        break;
+    case 'R':
         break;
     default:
         break;
@@ -193,8 +199,9 @@ void MCUPacketHandler::handle_approved(const Comm::Packet &pkt)
 {
     switch (pkt.type)
     {
-    case 'T': // test
-
+    case 'M':
+        break;
+    case 'H':
         break;
     default:
         break;

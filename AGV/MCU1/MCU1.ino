@@ -55,7 +55,7 @@ Sonar sonar(PIN_SONAR_SERVO, PIN_SONAR_TRIG, PIN_SONAR_ECHO,
 Debug g_debug;
 AgvState g_state;
 AgvState g_state_prev;
-AgvMotion g_motion;
+StaticVector<AgvMotion> g_motion(20);
 AgvStatus g_led_status = {
     StatusLED::State::STATUS_BOOT,
     StatusLED::State::STATUS_BOOT,
@@ -71,6 +71,11 @@ StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
                   SRegHandler::pin_sreg::QE,
                   SRegHandler::pin_sreg::QF,
                   true);
+
+// TODO MESSAGE SENDING BUFFER
+// TODO CHECK INCOMMING AFFIRM
+// TODO MAP WHOLE COMMUNICATION PROTOCOL
+// TODO MOVEMENT SEQUENCE BUFFER
 
 // ========== PROTOTYPES ==========
 void blt_status_routine();
