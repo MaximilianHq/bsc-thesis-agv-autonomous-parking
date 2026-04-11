@@ -140,6 +140,8 @@ bool Comm::write(const Packet &pkt)
 
 PacketHandler::PacketHandler(Comm &comm, IActions &actions) : _comm(comm), _actions(actions) {}
 
+size_t PacketHandler::get_sequence() { return _seq; }
+
 void PacketHandler::handle(const Comm::Packet &pkt)
 {
     // Handle asnwers
@@ -170,7 +172,7 @@ void PacketHandler::handle(const Comm::Packet &pkt)
 
 Comm::Packet PacketHandler::make_ack(const Comm::Packet &pkt)
 {
-    Comm::Packet p{'A', pkt.seq, {(pkt.approved ? 0x01 : 0x00)}, 1, 0, true};
+    Comm::Packet p = {'A', pkt.seq, {(pkt.approved ? 0x01 : 0x00)}, 1, 0, true};
     p.crc = Comm::csum(p);
     return p;
 }

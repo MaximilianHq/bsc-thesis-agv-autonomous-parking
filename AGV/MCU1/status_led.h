@@ -2,18 +2,6 @@
 #include "sreg_handler.h"
 #include <Arduino.h>
 
-struct Color
-{
-    uint8_t r, g, b;
-};
-
-struct LEDConfig
-{
-    Color color;
-    bool blinking;
-    unsigned long interval;
-};
-
 class StatusLED
 {
 public:
@@ -28,7 +16,6 @@ public:
 
         // --- OPERATION / COMMAND STATES ---
         STATUS_CMD_RECEIVING, // Receiving or updating command
-        STATUS_CMD_EXECUTING, // Executing current command
         STATUS_CMD_STOPPING,  // Stopping current action
         STATUS_OBSTACLE,      // Obstacle detected
         STATUS_PARKING,       // Performing parking maneuver
@@ -68,6 +55,18 @@ private:
     void _set_color(Color c);
     void _write_sreg_color(Color c);
     void _blinking_routine();
+
+    struct Color
+    {
+        uint8_t r, g, b;
+    };
+
+    struct LEDConfig
+    {
+        Color color;
+        bool blinking;
+        unsigned long interval;
+    };
 
     static const LEDConfig _led_states[];
 };

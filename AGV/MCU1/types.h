@@ -4,9 +4,9 @@
 
 struct Position
 {
-    int32_t x = 0;
-    int32_t y = 0;
-    int32_t z = 0;
+    int16_t x = 0;
+    int16_t y = 0;
+    int16_t z = 0;
 };
 
 struct DwmState

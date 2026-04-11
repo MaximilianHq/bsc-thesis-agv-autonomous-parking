@@ -56,8 +56,8 @@ bool Sonar::update()
 
     if (_distance <= _sonar_range)
     {
-        stopAllServos();
-        _scan = false; // toggle for stop behaviour
+        // stopAllServos();
+        //_scan = false; // toggle for stop behaviour
         _actions.on_obstacle_detected(get_obstacle_position());
         if (g_debug.sonar)
             Serial.println("[SONAR] Obstacle detected");

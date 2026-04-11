@@ -102,10 +102,7 @@ void StatusLED::_set_color(uint8_t r, uint8_t g, uint8_t b)
     ledcWrite(_pin_b, b);
 }
 
-void StatusLED::_set_color(Color c)
-{
-    _set_color(c.r, c.g, c.b);
-}
+void StatusLED::_set_color(Color c) { _set_color(c.r, c.g, c.b); }
 
 void StatusLED::_write_sreg_color(Color c)
 {

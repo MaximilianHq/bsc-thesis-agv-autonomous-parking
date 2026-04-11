@@ -1,6 +1,7 @@
 #pragma once
 #include "types.h"
 #include "static_vector.h"
+#include "status_led.h"
 #include "comm.h"
 #include <Arduino.h>
 
@@ -13,6 +14,7 @@ public:
     virtual void on_bt_no_connect() = 0;
     // BT
     virtual void on_bt_pkt_recieved(const Comm::Packet &pkt) = 0;
+    virtual void on_mcu_pkt_recieved(const Comm::Packet &pkt) = 0;
     virtual void on_new_motion(uint8_t motion, uint8_t speed) = 0;
     virtual void on_stop() = 0;
     // MCU
@@ -24,25 +26,30 @@ public:
 class SysCtrl : public IActions
 {
 public:
-    SysCtrl(Comm &comm_bt, Comm &comm_mcu);
+    SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd);
 
     // ========== IActions ==========
-    void on_bt_no_connect() override { return; };
+    void on_bt_no_connect() override;
     void on_bt_pkt_recieved(const Comm::Packet &pkt) override;
+    void on_mcu_pkt_recieved(const Comm::Packet &pkt) override;
     void on_new_motion(uint8_t motion, uint8_t speed) override;
-    void on_stop() override { return; };
+    void on_stop() override;
     void on_obstacle_detected(const Position &pos) override;
 
-    // ========== Specific ==========
+    // ========== SPECIFIC ACTIONS ==========
     void on_new_position_data(const DwmState &dwm, const ImuState &imu) { return; };
 
-private:
-    Comm &_comm_bt;
+    // ========== ROUTINES ==========
+bool
+
+    private : Comm &_comm_bt;
     Comm &_comm_mcu;
+    StatusLED &_led_sys;
+    StatusLED &_led_cmd;
 
     StaticVector<AgvState, 10> _state;
     StaticVector<AgvMotion, 20> _motion;
 
-    BTPacketHandler _bt_pkt_handler;
-    MCUPacketHandler _mcu_pkt_handler;
+    BTPacketHandler _pkt_handler_bt;
+    MCUPacketHandler _pkt_handler_mcu;
 };

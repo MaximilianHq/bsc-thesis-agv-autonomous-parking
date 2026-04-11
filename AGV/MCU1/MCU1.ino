@@ -63,10 +63,6 @@ Sonar sonar(sonar_cfg, sysctrl);
 
 // ========== GLOBALS ==========
 Debug g_debug;
-AgvStatus g_led_status = {
-    StatusLED::State::STATUS_BOOT,
-    StatusLED::State::STATUS_BOOT,
-};
 
 // ========== LED STATUS ==========
 SRegHandler sreg(PIN_SHREG_DATA, PIN_SHREG_CLK, PIN_SHREG_LATCH);
@@ -116,22 +112,15 @@ void setup()
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
-    g_led_status.sys = StatusLED::State::STATUS_READY;
+    led_sys.set_sys_status(StatusLED::State::STATUS_READY);
 }
 
 void loop()
 {
     // ========== UPDATES ==========
-    Position pos;
-    if (sonar.update())
-    {
-        g_led_status.cmd = StatusLED::State::STATUS_OBSTACLE;
-        pos = sonar.get_obstacle_position();
-        sonar.reset();
-    }
-
-    led_sys.update(g_led_status.sys);
-    led_cmd.update(g_led_status.cmd);
+    sonar.update();
+    led_sys.update();
+    led_cmd.update();
 
     // ========== ROUTINES ==========
 
@@ -149,12 +138,9 @@ void loop()
 void blt_status_routine()
 {
     if (SerialBT.hasClient())
-        g_led_status.sys = StatusLED::State::STATUS_BLE_CONNECTED;
+        led_sys.set_status(StatusLED::State::STATUS_BLE_CONNECTED);
     else
-    {
         sysctrl.on_bt_no_connect();
-        g_led_status.sys = StatusLED::State::STATUS_BLE_SEARCHING;
-    }
 }
 
 void bt_test2()
@@ -164,8 +150,6 @@ void bt_test2()
         return;
 
     sysctrl.on_bt_pkt_recieved(bt_pkt);
-
-    // bt_pkt_handler.handle(bt_pkt);
 
     delay(200);
 }

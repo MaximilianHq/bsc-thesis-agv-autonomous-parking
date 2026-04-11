@@ -11,7 +11,7 @@ public:
     struct Packet
     {
         char type;             // type
-        uint8_t seq = 0;       // sequence
+        size_t seq = 0;        // sequence
         char data[9] = {0};    // data
         int data_len = 0;      // data_length
         uint8_t crc = 0;       // checksum
@@ -48,6 +48,7 @@ public:
     explicit PacketHandler(Comm &comm, IActions &actions);
     virtual ~PacketHandler() = default;
 
+    size_t get_sequence() const;
     virtual void handle(const Comm::Packet &pkt);
 
 protected:
@@ -57,6 +58,7 @@ protected:
     void respond(const Comm::Packet &pkt);
 
     Comm &_comm;
+    size_t _seq; // TODO MAKE SHURE INCREMENTED PROPERLY
     IActions &_actions;
 
     StaticVector<Comm::Packet, 10> _pkt_buffer_sent;
