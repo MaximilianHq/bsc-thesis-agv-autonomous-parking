@@ -1,5 +1,6 @@
 #include "comm.h"
 #include "types.h"
+#include "system_actions.h"
 #include <Arduino.h>
 
 uint8_t Comm::csum(const Packet &pkt)
@@ -145,11 +146,11 @@ void PacketHandler::handle(const Comm::Packet &pkt)
     if (pkt.type == 'A')
     {
         if (pkt.approved)
-            pkt_buffer_sent.pop_if([](const Comm::Packet &p)
-                                   { return p.seq == pkt.seq; });
+            _pkt_buffer_sent.pop_if([&pkt](const Comm::Packet &p)
+                                    { return p.seq == pkt.seq; });
         else
-            _comm.write(pkt_buffer_sent.find_if([](const Comm::Packet &p)
-                                                { return p.seq == pkt.seq; }));
+            _comm.write(*_pkt_buffer_sent.find_if([&pkt](const Comm::Packet &p)
+                                                  { return p.seq == pkt.seq; }));
 
         return;
     }

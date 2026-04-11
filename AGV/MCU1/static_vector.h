@@ -15,7 +15,7 @@ public:
             _v[i] = v._v[i];
     }
 
-    void push_back(T data)
+    void push_back(const T &data)
     {
         if (_count >= N)
             _raise_error("[FATAL ERROR] Array out of bounds");
@@ -63,6 +63,16 @@ public:
 
     template <typename Predicate>
     T *find_if(Predicate pred)
+    {
+        for (size_t i = 0; i < _count; i++)
+            if (pred(_v[i]))
+                return &_v[i];
+
+        return nullptr;
+    }
+
+    template <typename Predicate>
+    const T *find_if(Predicate pred) const
     {
         for (size_t i = 0; i < _count; i++)
             if (pred(_v[i]))

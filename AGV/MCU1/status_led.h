@@ -42,7 +42,8 @@ public:
     //   pin_r/pin_g/pin_b = ID i det kopplade shiftregistret
     //   Ex: LED1 = 0,1,2  LED2 = 3,4,5
 
-    StatusLED(SRegHandler sreg, int pin_r, int pin_g, int pin_b, bool boolean_return = true,
+    StatusLED(SRegHandler sreg, int pin_r, int pin_g, int pin_b,
+              bool boolean_return = true,
               State state = STATUS_BOOT);
 
     void setup();

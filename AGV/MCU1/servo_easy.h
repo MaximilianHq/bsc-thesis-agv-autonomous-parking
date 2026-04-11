@@ -19,8 +19,8 @@ public:
     float get_min_angle() const;
     float get_max_angle() const;
 
-    static float rad2deg(const float val);
-    static float deg2rad(const float val);
+    static float rad2deg(float val);
+    static float deg2rad(float val);
 
 private:
     float _processAngle(float angle);

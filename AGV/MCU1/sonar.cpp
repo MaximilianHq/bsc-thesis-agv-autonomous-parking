@@ -4,17 +4,19 @@
 #include <Arduino.h>
 
 Sonar::Sonar(const SonarConfig &cfg, IActions &actions)
-    : _pin_servo(cfg.pin_servo),
+    : _servo(cfg.servo_offset,
+             cfg.min_servo_ang,
+             cfg.max_servo_ang,
+             cfg.servo_inverted),
+      _pin_servo(cfg.pin_servo),
       _pin_trig(cfg.pin_trig),
       _pin_echo(cfg.pin_echo),
       _sonar_range(cfg.sonar_range),
       _sonar_speed(cfg.sonar_speed),
       _sonar_angle(cfg.sonar_angle),
-      _servo_offset(cfg.servo_offset),
-      _min_servo_ang(cfg.min_servo_ang),
-      _max_servo_ang(cfg.max_servo_ang),
-      _servo_inverted(cfg.servo_inverted),
-      _actions(actions) {}
+      _actions(actions)
+{
+}
 
 bool Sonar::setup()
 {

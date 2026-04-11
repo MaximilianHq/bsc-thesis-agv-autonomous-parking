@@ -1,6 +1,5 @@
 #include "types.h"
 #include "system_actions.h"
-#include "agv_state.h"
 #include "comm.h"
 #include "imu.h"
 #include "dwm.h"
@@ -152,7 +151,10 @@ void blt_status_routine()
     if (SerialBT.hasClient())
         g_led_status.sys = StatusLED::State::STATUS_BLE_CONNECTED;
     else
+    {
+        sysctrl.on_bt_no_connect();
         g_led_status.sys = StatusLED::State::STATUS_BLE_SEARCHING;
+    }
 }
 
 void bt_test2()
