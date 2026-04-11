@@ -1,3 +1,5 @@
+#define SUPPRESS_HPP_WARNING
+
 #include <Arduino.h>
 #include <BluetoothSerial.h>
 #include <ServoEasing.hpp>
