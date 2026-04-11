@@ -1,8 +1,9 @@
+#include "types.h"
+#include "system_actions.h"
 #include "agv_state.h"
 #include "comm.h"
 #include "imu.h"
 #include "dwm.h"
-#include "types.h"
 #include "ota.h"
 #include "sonar.h"
 #include "sreg_handler.h"
@@ -45,17 +46,24 @@ BluetoothSerial SerialBT;
 
 Comm comm_bt(SerialBT, "BT");
 Comm comm_mcu(Serial1, "MCU");
-BTPacketHandler bt_pkt_handler(comm_bt);
-MCUPacketHandler mcu_pkt_handler(comm_mcu);
 
-Sonar sonar(PIN_SONAR_SERVO, PIN_SONAR_TRIG, PIN_SONAR_ECHO,
-            SONAR_RANGE, SONAR_SPEED, SONAR_ANGLE, 90, 0, 180, false);
+SysCtrl sysctrl(comm_bt, comm_mcu);
+
+Sonar::SonarConfig sonar_cfg{
+    PIN_SONAR_SERVO,
+    PIN_SONAR_TRIG,
+    PIN_SONAR_ECHO,
+    SONAR_RANGE,
+    SONAR_SPEED,
+    SONAR_ANGLE,
+    90,
+    0,
+    180,
+    false};
+Sonar sonar(sonar_cfg, sysctrl);
 
 // ========== GLOBALS ==========
 Debug g_debug;
-AgvState g_state;
-AgvState g_state_prev;
-StaticVector<AgvMotion> g_motion(20);
 AgvStatus g_led_status = {
     StatusLED::State::STATUS_BOOT,
     StatusLED::State::STATUS_BOOT,
@@ -153,7 +161,9 @@ void bt_test2()
     if (!comm_bt.read(bt_pkt))
         return;
 
-    bt_pkt_handler.handle(bt_pkt);
+    sysctrl.on_bt_pkt_recieved(bt_pkt);
+
+    // bt_pkt_handler.handle(bt_pkt);
 
     delay(200);
 }

@@ -1,7 +1,5 @@
 #pragma once
 #include "status_led.h"
-#include "comm.h"
-#include "static_vector.h"
 #include <Arduino.h>
 
 struct Position
@@ -33,8 +31,8 @@ struct AgvState
 
 struct AgvMotion
 {
-    uint8_t cmd = 0x00; // movement
-    Position pos;
+    uint8_t cmd = 0x00;   // movement
+    uint8_t velocity = 0; // speed
 };
 
 struct Debug
@@ -50,9 +48,6 @@ struct Debug
 };
 
 extern Debug g_debug;
-extern AgvState g_state;
-extern AgvState g_state_prev;
-extern StaticVector<AgvMotion> g_motion;
 
 struct AgvStatus
 {

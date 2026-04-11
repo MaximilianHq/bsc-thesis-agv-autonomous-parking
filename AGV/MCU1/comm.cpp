@@ -48,12 +48,11 @@ bool Comm::read(Packet &out)
                     Serial.println("[" + _dbg_name + "] Packet recieved!");
                 if (i >= 2)
                 {
-                    _pkt.data_len = i - 1; // points to crc
-                    _pkt.crc = _pkt.data[_pkt.data_len];
+                    _pkt.data_len = i - 2; // points to seq
+                    _pkt.seq = _pkt.data[_pkt.data_len];
+                    _pkt.crc = _pkt.data[_pkt.data_len + 1];
                     _pkt.data[_pkt.data_len] = 0;
-                    if (g_debug.comm)
-                    {
-                    }
+                    _pkt.data[_pkt.data_len + 1] = 0;
                     _pkt.approved = (_pkt.crc == csum(_pkt));
 
                     out = _pkt; // leverera färdigt paket
@@ -138,13 +137,25 @@ bool Comm::write(const Packet &pkt)
     return true;
 }
 
-PacketHandler::PacketHandler(Comm &comm) : _comm(comm) {}
+PacketHandler::PacketHandler(Comm &comm, IActions &actions) : _comm(comm), _actions(actions) {}
 
 void PacketHandler::handle(const Comm::Packet &pkt)
 {
-    if (pkt.type != 'A')
-        respond(pkt);
-    // TODO remove packet from packet buffer
+    // Handle asnwers
+    if (pkt.type == 'A')
+    {
+        if (pkt.approved)
+            pkt_buffer_sent.pop_if([](const Comm::Packet &p)
+                                   { return p.seq == pkt.seq; });
+        else
+            _comm.write(pkt_buffer_sent.find_if([](const Comm::Packet &p)
+                                                { return p.seq == pkt.seq; }));
+
+        return;
+    }
+
+    // Handle commands
+    respond(pkt);
 
     if (!pkt.approved)
     {
@@ -183,10 +194,17 @@ void BTPacketHandler::handle_approved(const Comm::Packet &pkt)
     switch (pkt.type)
     {
     case 'D':
+        _actions.on_new_motion(pkt.data[0], pkt.data[1]);
         break;
     case 'K':
+        switch (pkt.data[0])
+        {
+        default:
+            break;
+        }
         break;
     case 'X':
+        _actions.on_stop();
         break;
     case 'R':
         break;

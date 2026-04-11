@@ -3,6 +3,8 @@
 #include "static_vector.h"
 #include <Arduino.h>
 
+class IActions;
+
 class Comm
 {
 public:
@@ -43,7 +45,7 @@ private:
 class PacketHandler
 {
 public:
-    explicit PacketHandler(Comm &comm);
+    explicit PacketHandler(Comm &comm, IActions &actions);
     virtual ~PacketHandler() = default;
 
     virtual void handle(const Comm::Packet &pkt);
@@ -55,8 +57,10 @@ protected:
     void respond(const Comm::Packet &pkt);
 
     Comm &_comm;
+    IActions &_actions;
 
-    StaticVector<Comm::Packet> pkt_buffer_sent(10);
+    StaticVector<Comm::Packet, 10> _pkt_buffer_sent;
+    StaticVector<Comm::Packet, 10> _pkt_buffer_recieved;
 };
 
 class BTPacketHandler : public PacketHandler

@@ -3,12 +3,18 @@
 #include "servo_easy.h"
 #include <Arduino.h>
 
-Sonar::Sonar(int pin_servo, int pin_trig, int pin_echo, float sonar_range,
-             float sonar_speed, float sonar_angle, float servo_offset,
-             float min_servo_ang, float max_servo_ang, bool servo_inverted)
-    : _servo(servo_offset, min_servo_ang, max_servo_ang, servo_inverted),
-      _pin_servo(pin_servo), _pin_trig(pin_trig), _pin_echo(pin_echo),
-      _sonar_range(sonar_range), _sonar_speed(sonar_speed), _sonar_angle(sonar_angle) {}
+Sonar::Sonar(const SonarConfig &cfg, IActions &actions)
+    : _pin_servo(cfg.pin_servo),
+      _pin_trig(cfg.pin_trig),
+      _pin_echo(cfg.pin_echo),
+      _sonar_range(cfg.sonar_range),
+      _sonar_speed(cfg.sonar_speed),
+      _sonar_angle(cfg.sonar_angle),
+      _servo_offset(cfg.servo_offset),
+      _min_servo_ang(cfg.min_servo_ang),
+      _max_servo_ang(cfg.max_servo_ang),
+      _servo_inverted(cfg.servo_inverted),
+      _actions(actions) {}
 
 bool Sonar::setup()
 {
@@ -49,7 +55,8 @@ bool Sonar::update()
     if (_distance <= _sonar_range)
     {
         stopAllServos();
-        _scan = false;
+        _scan = false; // toggle for stop behaviour
+        _actions.on_obstacle_detected(get_obstacle_position());
         if (g_debug.sonar)
             Serial.println("[SONAR] Obstacle detected");
         return true;

@@ -1,14 +1,22 @@
 #pragma once
 #include "types.h"
+#include "system_actions.h"
 #include "servo_easy.h"
 #include <Arduino.h>
 
 class Sonar
 {
 public:
-    Sonar(int pin_servo, int pin_trig, int pin_echo, float sonar_range,
-          float sonar_speed, float sonar_angle, float servo_offset,
-          float min_servo_ang = 0, float max_servo_ang = 180, bool servo_inverted = false);
+    struct SonarConfig
+    {
+        int pin_servo, pin_trig, pin_echo;
+        float sonar_range, sonar_speed, sonar_angle, servo_offset;
+        float min_servo_ang = 0;
+        float max_servo_ang = 180;
+        bool servo_inverted = false;
+    };
+
+    Sonar(const SonarConfig &cfg, IActions &actions);
 
     bool setup();
     bool update();
@@ -16,6 +24,7 @@ public:
     void reset();
 
 private:
+    IActions &_actions;
     // Servo
     ServoEasy _servo;
 
