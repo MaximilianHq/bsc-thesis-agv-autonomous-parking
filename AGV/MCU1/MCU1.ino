@@ -46,7 +46,17 @@ BluetoothSerial SerialBT;
 Comm comm_bt(SerialBT, "BT");
 Comm comm_mcu(Serial1, "MCU");
 
-SysCtrl sysctrl(comm_bt, comm_mcu);
+SRegHandler sreg(PIN_SHREG_DATA, PIN_SHREG_CLK, PIN_SHREG_LATCH);
+StatusLED led_sys(sreg, SRegHandler::pin_sreg::QA,
+                  SRegHandler::pin_sreg::QB,
+                  SRegHandler::pin_sreg::QC,
+                  true);
+StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
+                  SRegHandler::pin_sreg::QE,
+                  SRegHandler::pin_sreg::QF,
+                  true);
+
+SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd);
 
 Sonar::SonarConfig sonar_cfg{
     PIN_SONAR_SERVO,
@@ -63,17 +73,6 @@ Sonar sonar(sonar_cfg, sysctrl);
 
 // ========== GLOBALS ==========
 Debug g_debug;
-
-// ========== LED STATUS ==========
-SRegHandler sreg(PIN_SHREG_DATA, PIN_SHREG_CLK, PIN_SHREG_LATCH);
-StatusLED led_sys(sreg, SRegHandler::pin_sreg::QA,
-                  SRegHandler::pin_sreg::QB,
-                  SRegHandler::pin_sreg::QC,
-                  true);
-StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
-                  SRegHandler::pin_sreg::QE,
-                  SRegHandler::pin_sreg::QF,
-                  true);
 
 // TODO MESSAGE SENDING BUFFER
 // TODO CHECK INCOMMING AFFIRM
@@ -112,7 +111,7 @@ void setup()
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
-    led_sys.set_sys_status(StatusLED::State::STATUS_READY);
+    led_sys.set_status(StatusLED::State::STATUS_READY);
 }
 
 void loop()

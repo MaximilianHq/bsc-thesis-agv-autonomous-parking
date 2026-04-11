@@ -39,10 +39,8 @@ public:
     // ========== SPECIFIC ACTIONS ==========
     void on_new_position_data(const DwmState &dwm, const ImuState &imu) { return; };
 
-    // ========== ROUTINES ==========
-bool
-
-    private : Comm &_comm_bt;
+private:
+    Comm &_comm_bt;
     Comm &_comm_mcu;
     StatusLED &_led_sys;
     StatusLED &_led_cmd;

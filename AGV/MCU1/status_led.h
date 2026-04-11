@@ -22,6 +22,18 @@ public:
         STATUS_RETURNING      // Returning to home/base
     };
 
+    struct Color
+    {
+        uint8_t r, g, b;
+    };
+
+    struct LEDConfig
+    {
+        Color color;
+        bool blinking;
+        unsigned long interval;
+    };
+
     // Om boolean_return = false:
     //   pin_r/pin_g/pin_b = vanliga PWM/GPIO-pins
     //
@@ -55,18 +67,6 @@ private:
     void _set_color(Color c);
     void _write_sreg_color(Color c);
     void _blinking_routine();
-
-    struct Color
-    {
-        uint8_t r, g, b;
-    };
-
-    struct LEDConfig
-    {
-        Color color;
-        bool blinking;
-        unsigned long interval;
-    };
 
     static const LEDConfig _led_states[];
 };

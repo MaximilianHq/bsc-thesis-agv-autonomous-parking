@@ -2,7 +2,7 @@
 #include "sreg_handler.h"
 #include <Arduino.h>
 
-const LEDConfig StatusLED::_led_states[] = {
+const StatusLED::LEDConfig StatusLED::_led_states[] = {
     {{255, 0, 0}, false, 500}, // STATUS_BOOT
     {{0, 255, 0}, false, 500}, // STATUS_READY
     {{0, 0, 255}, true, 500},  // STATUS_BLE_SEARCHING
@@ -17,7 +17,8 @@ const LEDConfig StatusLED::_led_states[] = {
     {{255, 255, 0}, true, 500}  // STATUS_RETURNING
 };
 
-StatusLED::StatusLED(SRegHandler sreg, int pin_r, int pin_g, int pin_b, bool boolean_return, State state)
+StatusLED::StatusLED(SRegHandler sreg, int pin_r, int pin_g, int pin_b,
+                     bool boolean_return, State state)
     : _sreg(sreg),
       _pin_r(pin_r),
       _pin_g(pin_g),

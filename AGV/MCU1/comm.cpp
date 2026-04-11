@@ -140,7 +140,7 @@ bool Comm::write(const Packet &pkt)
 
 PacketHandler::PacketHandler(Comm &comm, IActions &actions) : _comm(comm), _actions(actions) {}
 
-size_t PacketHandler::get_sequence() { return _seq; }
+size_t PacketHandler::get_sequence() const { return _seq; }
 
 void PacketHandler::handle(const Comm::Packet &pkt)
 {
