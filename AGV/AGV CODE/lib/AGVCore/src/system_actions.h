@@ -14,9 +14,9 @@ public:
     // CONNECTION
     virtual void on_bt_no_connect() = 0;
     // BT
-    virtual void on_bt_pkt_recieved(const Comm::Packet &pkt) = 0;
-    virtual void on_mcu_pkt_recieved(const Comm::Packet &pkt) = 0;
-    virtual void on_new_motion(uint8_t motion, uint8_t speed) = 0;
+    virtual void on_bt_pkt_recieved(Comm::Packet &pkt) = 0;
+    virtual void on_mcu_pkt_recieved(Comm::Packet &pkt) = 0;
+    virtual void on_new_motion(Comm::Packet &pkt) = 0;
     virtual void on_stop() = 0;
     // MCU
 
@@ -31,10 +31,11 @@ public:
 
     // ========== IActions ==========
     void on_bt_no_connect() override;
-    void on_bt_pkt_recieved(const Comm::Packet &pkt) override;
-    void on_mcu_pkt_recieved(const Comm::Packet &pkt) override;
-    void on_new_motion(uint8_t motion, uint8_t speed) override;
+    void on_bt_pkt_recieved(Comm::Packet &pkt) override;
+    void on_mcu_pkt_recieved(Comm::Packet &pkt) override;
+    void on_new_motion(Comm::Packet &pkt) override;
     void on_stop() override;
+    void on_stop(Comm::Packet &pkt);
     void on_obstacle_detected(const Position &pos) override;
 
     // ========== SPECIFIC ACTIONS ==========
@@ -47,8 +48,10 @@ private:
     StatusLED &_led_cmd;
 
     StaticVector<AgvState, 10> _state;
-    StaticVector<AgvMotion, 20> _motion;
 
-    BTPacketHandler _pkt_handler_bt;
-    MCUPacketHandler _pkt_handler_mcu;
+    ProtocolHandler _proto_handler_bt, _proto_handler_mcu;
+
+    void _process_bt_packet(Comm::Packet &pkt);
+    void _process_mcu_packet(Comm::Packet &pkt);
+    bool _forward_to_mcu(Comm::Packet &pkt);
 };

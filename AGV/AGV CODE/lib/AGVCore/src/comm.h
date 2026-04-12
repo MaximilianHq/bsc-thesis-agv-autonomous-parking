@@ -11,7 +11,7 @@ public:
     struct Packet
     {
         char type;             // type
-        uint16_t seq = 0;      // sequence
+        uint8_t seq = 0;       // sequence
         uint8_t data[9] = {0}; // data
         uint8_t data_len = 0;  // data_length
         uint8_t crc = 0;       // checksum
@@ -42,45 +42,25 @@ private:
     const String _dbg_name;
 };
 
-class PacketHandler
+class ProtocolHandler
 {
 public:
-    explicit PacketHandler(Comm &comm, IActions &actions);
-    virtual ~PacketHandler() = default;
+    explicit ProtocolHandler(Comm &comm, IActions &actions);
+    virtual ~ProtocolHandler() = default;
 
-    uint16_t get_sequence() const;
+    uint8_t get_sequence() const;
+    void itterate_sequence();
+    void add_buffer_sent(const Comm::Packet &pkt);
+    void add_buffer_rcvd(const Comm::Packet &pkt);
     virtual void handle(const Comm::Packet &pkt);
 
-protected:
-    virtual void handle_approved(const Comm::Packet &pkt) = 0;
-    static Comm::Packet make_ack(const Comm::Packet &pkt);
-
-    void respond(const Comm::Packet &pkt);
+private:
+    static Comm::Packet _make_ack(const Comm::Packet &pkt);
 
     Comm &_comm;
-    uint16_t _seq; // TODO MAKE SHURE INCREMENTED PROPERLY
+    uint8_t _seq;
     IActions &_actions;
 
     StaticVector<Comm::Packet, 10> _pkt_buffer_sent;
-    StaticVector<Comm::Packet, 10> _pkt_buffer_recieved;
-};
-
-class BTPacketHandler : public PacketHandler
-{
-public:
-    using PacketHandler::PacketHandler;
-    // explicit BTPacketHandler(Comm &comm);
-
-protected:
-    void handle_approved(const Comm::Packet &pkt) override;
-};
-
-class MCUPacketHandler : public PacketHandler
-{
-public:
-    using PacketHandler::PacketHandler;
-    // explicit MCUPacketHandler(Comm &comm);
-
-protected:
-    void handle_approved(const Comm::Packet &pkt) override;
+    StaticVector<Comm::Packet, 10> _pkt_buffer_rcvd;
 };

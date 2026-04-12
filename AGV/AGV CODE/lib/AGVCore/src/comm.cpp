@@ -131,18 +131,22 @@ bool Comm::write(const Packet &pkt)
 
     _str.write(pkt.data, pkt.data_len);
     _str.write(pkt.seq);
-    _str.write(pkt.crc);
+    _str.write((pkt.crc != 0) ? pkt.crc : csum(pkt));
 
     _str.write((uint8_t)'\n');
 
     return true;
 }
 
-PacketHandler::PacketHandler(Comm &comm, IActions &actions) : _comm(comm), _actions(actions) {}
+ProtocolHandler::ProtocolHandler(Comm &comm, IActions &actions) : _comm(comm), _actions(actions) {}
 
-uint16_t PacketHandler::get_sequence() const { return _seq; }
+uint8_t ProtocolHandler::get_sequence() const { return _seq; }
+void ProtocolHandler::itterate_sequence() { _seq++; }
 
-void PacketHandler::handle(const Comm::Packet &pkt)
+void ProtocolHandler::add_buffer_sent(const Comm::Packet &pkt) { _pkt_buffer_sent; }
+void ProtocolHandler::add_buffer_rcvd(const Comm::Packet &pkt) { _pkt_buffer_rcvd; }
+
+void ProtocolHandler::handle(const Comm::Packet &pkt)
 {
     // Handle asnwers
     if (pkt.type == 'A')
@@ -158,73 +162,19 @@ void PacketHandler::handle(const Comm::Packet &pkt)
     }
 
     // Handle commands
-    respond(pkt);
-
-    if (!pkt.approved)
+    auto ans = _make_ack(pkt);
+    if (_comm.write(ans))
     {
         if (g_debug.comm)
-            Serial.println("[COMM::BTPKTHANDLER handle()] Packet not approved");
-        return;
+            Serial.println("[COMM::PKTHANDLER] Sent response succesfully");
     }
-
-    handle_approved(pkt); // Anropar barn-klass
+    else if (g_debug.comm)
+        Serial.println("[COMM::PKTHANDLER] Failed to respond");
 }
 
-Comm::Packet PacketHandler::make_ack(const Comm::Packet &pkt)
+Comm::Packet ProtocolHandler::_make_ack(const Comm::Packet &pkt)
 {
     Comm::Packet p = {'A', pkt.seq, {((pkt.approved) ? (uint8_t)0x01 : (uint8_t)0x00)}, 1, 0, true};
     p.crc = Comm::csum(p);
     return p;
-}
-
-void PacketHandler::respond(const Comm::Packet &pkt)
-{
-    auto ans = make_ack(pkt);
-    if (_comm.write(ans))
-    {
-        if (g_debug.comm)
-            Serial.println("[COMM::PKTHANDLER respond()] Sent answer succesfully");
-    }
-    else if (g_debug.comm)
-        Serial.println("[COMM::PKTHANDLER respond()] Failed to answer");
-}
-
-// BTPacketHandler::BTPacketHandler(Comm &comm) : PacketHandler(comm) {}
-// MCUPacketHandler::MCUPacketHandler(Comm &comm) : PacketHandler(comm) {}
-
-void BTPacketHandler::handle_approved(const Comm::Packet &pkt)
-{
-    switch (pkt.type)
-    {
-    case 'D':
-        _actions.on_new_motion(pkt.data[0], pkt.data[1]);
-        break;
-    case 'K':
-        switch (pkt.data[0])
-        {
-        default:
-            break;
-        }
-        break;
-    case 'X':
-        _actions.on_stop();
-        break;
-    case 'R':
-        break;
-    default:
-        break;
-    }
-}
-
-void MCUPacketHandler::handle_approved(const Comm::Packet &pkt)
-{
-    switch (pkt.type)
-    {
-    case 'M':
-        break;
-    case 'H':
-        break;
-    default:
-        break;
-    }
 }

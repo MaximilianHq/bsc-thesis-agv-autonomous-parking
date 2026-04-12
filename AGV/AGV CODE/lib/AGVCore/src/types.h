@@ -36,10 +36,10 @@ struct AgvMotion
 
 struct Debug
 {
+    const bool IAction = true;
     const bool dwm = true;
     const bool imu = true;
     const bool comm = true;
-    const bool uta = true;
     const bool mcu1 = true;
     const bool mcu2 = true;
     const bool sonar = true;
