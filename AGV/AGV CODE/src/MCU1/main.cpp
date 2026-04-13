@@ -24,11 +24,11 @@
 #define PIN_MTM_RXD 16
 #define PIN_DWM_TXD 32
 #define PIN_DWM_RXD 33
-// Shift-Register
+// SHIFT REGISTER
 #define PIN_SHREG_DATA 27
 #define PIN_SHREG_LATCH 26
 #define PIN_SHREG_CLK 25
-// Car crane
+// CRANE
 #define PIN_CRANE_SERVO 23
 // IMU
 #define PIN_SCL 22
@@ -36,6 +36,7 @@
 
 // ========== DEFINITIONS ==========
 #define UART_BAUD 115200
+#define WATCHDOG 500 // ms
 
 constexpr int SONAR_RANGE = 200; // mm
 constexpr int SONAR_SPEED = 100; // mm
@@ -73,16 +74,17 @@ Sonar sonar(sonar_cfg, sysctrl);
 
 // ========== GLOBALS ==========
 Debug g_debug;
+unsigned long last_packet_time = 0;
 
 // TODO MESSAGE SENDING BUFFER
 
 // ========== PROTOTYPES ==========
 void blt_status_routine();
-void bt_test2();
+void watchdog_routine();
 
 void setup()
 {
-    // ========== State ==========
+    // ========== STATE ==========
     // Updated by led_x.update, do not set manually!
     sreg.setup();
     led_sys.setup();
@@ -98,17 +100,20 @@ void setup()
 
     Serial.println("[MAIN] Running setup...");
 
-    // ========== Network ==========
+    // ========== NETWORK ==========
     SerialBT.begin("AGV_BT_G2"); // ÖS
     Serial.println("[BT] Bluethooth active");
     // ota_begin("QBit", "internet");
 
-    // ========== Sonar ==========
+    // ========== SONAR ==========
     sonar.setup();
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
     led_sys.set_status(StatusLED::State::STATUS_READY);
+
+    // watchdog start
+    last_packet_time = millis();
 }
 
 void loop()
@@ -125,10 +130,24 @@ void loop()
     //  $TCXXYYTTC\n or $TCCC\n
 
     blt_status_routine();
+    watchdog_routine();
 
     // ========== CODE ==========
 
-    bt_test2();
+    // Read from Bluetooth and process packet
+    Comm::Packet bt_pkt;
+    if (comm_bt.read(bt_pkt))
+    {
+        sysctrl.on_bt_pkt_recieved(bt_pkt);
+        last_packet_time = millis();
+    }
+
+    // Read from MCU2 and process packet
+    Comm::Packet mcu_pkt;
+    if (comm_mcu.read(mcu_pkt))
+        sysctrl.on_mcu_pkt_recieved(mcu_pkt);
+
+    delay(200);
 }
 
 void blt_status_routine()
@@ -139,13 +158,13 @@ void blt_status_routine()
         sysctrl.on_bt_no_connect();
 }
 
-void bt_test2()
+void watchdog_routine()
 {
-    Comm::Packet bt_pkt;
-    if (!comm_bt.read(bt_pkt))
-        return;
-
-    sysctrl.on_bt_pkt_recieved(bt_pkt);
-
-    delay(200);
+    if (millis() - last_packet_time > WATCHDOG)
+    {
+        sysctrl.on_stop();
+        if (g_debug.mcu1)
+            Serial.println("[WATCHDOG] \033[31mWARNING\033[0m - Stopping AGV");
+        last_packet_time = millis();
+    }
 }
