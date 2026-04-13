@@ -3,7 +3,7 @@
 #include <types.h>
 #include <servo_easy.h>
 
-class IActions;
+class SysCtrl;
 
 class Sonar
 {
@@ -18,7 +18,7 @@ public:
         bool servo_inverted = false;
     };
 
-    Sonar(const SonarConfig &cfg, IActions &actions);
+    Sonar(const SonarConfig &cfg, SysCtrl &actions);
 
     bool setup();
     bool update();
@@ -26,7 +26,7 @@ public:
     void reset();
 
 private:
-    IActions &_actions;
+    SysCtrl &_actions;
     // Servo
     ServoEasy _servo;
 

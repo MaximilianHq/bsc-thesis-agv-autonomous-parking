@@ -3,7 +3,7 @@
 #include <types.h>
 #include <static_vector.h>
 
-class IActions;
+class SysCtrl;
 
 class Comm
 {
@@ -45,7 +45,7 @@ private:
 class ProtocolHandler
 {
 public:
-    ProtocolHandler(Comm &comm, IActions &actions);
+    ProtocolHandler(Comm &comm, SysCtrl &actions);
 
     uint8_t get_sequence() const;
     void itterate_sequence();
@@ -58,7 +58,7 @@ private:
 
     Comm &_comm;
     uint8_t _seq;
-    IActions &_actions;
+    SysCtrl &_actions;
 
     StaticVector<Comm::Packet, 10> _pkt_buffer_sent;
     StaticVector<Comm::Packet, 10> _pkt_buffer_rcvd;

@@ -6,34 +6,20 @@
 
 class StatusLED;
 
-class IActions
-{
-public:
-    virtual ~IActions() = default;
-
-    virtual void on_bt_no_connect() = 0;
-    virtual void on_bt_pkt_recieved(Comm::Packet &pkt) = 0;
-    virtual void on_mcu_pkt_recieved(Comm::Packet &pkt) = 0;
-    virtual void on_new_motion(Comm::Packet &pkt) = 0;
-    virtual void on_stop() = 0;
-    virtual void on_obstacle_detected(const Position &pos) = 0;
-    virtual void on_new_position_data(const DwmState &dwm, const ImuState &imu) = 0;
-};
-
-class SysCtrl : public IActions
+class SysCtrl
 {
 public:
     SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd);
 
     // ========== IActions ==========
-    void on_bt_no_connect() override;
-    void on_bt_pkt_recieved(Comm::Packet &pkt) override;
-    void on_mcu_pkt_recieved(Comm::Packet &pkt) override;
-    void on_new_motion(Comm::Packet &pkt) override;
-    void on_stop() override;
+    void on_bt_no_connect();
+    void on_bt_pkt_recieved(Comm::Packet &pkt);
+    void on_mcu_pkt_recieved(Comm::Packet &pkt);
+    void on_new_motion(Comm::Packet &pkt);
+    void on_stop();
     void on_stop(Comm::Packet &pkt);
-    void on_obstacle_detected(const Position &pos) override;
-    void on_new_position_data(const DwmState &dwm, const ImuState &imu) override { return; };
+    void on_obstacle_detected(const Position &pos);
+    void on_new_position_data(const DwmState &dwm, const ImuState &imu) { return; };
 
 private:
     Comm &_comm_bt;

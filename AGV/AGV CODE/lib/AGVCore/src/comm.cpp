@@ -137,7 +137,7 @@ bool Comm::write(const Packet &pkt)
     return true;
 }
 
-ProtocolHandler::ProtocolHandler(Comm &comm, IActions &actions) : _comm(comm), _actions(actions) {}
+ProtocolHandler::ProtocolHandler(Comm &comm, SysCtrl &actions) : _comm(comm), _actions(actions) {}
 
 uint8_t ProtocolHandler::get_sequence() const { return _seq; }
 void ProtocolHandler::itterate_sequence()
@@ -148,8 +148,8 @@ void ProtocolHandler::itterate_sequence()
         Serial.println("[PROTOHANDLER] \033[33mWARNING\033[0m - Sequence overflow");
 }
 
-void ProtocolHandler::add_buffer_sent(const Comm::Packet &pkt) { _pkt_buffer_sent; }
-void ProtocolHandler::add_buffer_rcvd(const Comm::Packet &pkt) { _pkt_buffer_rcvd; }
+void ProtocolHandler::add_buffer_sent(const Comm::Packet &pkt) { _pkt_buffer_sent.push_back(pkt); }
+void ProtocolHandler::add_buffer_rcvd(const Comm::Packet &pkt) { _pkt_buffer_rcvd.push_back(pkt); }
 
 void ProtocolHandler::handle(const Comm::Packet &pkt)
 {

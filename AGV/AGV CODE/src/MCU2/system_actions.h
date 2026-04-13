@@ -5,24 +5,16 @@
 
 class MotorDriver;
 
-class IActions
-{
-public:
-    virtual ~IActions() = default;
+class SysCtrl;
 
-    virtual void on_mcu_pkt_recieved(Comm::Packet &pkt) = 0;
-    virtual void on_new_motion(const Comm::Packet &pkt) = 0;
-    virtual void on_stop() = 0;
-};
-
-class SysCtrl : public IActions
+class SysCtrl
 {
 public:
     SysCtrl(Comm &comm_mcu, MotorDriver &mdriver);
 
-    void on_mcu_pkt_recieved(Comm::Packet &pkt) override;
-    void on_new_motion(const Comm::Packet &pkt) override;
-    void on_stop() override;
+    void on_mcu_pkt_recieved(Comm::Packet &pkt);
+    void on_new_motion(const Comm::Packet &pkt);
+    void on_stop();
 
 private:
     Comm &_comm_mcu;

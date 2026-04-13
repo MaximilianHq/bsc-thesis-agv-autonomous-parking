@@ -4,7 +4,7 @@
 #include "system_actions.h"
 #include "sonar.h"
 
-Sonar::Sonar(const SonarConfig &cfg, IActions &actions)
+Sonar::Sonar(const SonarConfig &cfg, SysCtrl &actions)
     : _servo(cfg.servo_offset,
              cfg.min_servo_ang,
              cfg.max_servo_ang,

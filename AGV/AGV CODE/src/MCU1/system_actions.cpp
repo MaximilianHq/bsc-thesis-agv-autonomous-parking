@@ -36,12 +36,7 @@ void SysCtrl::on_mcu_pkt_recieved(Comm::Packet &pkt)
     _process_mcu_packet(pkt);
 }
 
-void SysCtrl::on_new_motion(Comm::Packet &pkt)
-{
-    // if (!_forward_to_mcu(pkt))
-    //     if (g_debug.IAction)
-    //         Serial.println("[MCU1SysCtrl] - Failed to send movement command to [MCU2]");
-}
+void SysCtrl::on_new_motion(Comm::Packet &pkt) { _motion_buffert.push_back(pkt); }
 
 void SysCtrl::on_stop()
 {
