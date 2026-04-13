@@ -3,14 +3,13 @@
 #include "sreg_handler.h"
 
 const StatusLED::LEDConfig StatusLED::_led_states[] = {
-    {{255, 0, 0}, false, 500}, // STATUS_BOOT
-    {{0, 255, 0}, false, 500}, // STATUS_READY
-    {{0, 0, 255}, true, 500},  // STATUS_BLE_SEARCHING
-    {{0, 0, 255}, false, 500}, // STATUS_BLE_CONNECTED
-    {{255, 0, 0}, false, 500}, // STATUS_ERROR
+    {{255, 0, 0}, false, 500},   // STATUS_BOOT
+    {{0, 255, 0}, false, 500},   // STATUS_READY
+    {{0, 0, 255}, true, 500},    // STATUS_BLE_SEARCHING
+    {{0, 0, 255}, false, 500},   // STATUS_BLE_CONNECTED
+    {{0, 255, 255}, false, 500}, // STATUS_CMD_RECEIVING
+    {{255, 0, 0}, false, 500},   // STATUS_ERROR
 
-    {{0, 255, 0}, false, 500},  // STATUS_CMD_RECEIVING
-    {{0, 255, 0}, true, 500},   // STATUS_CMD_EXECUTING
     {{255, 0, 0}, false, 500},  // STATUS_CMD_STOPPING
     {{255, 0, 0}, true, 500},   // STATUS_OBSTACLE
     {{0, 255, 255}, true, 500}, // STATUS_PARKING

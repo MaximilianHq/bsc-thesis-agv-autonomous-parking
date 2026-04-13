@@ -45,14 +45,13 @@ private:
 class ProtocolHandler
 {
 public:
-    explicit ProtocolHandler(Comm &comm, IActions &actions);
-    virtual ~ProtocolHandler() = default;
+    ProtocolHandler(Comm &comm, IActions &actions);
 
     uint8_t get_sequence() const;
     void itterate_sequence();
     void add_buffer_sent(const Comm::Packet &pkt);
     void add_buffer_rcvd(const Comm::Packet &pkt);
-    virtual void handle(const Comm::Packet &pkt);
+    void handle(const Comm::Packet &pkt);
 
 private:
     static Comm::Packet _make_ack(const Comm::Packet &pkt);

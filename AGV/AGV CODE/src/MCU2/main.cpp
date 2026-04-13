@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <types.h>
 #include "motor_driver.h"
+#include "system_actions.h"
 
 #define PIN_ERR 34
 #define PIN_EN 21
@@ -28,9 +29,6 @@ MotorDriver::MotorDriverConfig cfg = {
 MotorDriver md(cfg);
 
 Debug g_debug;
-AgvState g_state;
-AgvState g_state_prev;
-AgvMotion g_motion;
 
 void setup()
 {

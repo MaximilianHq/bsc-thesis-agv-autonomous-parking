@@ -10,7 +10,7 @@ class MotorChannel
 public:
     struct MotorChannelConfig
     {
-        int pin_dir, pin_pwm;
+        int pin_dir, pin_pwm, channel;
     };
 
     MotorChannel(MotorChannelConfig &cfg);
@@ -22,7 +22,7 @@ public:
 
 private:
     void _setup();
-    int _pin_dir, _pin_pwm;
+    int _pin_dir, _pin_pwm, _chnl;
 
     friend class MotorDriver;
 };
@@ -43,15 +43,13 @@ public:
     void setup();
     void update();
 
-    // ENABLE PIN
-    void drivers_enable();
-    void drivers_disable();
-    void drivers_restart();
+    void drivers_enable();  // ENABLE PIN ON
+    void drivers_disable(); // ENABLE PIN OFF
+    void drivers_restart(); // ENABLE PIN RESTART
 
-    // DRIVE PIN
-    void outputs_enable();
-    void outputs_disable();
-    void outputs_restart();
+    void outputs_enable();  // DRIVE PIN ON
+    void outputs_disable(); // DRIVE PIN OFF
+    void outputs_restart(); // DRIVE PIN RESTART
 
     // CHANNELS
     void channels_stop_all();
