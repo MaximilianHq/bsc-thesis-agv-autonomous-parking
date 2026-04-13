@@ -107,8 +107,8 @@ void StatusLED::_set_color(Color c) { _set_color(c.r, c.g, c.b); }
 void StatusLED::_write_sreg_color(Color c)
 {
     // Här är _pin_r/_pin_g/_pin_b ID i shiftregistret, inte GPIO-pins
-    _sreg.set_pin((uint8_t)_pin_r, c.r > 0, false);
-    _sreg.set_pin((uint8_t)_pin_g, c.g > 0, false);
-    _sreg.set_pin((uint8_t)_pin_b, c.b > 0, false);
+    _sreg.set_pin(static_cast<uint8_t>(_pin_r), c.r > 0, false);
+    _sreg.set_pin(static_cast<uint8_t>(_pin_g), c.g > 0, false);
+    _sreg.set_pin(static_cast<uint8_t>(_pin_b), c.b > 0, false);
     _sreg.apply();
 }

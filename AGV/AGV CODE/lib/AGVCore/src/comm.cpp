@@ -5,9 +5,10 @@
 uint8_t Comm::csum(const Packet &pkt)
 {
     uint8_t crc = 0;
-    crc ^= (uint8_t)pkt.type;
+    crc ^= static_cast<uint8_t>(pkt.type);
     for (size_t i = 0; i < pkt.data_len; i++)
         crc ^= pkt.data[i];
+    crc ^= pkt.seq;
     return crc;
 }
 
@@ -20,7 +21,7 @@ bool Comm::read(Packet &out)
 
     while (_str.available())
     {
-        uint8_t b = (uint8_t)_str.read();
+        uint8_t b = static_cast<uint8_t>(_str.read());
 
         switch (_state)
         {
@@ -37,7 +38,7 @@ bool Comm::read(Packet &out)
             break;
 
         case READ_TYPE:
-            _pkt.type = (char)b;
+            _pkt.type = static_cast<char>(b);
             _state = READ_BODY;
             break;
 
@@ -64,18 +65,18 @@ bool Comm::read(Packet &out)
                         Serial.print("[COMM " + _dbg_name + "] Recieving message: $");
                         Serial.write(_pkt.type);
                         for (size_t j = 0; j < _pkt.data_len; j++)
-                            Serial.print((uint8_t)_pkt.data[j]);
+                            Serial.print(static_cast<uint8_t>(_pkt.data[j]));
 
                         Serial.println();
                         Serial.print("Received crc: ");
                         Serial.print("CHAR = ");
-                        Serial.print((char)_pkt.crc);
+                        Serial.print(static_cast<char>(_pkt.crc));
                         Serial.print(", HEX = ");
                         Serial.println(_pkt.crc);
 
                         Serial.print("Calculated crc: ");
                         Serial.print("CHAR = ");
-                        Serial.print((char)csum(_pkt));
+                        Serial.print(static_cast<char>(csum(_pkt)));
                         Serial.print(", HEX = ");
                         Serial.println(csum(_pkt));
                     }
@@ -116,23 +117,23 @@ bool Comm::write(const Packet &pkt)
         Serial.print("[COMM " + _dbg_name + "] Sending message: $");
         Serial.write(pkt.type);
         for (size_t j = 0; j < pkt.data_len; j++)
-            Serial.print((uint8_t)pkt.data[j]);
+            Serial.print(static_cast<uint8_t>(pkt.data[j]));
 
         Serial.print("Calculated crc: ");
         Serial.print("CHAR = ");
-        Serial.print((char)csum(pkt));
+        Serial.print(static_cast<char>(csum(pkt)));
         Serial.print(", HEX = ");
         Serial.println(csum(pkt));
     }
 
-    _str.write((uint8_t)'$');
-    _str.write((uint8_t)pkt.type);
+    _str.write(static_cast<uint8_t>('$'));
+    _str.write(static_cast<uint8_t>(pkt.type));
 
     _str.write(pkt.data, pkt.data_len);
     _str.write(pkt.seq);
     _str.write((pkt.crc != 0) ? pkt.crc : csum(pkt));
 
-    _str.write((uint8_t)'\n');
+    _str.write(static_cast<uint8_t>('\n'));
 
     return true;
 }
@@ -182,7 +183,7 @@ void ProtocolHandler::handle(const Comm::Packet &pkt)
 
 Comm::Packet ProtocolHandler::_make_ack(const Comm::Packet &pkt)
 {
-    Comm::Packet p = {'A', pkt.seq, {((pkt.approved) ? (uint8_t)0x01 : (uint8_t)0x00)}, 1, 0, true};
+    Comm::Packet p = {'A', pkt.seq, {((pkt.approved) ? static_cast<uint8_t>(0x01) : static_cast<uint8_t>(0x00))}, 1, 0, true};
     p.crc = Comm::csum(p);
     return p;
 }

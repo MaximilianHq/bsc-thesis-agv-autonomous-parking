@@ -75,8 +75,6 @@ Sonar sonar(sonar_cfg, sysctrl);
 Debug g_debug;
 
 // TODO MESSAGE SENDING BUFFER
-// TODO CHECK INCOMMING AFFIRM
-// TODO MAP WHOLE COMMUNICATION PROTOCOL
 
 // ========== PROTOTYPES ==========
 void blt_status_routine();

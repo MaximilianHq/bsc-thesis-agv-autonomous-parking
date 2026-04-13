@@ -27,7 +27,7 @@ bool Sonar::setup()
     // Servos
     _servo.attach(_pin_servo, 0);
     enableServoEasingInterrupt();
-    _servo.startEaseTo(0, (float)_sonar_speed);
+    _servo.startEaseTo(0, static_cast<float>(_sonar_speed));
 
     // Ultrasonic
     pinMode(_pin_trig, OUTPUT);
