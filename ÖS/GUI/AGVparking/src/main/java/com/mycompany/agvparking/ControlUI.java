@@ -141,8 +141,8 @@ public class ControlUI extends javax.swing.JFrame {
                                 .addComponent(jButton4)
                                 .addGap(12, 12, 12)
                                 .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addGap(191, 191, 191)
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 299, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 70, Short.MAX_VALUE)
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 420, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 642, Short.MAX_VALUE))
                 .addContainerGap())
         );
@@ -196,15 +196,16 @@ public class ControlUI extends javax.swing.JFrame {
             // Användaren klickade "Ja"
             appendStatus("Återupptar körningen...\n");
             ds.isPaused = false; // Släpp pausen!
-        } else {
-            // Användaren klickade "Nej" eller stängde rutan
-            ds.isStopped = true; // Säg till tråden att stanna helt
-            ds.isPaused = false; // Måste släppa pausen så tråden kan avslutas snyggt
-            jButton1.setEnabled(false);
+        } else { // Avsluta samtliga processer om användaren väljer "Nej"           
+            System.out.println("Avslutar programmet...");
+            System.exit(0);
         }
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private java.util.List<Vertex> fullDemoPath = new java.util.ArrayList<>();
+    private java.util.List<Integer> demoStops = new java.util.ArrayList<>(); // Målpunkter för demo
+    private javax.swing.Timer forwardTimer; // Timer för framåt-knapp
+    private int lastOptimizedLegStart = -1; // Håll koll på vilka instruktioner som senast skickades
     private void jToggleButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButton1ActionPerformed
         if (jToggleButton1.isSelected()) {
             jButton2.setEnabled(false);//Inaktivera den riktiga startknappen 
@@ -212,12 +213,16 @@ public class ControlUI extends javax.swing.JFrame {
             appendStatus("Demoläge aktiverat: Beräknar rutt...\n");
 
             java.util.List<Vertex> masterPath = new java.util.ArrayList<>();
+            demoStops.clear(); // Rensa tidigare hållplatser
+            lastOptimizedLegStart = -1; // Nolla minnet för utskrift
             OptPlan op = new OptPlan(ds);
 
             // Definiera den fasta startpunkten (basen)
             int startX = (int) (ds.LocationX[0] / ds.gridsize);
             int startY = (int) (ds.LocationY[0] / ds.gridsize);
             int startNodeId = (startY * ds.columns) + startX;
+
+            demoStops.add(0); // Startpunkten är vår allra första hållplats!
 
             // Loopa igenom och bygg hela master-listan (alla sparade destinationer)
             for (int i = 1; i < ds.locations; i++) {
@@ -227,17 +232,24 @@ public class ControlUI extends javax.swing.JFrame {
 
                 //Beräkna väg till målet
                 op.createPlan(startNodeId, endNodeId);
-                if (ds.currentPath != null) {
+                if (ds.currentPath != null && !ds.currentPath.isEmpty()) {
+
                     // Lägg till vägen DIT
-                    masterPath.addAll(new java.util.ArrayList<>(ds.currentPath));
+                    java.util.List<Vertex> pathDit = new java.util.ArrayList<>(ds.currentPath);
+                    if (!masterPath.isEmpty()) {
+                        pathDit.remove(0); // Ta bort dubblett av bas-noden i skarven
+                    }
+                    masterPath.addAll(pathDit);
+                    demoStops.add(masterPath.size() - 1); // Registrera målet som en hållplats!
 
                     // Skapa vägen tillbaka
                     java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
                     java.util.Collections.reverse(returnPath);
                     if (!returnPath.isEmpty()) {
-                        returnPath.remove(0);
+                        returnPath.remove(0); // Ta bort dubblett av mål-noden
                     }
                     masterPath.addAll(returnPath);
+                    demoStops.add(masterPath.size() - 1); // Registrera basen som en hållplats!
                 }
             }
 
@@ -245,7 +257,7 @@ public class ControlUI extends javax.swing.JFrame {
             this.fullDemoPath = masterPath;
             ds.demoStep = 0;
 
-            // Anropar updateRobotPosition() som nu sköter utsnittet av rutten.
+            // Anropar updateRobotPosition()
             updateRobotPosition();
 
             // Aktivera kontroller
@@ -260,6 +272,12 @@ public class ControlUI extends javax.swing.JFrame {
             jButton2.setEnabled(true);//Aktivera startknappen
             jToggleButton1.setText("Demo");
             appendStatus("Demoläge avaktiverat\n");
+
+            // Stanna timern om den är igång
+            if (forwardTimer != null && forwardTimer.isRunning()) {
+                forwardTimer.stop();
+            }
+
             jButton3.setEnabled(false);
             jButton4.setEnabled(false);
             jButton5.setEnabled(false);
@@ -321,18 +339,69 @@ public class ControlUI extends javax.swing.JFrame {
             // Uppdatera robotens position (gula pricken)/gör till koordinater
             ds.robotX = (nodeId % ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
             ds.robotY = (nodeId / ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
-            
-            // Loopa igenom alla målplatser för att se om roboten "står på" en av dem nu
-            for (int i = 1; i < ds.locations; i++) {
-                int targetX = (int) (ds.LocationX[i] / ds.gridsize);
-                int targetY = (int) (ds.LocationY[i] / ds.gridsize);
 
-                // Om roboten står på samma ställe som målet i listan
-                if ((int) (ds.robotX / ds.gridsize) == targetX && (int) (ds.robotY / ds.gridsize) == targetY) {
-                    // Markera i ObstacleMatrix att rutan är besökt (ändrar färg till röd i MapPanel)
-                    ds.markAreaAsVisited(ds.robotX, ds.robotY);
+            // Återställ alla parkeringsplatser först
+            ds.clearVisitedAreas();
+
+            // Simulera besökta platser fram till NU (Tidslinje) 
+            // Vi loopar från början av rutten upp till exakt där vi är nu (ds.demoStep)
+            for (int step = 0; step <= ds.demoStep; step++) {
+                Vertex histV = fullDemoPath.get(step);
+                int histNodeId = Integer.parseInt(histV.getId());
+                double histX = (histNodeId % ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
+                double histY = (histNodeId / ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
+
+                for (int i = 1; i < ds.locations; i++) {
+                    int targetX = (int) (ds.LocationX[i] / ds.gridsize);
+                    int targetY = (int) (ds.LocationY[i] / ds.gridsize);
+
+                    // Om den historiska punkten var ett mål, markera det som besökt!
+                    if ((int) (histX / ds.gridsize) == targetX && (int) (histY / ds.gridsize) == targetY) {
+                        ds.markAreaAsVisited(histX, histY);
+                    }
                 }
             }
+            
+            // --- NYTT: Skriv ut instruktioner för nuvarande delsträcka i output ---
+            int currentLegStart = 0;
+            int currentLegEnd = fullDemoPath.size() - 1;
+
+            // Räkna ut vilket "ben" av rutten vi befinner oss på just nu
+            for (int i = 0; i < demoStops.size() - 1; i++) {
+                int startStop = demoStops.get(i);
+                int endStop = demoStops.get(i + 1);
+
+                if (ds.demoStep >= startStop && ds.demoStep <= endStop) {
+                    // Om vi precis anlände exakt på ett stopp, ladda instruktionerna för NÄSTA sträcka
+                    // (Såvida vi inte är vid ruttens allra sista mål)
+                    if (ds.demoStep == endStop && ds.demoStep != fullDemoPath.size() - 1) {
+                        continue;
+                    }
+                    currentLegStart = startStop;
+                    currentLegEnd = endStop;
+                    break;
+                }
+            }
+
+            // Har vi bytt till en ny delsträcka? Då kör vi optimeraren och skriver ut!
+            if (currentLegStart != lastOptimizedLegStart) {
+                // Klipp ut just den sträckan roboten står på nu
+                java.util.List<Vertex> legPath = new java.util.ArrayList<>(fullDemoPath.subList(currentLegStart, currentLegEnd + 1));
+                
+                // Töm instruktionskön i DataStore så vi inte fyller minnet med demo-instruktioner
+                if (ds.instructionQueue != null) {
+                    ds.instructionQueue.clear(); 
+                }
+
+                RouteOptimizer optimizer = new RouteOptimizer(ds);
+                //System.out.println("\n=== LADDAR NY DELSTRÄCKA I DEMO ===");
+                System.out.println("\n");
+                optimizer.compressPath(legPath); // Skriver ut till output!
+                
+                // Spara så vi inte skriver ut exakt samma sak igen förrän sträckan byts
+                lastOptimizedLegStart = currentLegStart; 
+            }
+            // ------------------------------------------------------------------------
 
             repaint();
             return "(" + (nodeId % ds.columns) + ", " + (nodeId / ds.columns) + ")";
@@ -341,28 +410,84 @@ public class ControlUI extends javax.swing.JFrame {
     }
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
-        if (ds.demoStep > 0) {
-            ds.demoStep--;
-            // Hämta koordinatsträngen från metoden
-            String pos = updateRobotPosition();
 
-            // Skriv ut både steg och koordinater i loggen
-            appendStatus("Demo Bakåt <- Steg: " + ds.demoStep + " | Position: " + pos + "\n");
-        } else {
-            appendStatus("Demo: Redan vid startpunkten.\n");
-
+    // Om roboten körs just nu (av framåt-knappen), stoppa den!
+        if (forwardTimer != null && forwardTimer.isRunning()) {
+            forwardTimer.stop();
+            jButton3.setEnabled(true);
+            jButton4.setEnabled(true);
+            jButton5.setEnabled(true);
         }
+
+        if (ds.demoStep <= 0) {
+            appendStatus("Demo: Redan vid den absoluta startpunkten.\n");
+            return;
+        }
+
+        // Hitta FÖREGÅENDE hållplats i listan
+        int prevStop = 0;
+        for (int i = demoStops.size() - 1; i >= 0; i--) {
+            int stop = demoStops.get(i);
+            // Vi letar efter den hållplats som är strikt mindre än där vi är nu
+            if (stop < ds.demoStep) {
+                prevStop = stop;
+                break;
+            }
+        }
+
+        // Hoppa direkt dit!
+        ds.demoStep = prevStop;
+        String pos = updateRobotPosition();
+        appendStatus("Demo: Hoppade tillbaka till start för denna sträcka | Position: " + pos + "\n");
     }//GEN-LAST:event_jButton3ActionPerformed
 
     private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
-        if (fullDemoPath != null && ds.demoStep < fullDemoPath.size() - 1) {
-            ds.demoStep++;
-            // Hämta koordinaterna från metoden
-            String pos = updateRobotPosition();
-
-            // Skriv ut både steg och koordinater
-            appendStatus("Demo Framåt -> Steg: " + ds.demoStep + " | Position: " + pos + "\n");
+        if (fullDemoPath == null || ds.demoStep >= fullDemoPath.size() - 1) {
+            appendStatus("Demo: Redan vid slutet av hela rutten.\n");
+            return;
         }
+
+        // Hitta NÄSTA hållplats i vår lista
+        int nextStop = fullDemoPath.size() - 1;
+        for (int stop : demoStops) {
+            if (stop > ds.demoStep) {
+                nextStop = stop;
+                break;
+            }
+        }
+
+        final int targetStep = nextStop;
+        appendStatus("Demo: Kör sträckan fram till nästa mål/bas...\n");
+
+        // Inaktivera knapparna under körning så man inte krockar händelser
+        jButton3.setEnabled(false);
+        jButton4.setEnabled(false);
+        jButton5.setEnabled(false);
+
+        // Om en gammal timer ligger och kör, stoppa den
+        if (forwardTimer != null && forwardTimer.isRunning()) {
+            forwardTimer.stop();
+        }
+
+        // Skapa en timer som stegar fram roboten snyggt och prydligt (50ms per steg)
+        forwardTimer = new javax.swing.Timer(50, new java.awt.event.ActionListener() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (ds.demoStep < targetStep) {
+                    ds.demoStep++;
+                    updateRobotPosition();
+                } else {
+                    // Vi är framme vid hållplatsen!
+                    ((javax.swing.Timer) e.getSource()).stop();
+                    appendStatus("Demo: Framme!\n");
+                    // Slå på knapparna igen
+                    jButton3.setEnabled(true);
+                    jButton4.setEnabled(true);
+                    jButton5.setEnabled(true);
+                }
+            }
+        });
+        forwardTimer.start();
     }//GEN-LAST:event_jButton4ActionPerformed
 
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed

@@ -3,10 +3,12 @@ package com.mycompany.agvparking;
 import java.io.File;
 import java.util.List;
 import java.util.Scanner;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /**
  *
- * @author clary35
+ * @author kts grupp 2
  */
 public class DataStore {
 
@@ -20,12 +22,7 @@ public class DataStore {
 
     public int demoStep = 0; // Håller koll på var i listan vi är
 
-    /* Del 5 och 6
-        *
-        *
-        *
-     */
-    // Boolean för att pausa GuiUpdate
+    
     boolean updateUiflag;
     public volatile boolean isPaused = true;
     public volatile boolean isStopped = false;
@@ -45,6 +42,8 @@ public class DataStore {
     int rows;
     int columns;
     public List<Vertex> currentPath;
+    
+    public Queue<AgvInstruction> instructionQueue;
 
     public DataStore() {
         // Initialize the datastore with fixed size arrays for storing the network data
@@ -67,6 +66,8 @@ public class DataStore {
         rows = ysize / gridsize;
 
         currentPath = null;
+        
+        instructionQueue = new LinkedList<>();
 
     }
 
@@ -166,7 +167,7 @@ public class DataStore {
         }
     }
 
-    // 2. Kolla om vi står på en Vertikal ruta
+    // Kolla om vi står på en Vertikal ruta
     for (int k = 0; k < Vspaces; k++) {
         double dist = Math.sqrt(Math.pow(xCoord - VLocationX[k], 2) + Math.pow(yCoord - VLocationY[k], 2));
         
@@ -185,5 +186,16 @@ public class DataStore {
         }
     }
 }
+    // Återställer alla besökta (röda) rutor till vanliga (grå/svarta) rutor
+    public void clearVisitedAreas() {
+        for (int i = 0; i < columns; i++) {
+            for (int j = 0; j < rows; j++) {
+                // Om värdet är 2 (besökt mål), ändra tillbaka till 1 (vanligt hinder/parkering)
+                if (ObstacleMatrix[i][j] == 2) {
+                    ObstacleMatrix[i][j] = 1;
+                }
+            }
+        }
+    }
 }
 

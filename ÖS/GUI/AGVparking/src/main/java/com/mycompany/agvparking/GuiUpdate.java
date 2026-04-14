@@ -90,7 +90,6 @@ public class GuiUpdate implements Runnable {
                 }
 
                 // --- 5. RENSA VÄGEN ---
-                op.clearPath();
                 cui.repaint(); // Nu försvinner den svarta vägen
                 Thread.sleep(500); // Kort paus innan nästa rutt visas
             }
