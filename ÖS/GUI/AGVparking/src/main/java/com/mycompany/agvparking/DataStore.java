@@ -18,6 +18,8 @@ public class DataStore {
     int xsize, ysize, gridsize;
     int locations;
 
+    public int demoStep = 0; // Håller koll på var i listan vi är
+
     /* Del 5 och 6
         *
         *
@@ -25,7 +27,7 @@ public class DataStore {
      */
     // Boolean för att pausa GuiUpdate
     boolean updateUiflag;
-    public volatile boolean isPaused = false;
+    public volatile boolean isPaused = true;
     public volatile boolean isStopped = false;
 
     // AGV koordinater
@@ -63,7 +65,7 @@ public class DataStore {
 
         columns = xsize / gridsize;
         rows = ysize / gridsize;
-        
+
         currentPath = null;
 
     }
@@ -140,4 +142,48 @@ public class DataStore {
         robotY = LocationY[0];
     }
 
+    public void markAreaAsVisited(double xCoord, double yCoord) {
+    // ökar marginalen lite (gridsize * 4 istället för 2) så att den 
+    // garanterat hittar rutan även om roboten inte stannar exakt i mitten.
+    double tolerance = gridsize * 4; 
+
+    // 1. Kolla om vi står på en Horisontell ruta
+    for (int k = 0; k < Hspaces; k++) {
+        double dist = Math.sqrt(Math.pow(xCoord - HLocationX[k], 2) + Math.pow(yCoord - HLocationY[k], 2));
+        
+        if (dist < tolerance) {
+            int xpos = (int) (HLocationX[k] / gridsize);
+            int ypos = (int) (HLocationY[k] / gridsize);
+
+            for (int i = 0; i < (int) (110 / gridsize); i++) {
+                for (int j = 0; j < (int) (60 / gridsize); j++) {
+                    if (xpos + i < columns && ypos + j < rows) {
+                        ObstacleMatrix[xpos + i][ypos + j] = 2;
+                    }
+                }
+            }
+            return;
+        }
+    }
+
+    // 2. Kolla om vi står på en Vertikal ruta
+    for (int k = 0; k < Vspaces; k++) {
+        double dist = Math.sqrt(Math.pow(xCoord - VLocationX[k], 2) + Math.pow(yCoord - VLocationY[k], 2));
+        
+        if (dist < tolerance) {
+            int xpos = (int) (VLocationX[k] / gridsize);
+            int ypos = (int) (VLocationY[k] / gridsize);
+
+            for (int i = 0; i < (int) (60 / gridsize); i++) {
+                for (int j = 0; j <= (int) (110 / gridsize); j++) {
+                    if (xpos + i < columns && ypos + j < rows) {
+                        ObstacleMatrix[xpos + i][ypos + j] = 2;
+                    }
+                }
+            }
+            return;
+        }
+    }
 }
+}
+
