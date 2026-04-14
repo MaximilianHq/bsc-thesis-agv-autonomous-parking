@@ -12,13 +12,13 @@ public class RobotRead implements Runnable {
     public RobotRead(DataStore ds, ControlUI cui) {
         this.cui = cui;
         this.ds = ds;
-        sleepTime = generator.nextInt(20000);
+        sleepTime = generator.nextInt(20);
     }
 
     @Override
     public void run() {
         try {
-            cui.appendStatus("RobotRead kommer att köra i " + sleepTime + " millisekunder.\n");
+            //cui.appendStatus("RobotRead kommer att köra i " + sleepTime + " millisekunder.\n");
             int i = 1;
             while (i <= 20) {
                 Thread.sleep(sleepTime / 20); // senare användas för att välja hur ofta vi ska ta info från AGV
@@ -30,6 +30,5 @@ public class RobotRead implements Runnable {
             }
         } catch (InterruptedException exception) {
         }
-        // cui.appendStatus("RobotRead är nu klar!\n"); // om AGVn utfört alla instruktioner?
     }
 }
