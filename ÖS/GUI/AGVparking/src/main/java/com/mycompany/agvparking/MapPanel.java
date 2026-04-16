@@ -51,6 +51,11 @@ public class MapPanel extends JPanel {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
+        // Innan vi gör något annat, fyll hela panelen med golvfärgen.
+        // Då blir "gliporna" osynliga eftersom det är grått under allt.
+        g.setColor(new Color(220, 220, 220)); // Din LIGHT_COLOR
+        g.fillRect(0, 0, getWidth(), getHeight());
+        // -----------------
         // --- DEFINIERA FÄRGER ---
         final Color LIGHT_COLOR = new Color(220, 220, 220);
         final Color DARK_COLOR = new Color(180, 180, 180);
@@ -74,62 +79,76 @@ public class MapPanel extends JPanel {
         if (ds.DataAvail == true) {
 
             // Draw grid
-            for (int i = 0; i < (int) (ds.xsize / ds.gridsize); i = i + 1) {
-                for (int j = 0; j < (int) (ds.ysize / ds.gridsize); j = j + 1) {
+            int maxI = Math.min((int) (ds.xsize / ds.gridsize), ds.ObstacleMatrix.length);
+            int maxJ = Math.min((int) (ds.ysize / ds.gridsize), ds.ObstacleMatrix[0].length);
 
-                    // --- HÄR ÄR ÄNDRINGEN DU BAD OM ---
-                    if (ds.ObstacleMatrix[i][j] == 0) {
-                        g.setColor(LIGHT_COLOR);
-                    } else if (ds.ObstacleMatrix[i][j] == 1) {
-                        g.setColor(DARK_COLOR);
-                    } else if (ds.ObstacleMatrix[i][j] == 4) {
-                        g.setColor(LRED_COLOR);
-                    } else if (ds.ObstacleMatrix[i][j] == 3) {
-                        g.setColor(BLACK_COLOR);
+            for (int i = 0; i < maxI; i++) {
+                for (int j = 0; j < maxJ; j++) {
+
+                    // Om det är ett HINDER (värde 1, 3 eller 4)
+                    if (ds.ObstacleMatrix[i][j] != 0) {
+
+                        // Välj färg baserat på värdet i matrisen
+                        if (ds.ObstacleMatrix[i][j] == 1) {
+                            g.setColor(DARK_COLOR);
+                        } else if (ds.ObstacleMatrix[i][j] == 2) {
+                            g.setColor(RED_COLOR);  // ENDAST besökta rutor blir RÖDA
+                        } else if (ds.ObstacleMatrix[i][j] == 4) {
+                            g.setColor(LRED_COLOR);
+                        } else if (ds.ObstacleMatrix[i][j] == 3) {
+                            g.setColor(BLACK_COLOR);
+                        }
+
+                            // Rita ut hindret med +1 pixel i bredd/höjd för att täppa till glipor
+                            g.fillRect((int) (i * xscale * ds.gridsize),
+                                    (int) (j * yscale * ds.gridsize),
+                                    (int) (ds.gridsize * xscale) + 1,
+                                    (int) (ds.gridsize * yscale) + 1);
+
+                        } else {
+                            // Om det är GOLV (värde 0) - rita ut rutnätet
+                            // Vi använder DARK_COLOR här eftersom den redan finns definierad
+                            g.setColor(DARK_COLOR);
+                            g.drawRect((int) (i * xscale * ds.gridsize),
+                                    (int) (j * yscale * ds.gridsize),
+                                    (int) (ds.gridsize * xscale),
+                                    (int) (ds.gridsize * yscale));
+                        }
                     }
-                    // -----------------------------------
-
-                    // Fyll rutan med vald färg
-                    g.fillRect((int) (i * xscale * ds.gridsize), (int) (j * yscale * ds.gridsize), (int) (ds.gridsize * xscale), (int) (ds.gridsize * yscale));
-
-                    // Rita rutnäts-kant (Förslagsvis mörkgrå så man ser rutnätet även på ljusa rutor)
-                    g.setColor(DARK_COLOR);
-                    g.drawRect((int) (i * xscale * ds.gridsize), (int) (j * yscale * ds.gridsize), (int) (ds.gridsize * xscale), (int) (ds.gridsize * yscale));
                 }
-            }
-            
-            // Rita ut den nuvarande rutten (svart) "ovanpå" rutnätet om den finns
-            if (ds.currentPath != null) {
-                g.setColor(BLACK_COLOR);
-                for (Vertex v : ds.currentPath) {
-                    int id = Integer.parseInt(v.getId());
-                    int col = id % ds.columns; // X
-                    int row = id / ds.columns; // Y
-                    g.fillRect((int) (col * xscale * ds.gridsize), (int) (row * yscale * ds.gridsize), (int) (ds.gridsize * xscale), (int) (ds.gridsize * yscale));
+
+                // Rita ut den nuvarande rutten (svart) "ovanpå" rutnätet om den finns
+                if (ds.currentPath != null) {
+                    g.setColor(BLACK_COLOR);
+                    for (Vertex v : ds.currentPath) {
+                        int id = Integer.parseInt(v.getId());
+                        int col = id % ds.columns; // X
+                        int row = id / ds.columns; // Y
+                        g.fillRect((int) (col * xscale * ds.gridsize), (int) (row * yscale * ds.gridsize), (int) (ds.gridsize * xscale), (int) (ds.gridsize * yscale));
+                    }
                 }
-            }
 
-            // Draw first location as filled red circle
-            g.setColor(RED_COLOR);
-            x = (int) (ds.LocationX[0] * xscale);
-            y = (int) (ds.LocationY[0] * yscale);
-            g.fillOval(x - (circlesize / 2), y - circlesize / 2, circlesize, circlesize);
-
-            // Draw following locations as filled green circles
-            g.setColor(GREEN_COLOR);
-            for (int i = 1; i < ds.locations; i++) {
-                x = (int) (ds.LocationX[i] * xscale);
-                y = (int) (ds.LocationY[i] * yscale);
+                // Draw first location as filled red circle
+                g.setColor(RED_COLOR);
+                x = (int) (ds.LocationX[0] * xscale);
+                y = (int) (ds.LocationY[0] * yscale);
                 g.fillOval(x - (circlesize / 2), y - circlesize / 2, circlesize, circlesize);
+
+                // Draw following locations as filled green circles
+                g.setColor(GREEN_COLOR);
+                for (int i = 1; i < ds.locations; i++) {
+                    x = (int) (ds.LocationX[i] * xscale);
+                    y = (int) (ds.LocationY[i] * yscale);
+                    g.fillOval(x - (circlesize / 2), y - circlesize / 2, circlesize, circlesize);
+                }
+
+                // AGV
+                g.setColor(AGV_COLOR);
+                x = (int) (ds.robotX * xscale);
+                y = (int) (ds.robotY * yscale);
+                g.fillOval((int) (x - AGVsize / 2), (int) (y - AGVsize / 2), AGVsize, AGVsize);
+
             }
 
-            // AGV
-            g.setColor(AGV_COLOR);
-            x = (int) (ds.robotX * xscale);
-            y = (int) (ds.robotY * yscale);
-            g.fillOval((int) (x - AGVsize / 2), (int) (y - AGVsize / 2), AGVsize, AGVsize);
-
-        }
-
-    } // end paintComponent
-}
+        } // end paintComponent
+    }
