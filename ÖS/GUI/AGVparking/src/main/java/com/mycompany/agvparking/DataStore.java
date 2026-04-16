@@ -3,10 +3,12 @@ package com.mycompany.agvparking;
 import java.io.File;
 import java.util.List;
 import java.util.Scanner;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /**
  *
- * @author clary35
+ * @author kts grupp 2
  */
 public class DataStore {
 
@@ -18,14 +20,11 @@ public class DataStore {
     int xsize, ysize, gridsize;
     int locations;
 
-    /* Del 5 och 6
-        *
-        *
-        *
-     */
-    // Boolean för att pausa GuiUpdate
+    public int demoStep = 0; // Håller koll på var i listan vi är
+
+    
     boolean updateUiflag;
-    public volatile boolean isPaused = false;
+    public volatile boolean isPaused = true;
     public volatile boolean isStopped = false;
 
     // AGV koordinater
@@ -43,6 +42,8 @@ public class DataStore {
     int rows;
     int columns;
     public List<Vertex> currentPath;
+    
+    public Queue<AgvInstruction> instructionQueue;
 
     public DataStore() {
         // Initialize the datastore with fixed size arrays for storing the network data
@@ -63,8 +64,10 @@ public class DataStore {
 
         columns = xsize / gridsize;
         rows = ysize / gridsize;
-        
+
         currentPath = null;
+        
+        instructionQueue = new LinkedList<>();
 
     }
 
@@ -140,4 +143,59 @@ public class DataStore {
         robotY = LocationY[0];
     }
 
+    public void markAreaAsVisited(double xCoord, double yCoord) {
+    // ökar marginalen lite (gridsize * 4 istället för 2) så att den 
+    // garanterat hittar rutan även om roboten inte stannar exakt i mitten.
+    double tolerance = gridsize * 4; 
+
+    // 1. Kolla om vi står på en Horisontell ruta
+    for (int k = 0; k < Hspaces; k++) {
+        double dist = Math.sqrt(Math.pow(xCoord - HLocationX[k], 2) + Math.pow(yCoord - HLocationY[k], 2));
+        
+        if (dist < tolerance) {
+            int xpos = (int) (HLocationX[k] / gridsize);
+            int ypos = (int) (HLocationY[k] / gridsize);
+
+            for (int i = 0; i < (int) (110 / gridsize); i++) {
+                for (int j = 0; j < (int) (60 / gridsize); j++) {
+                    if (xpos + i < columns && ypos + j < rows) {
+                        ObstacleMatrix[xpos + i][ypos + j] = 2;
+                    }
+                }
+            }
+            return;
+        }
+    }
+
+    // Kolla om vi står på en Vertikal ruta
+    for (int k = 0; k < Vspaces; k++) {
+        double dist = Math.sqrt(Math.pow(xCoord - VLocationX[k], 2) + Math.pow(yCoord - VLocationY[k], 2));
+        
+        if (dist < tolerance) {
+            int xpos = (int) (VLocationX[k] / gridsize);
+            int ypos = (int) (VLocationY[k] / gridsize);
+
+            for (int i = 0; i < (int) (60 / gridsize); i++) {
+                for (int j = 0; j <= (int) (110 / gridsize); j++) {
+                    if (xpos + i < columns && ypos + j < rows) {
+                        ObstacleMatrix[xpos + i][ypos + j] = 2;
+                    }
+                }
+            }
+            return;
+        }
+    }
 }
+    // Återställer alla besökta (röda) rutor till vanliga (grå/svarta) rutor
+    public void clearVisitedAreas() {
+        for (int i = 0; i < columns; i++) {
+            for (int j = 0; j < rows; j++) {
+                // Om värdet är 2 (besökt mål), ändra tillbaka till 1 (vanligt hinder/parkering)
+                if (ObstacleMatrix[i][j] == 2) {
+                    ObstacleMatrix[i][j] = 1;
+                }
+            }
+        }
+    }
+}
+
