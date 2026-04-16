@@ -27,11 +27,20 @@ public class DijkstraAlgorithm {
     
     // ÄNDRAT: Använder Double istället för Integer för avstånd
     private Map<Vertex, Double> distance;
+    private Set<Vertex> obstacles; 
 
     public DijkstraAlgorithm(Graph graph) {
         // create a copy of the array so that we can operate on this array
         this.nodes = new ArrayList<Vertex>(graph.getVertexes());
         this.edges = new ArrayList<Edge>(graph.getEdges());
+    }
+    
+    public void addObstacle(Vertex node) {
+        this.obstacles.add(node); 
+    }
+    
+    public void addObstacles(List<Vertex> nodes) {
+        this.obstacles.addAll(nodes); 
     }
 
     public void execute(Vertex source) {
@@ -136,4 +145,4 @@ public class DijkstraAlgorithm {
         return path;
     }
 
-}
+} 
