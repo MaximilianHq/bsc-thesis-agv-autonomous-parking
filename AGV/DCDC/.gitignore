@@ -1,0 +1,11 @@
+# Altium history and logs
+History/
+Project Logs for */ 
+Project Outputs for */
+
+# Optional: general Altium temporary files
+*.SchDocPreview
+*.PcbDocPreview
+*.log
+*.bak
+*.tmp
