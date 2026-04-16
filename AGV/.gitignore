@@ -45,8 +45,8 @@
 # ----------------------------
 
 # Cache / previews
-**/History/
-**/__Previews/
+History/
+__Previews/
 
 # Logs and generated outputs
 Project Logs*/
