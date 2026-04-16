@@ -6,8 +6,8 @@ import java.util.Scanner;
 
 /**
  *
- * @author clary35
- */
+ * @author KTS_G2 
+ */ 
 public class DataStore {
 
     String fileName = null;

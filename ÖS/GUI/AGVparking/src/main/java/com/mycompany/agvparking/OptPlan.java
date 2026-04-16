@@ -219,32 +219,46 @@ public class OptPlan {
 
         double cost = 1;
 
-        // --- 2. Skapa Kanter (Edges)  ---
+// --- 2. Skapa Kanter (Edges)  ---
         for (int i = 0; i < ds.rows; i++) {
             for (int j = 0; j < ds.columns - 1; j++) {
-                cost = 1;
-                if (ds.ObstacleMatrix[j + 1][i] == 1 || ds.ObstacleMatrix[j + 1][i] == 2) cost = 1000; // Hinder
-
+                
                 // Horisontella
+                cost = 1;
+                // Använder != 0 för att täcka in alla typer av hinder
+                if (ds.ObstacleMatrix[j + 1][i] != 0) cost = 1000; 
                 edges.add(new Edge("r", nodes.get(i * ds.columns + j), nodes.get(i * ds.columns + j + 1), cost));
                 edges.add(new Edge("l", nodes.get(i * ds.columns + j + 1), nodes.get(i * ds.columns + j), cost));
 
-                // Diagonala
+                // Diagonala (Ner-Höger & Upp-Vänster)
                 if (i < ds.rows - 1) {
                     cost = 1.4;
-                    if (ds.ObstacleMatrix[j + 1][i + 1] == 1 || ds.ObstacleMatrix[j + 1][i + 1] == 2) cost = 1000;
+                    // LÖSNING CORNER CLIPPING: Kolla målnoden OCH de två intilliggande rutorna!
+                    if (ds.ObstacleMatrix[j + 1][i + 1] != 0 || 
+                        ds.ObstacleMatrix[j + 1][i] != 0 || 
+                        ds.ObstacleMatrix[j][i + 1] != 0) {
+                        cost = 1000;
+                    }
                     edges.add(new Edge("dr", nodes.get(i * ds.columns + j), nodes.get((i + 1) * ds.columns + j + 1), cost));
                     edges.add(new Edge("ul", nodes.get((i + 1) * ds.columns + j + 1), nodes.get(i * ds.columns + j), cost));
                 }
+                
+                // Diagonala (Upp-Höger & Ner-Vänster)
                 if (i > 0) {
                     cost = 1.4;
-                    if (ds.ObstacleMatrix[j + 1][i - 1] == 1 || ds.ObstacleMatrix[j + 1][i - 1] == 2) cost = 1000;
+                    // LÖSNING CORNER CLIPPING: Kolla målnoden OCH de två intilliggande rutorna!
+                    if (ds.ObstacleMatrix[j + 1][i - 1] != 0 || 
+                        ds.ObstacleMatrix[j + 1][i] != 0 || 
+                        ds.ObstacleMatrix[j][i - 1] != 0) {
+                        cost = 1000;
+                    }
                     edges.add(new Edge("ur", nodes.get(i * ds.columns + j), nodes.get((i - 1) * ds.columns + j + 1), cost));
                     edges.add(new Edge("dl", nodes.get((i - 1) * ds.columns + j + 1), nodes.get(i * ds.columns + j), cost));
                 }
             }
         }
-
+        
+        
         // --- 3. Skapa Vertikala Kanter ---
         for (int i = 0; i < ds.rows - 1; i++) {
             for (int j = 0; j < ds.columns; j++) {
