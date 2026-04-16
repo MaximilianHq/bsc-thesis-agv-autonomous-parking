@@ -24,7 +24,7 @@ public class AGVparking {
 
         // This sets the file path and read network text file. Adjust for your needs. 
         
-        ds.setFileName("C:\\Users\\andre\\OneDrive - Linköpings universitet\\Kandidatprojekt - TNK132\\Laborationer\\Laboration 2\\loc.txt");
+        ds.setFileName("C:\\Users\\fredr\\OneDrive - Linköpings universitet\\TNK132\\TNK132\\GUI\\Lab2\\Autopark-Lab2\\loc.txt");
         ds.readCoords();
 
         Object[] options = {"Demo-läge", "Drift-läge"}; 
