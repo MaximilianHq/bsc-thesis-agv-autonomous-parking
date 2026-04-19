@@ -91,7 +91,7 @@ bool dwm_get_pos(Stream &str, DwmState &s)
     memcpy(&s.pos.x, &rx[5], 4);
     memcpy(&s.pos.y, &rx[9], 4);
     memcpy(&s.pos.z, &rx[13], 4);
-    memcpy(&s.q, &rx[18], 1);
+    memcpy(&s.q, &rx[17], 1); // TODO: check if this is correct, DWM doc is not clear on this point
 
     return true;
 }

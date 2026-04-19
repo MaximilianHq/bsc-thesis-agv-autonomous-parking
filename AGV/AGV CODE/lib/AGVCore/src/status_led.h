@@ -13,14 +13,14 @@ public:
         STATUS_READY,         // AGV is powered on and idle
         STATUS_BLE_SEARCHING, // Searching for Bluetooth device
         STATUS_BLE_CONNECTED, // Bluetooth connected
+        STATUS_CMD_RECEIVING, // Receiving or updating command
         STATUS_ERROR,         // Error state
 
         // --- OPERATION / COMMAND STATES ---
-        STATUS_CMD_RECEIVING, // Receiving or updating command
-        STATUS_CMD_STOPPING,  // Stopping current action
-        STATUS_OBSTACLE,      // Obstacle detected
-        STATUS_PARKING,       // Performing parking maneuver
-        STATUS_RETURNING      // Returning to home/base
+        STATUS_CMD_STOPPING, // Stopping current action
+        STATUS_OBSTACLE,     // Obstacle detected
+        STATUS_PARKING,      // Performing parking maneuver
+        STATUS_RETURNING     // Returning to home/base
     };
 
     struct Color

@@ -1,14 +1,14 @@
 #include <Arduino.h>
 #include <types.h>
-#include <system_actions.h>
 #include "comm.h"
 
 uint8_t Comm::csum(const Packet &pkt)
 {
     uint8_t crc = 0;
-    crc ^= (uint8_t)pkt.type;
+    crc ^= static_cast<uint8_t>(pkt.type);
     for (size_t i = 0; i < pkt.data_len; i++)
         crc ^= pkt.data[i];
+    crc ^= pkt.seq;
     return crc;
 }
 
@@ -21,13 +21,13 @@ bool Comm::read(Packet &out)
 
     while (_str.available())
     {
-        uint8_t b = (uint8_t)_str.read();
+        uint8_t b = static_cast<uint8_t>(_str.read());
 
         switch (_state)
         {
         case WAIT_START:
             if (g_debug.comm)
-                Serial.println("[" + _dbg_name + "] Packet recieving...");
+                Serial.println("[COMM " + _dbg_name + "] Packet recieving...");
             if (b == '$')
             {
                 started_packet = true;
@@ -38,7 +38,7 @@ bool Comm::read(Packet &out)
             break;
 
         case READ_TYPE:
-            _pkt.type = (char)b;
+            _pkt.type = static_cast<char>(b);
             _state = READ_BODY;
             break;
 
@@ -46,7 +46,7 @@ bool Comm::read(Packet &out)
             if (b == '\n')
             {
                 if (g_debug.comm)
-                    Serial.println("[" + _dbg_name + "] Packet recieved!");
+                    Serial.println("[COMM " + _dbg_name + "] Packet recieved!");
                 if (_read_index >= 2)
                 {
                     _pkt.data_len = _read_index - 2; // points to seq
@@ -62,21 +62,21 @@ bool Comm::read(Packet &out)
                     // === NY DEBUG: skriv hela paketet ===
                     if (g_debug.comm)
                     {
-                        Serial.print("[" + _dbg_name + "] Recieving message: $");
+                        Serial.print("[COMM " + _dbg_name + "] Recieving message: $");
                         Serial.write(_pkt.type);
                         for (size_t j = 0; j < _pkt.data_len; j++)
-                            Serial.print((uint8_t)_pkt.data[j]);
+                            Serial.print(static_cast<uint8_t>(_pkt.data[j]));
 
                         Serial.println();
                         Serial.print("Received crc: ");
                         Serial.print("CHAR = ");
-                        Serial.print((char)_pkt.crc);
+                        Serial.print(static_cast<char>(_pkt.crc));
                         Serial.print(", HEX = ");
                         Serial.println(_pkt.crc);
 
                         Serial.print("Calculated crc: ");
                         Serial.print("CHAR = ");
-                        Serial.print((char)csum(_pkt));
+                        Serial.print(static_cast<char>(csum(_pkt)));
                         Serial.print(", HEX = ");
                         Serial.println(csum(_pkt));
                     }
@@ -93,7 +93,7 @@ bool Comm::read(Packet &out)
                 {
                     // overflow: kasta paket och vänta på ny start
                     if (g_debug.comm)
-                        Serial.println("[" + _dbg_name + "] Packet corrupt");
+                        Serial.println("[COMM " + _dbg_name + "] Packet corrupt");
                     _state = WAIT_START;
                 }
             }
@@ -102,7 +102,7 @@ bool Comm::read(Packet &out)
     }
 
     if (g_debug.comm && started_packet && !packet_delivered)
-        Serial.println("[" + _dbg_name + "] Read paused");
+        Serial.println("[COMM " + _dbg_name + "] Read paused");
 
     return packet_delivered;
 }
@@ -114,35 +114,45 @@ bool Comm::write(const Packet &pkt)
 
     if (g_debug.comm)
     {
-        Serial.print("[" + _dbg_name + "] Sending message: $");
+        Serial.print("[COMM " + _dbg_name + "] Sending message: $");
         Serial.write(pkt.type);
         for (size_t j = 0; j < pkt.data_len; j++)
-            Serial.print((uint8_t)pkt.data[j]);
+            Serial.print(static_cast<uint8_t>(pkt.data[j]));
 
         Serial.print("Calculated crc: ");
         Serial.print("CHAR = ");
-        Serial.print((char)csum(pkt));
+        Serial.print(static_cast<char>(csum(pkt)));
         Serial.print(", HEX = ");
         Serial.println(csum(pkt));
     }
 
-    _str.write((uint8_t)'$');
-    _str.write((uint8_t)pkt.type);
+    _str.write(static_cast<uint8_t>('$'));
+    _str.write(static_cast<uint8_t>(pkt.type));
 
     _str.write(pkt.data, pkt.data_len);
     _str.write(pkt.seq);
-    _str.write(pkt.crc);
+    _str.write((pkt.crc != 0) ? pkt.crc : csum(pkt));
 
-    _str.write((uint8_t)'\n');
+    _str.write(static_cast<uint8_t>('\n'));
 
     return true;
 }
 
-PacketHandler::PacketHandler(Comm &comm, IActions &actions) : _comm(comm), _actions(actions) {}
+ProtocolHandler::ProtocolHandler(Comm &comm, SysCtrl &actions) : _comm(comm), _actions(actions) {}
 
-uint16_t PacketHandler::get_sequence() const { return _seq; }
+uint8_t ProtocolHandler::get_sequence() const { return _seq; }
+void ProtocolHandler::itterate_sequence()
+{
+    uint8_t prev = _seq;
+    _seq++;
+    if (prev > _seq && g_debug.comm)
+        Serial.println("[PROTOHANDLER] \033[33mWARNING\033[0m - Sequence overflow");
+}
 
-void PacketHandler::handle(const Comm::Packet &pkt)
+void ProtocolHandler::add_buffer_sent(const Comm::Packet &pkt) { _pkt_buffer_sent.push_back(pkt); }
+void ProtocolHandler::add_buffer_rcvd(const Comm::Packet &pkt) { _pkt_buffer_rcvd.push_back(pkt); }
+
+void ProtocolHandler::handle(const Comm::Packet &pkt)
 {
     // Handle asnwers
     if (pkt.type == 'A')
@@ -158,73 +168,22 @@ void PacketHandler::handle(const Comm::Packet &pkt)
     }
 
     // Handle commands
-    respond(pkt);
-
-    if (!pkt.approved)
-    {
-        if (g_debug.comm)
-            Serial.println("[COMM::BTPKTHANDLER handle()] Packet not approved");
-        return;
-    }
-
-    handle_approved(pkt); // Anropar barn-klass
-}
-
-Comm::Packet PacketHandler::make_ack(const Comm::Packet &pkt)
-{
-    Comm::Packet p = {'A', pkt.seq, {((pkt.approved) ? (uint8_t)0x01 : (uint8_t)0x00)}, 1, 0, true};
-    p.crc = Comm::csum(p);
-    return p;
-}
-
-void PacketHandler::respond(const Comm::Packet &pkt)
-{
-    auto ans = make_ack(pkt);
+    auto ans = _make_ack(pkt);
     if (_comm.write(ans))
     {
         if (g_debug.comm)
-            Serial.println("[COMM::PKTHANDLER respond()] Sent answer succesfully");
+            Serial.println("[PROTOHANDLER] Sent response succesfully");
     }
     else if (g_debug.comm)
-        Serial.println("[COMM::PKTHANDLER respond()] Failed to answer");
+        Serial.println("[PROTOHANDLER] Failed to respond");
+
+    if (pkt.approved)
+        _pkt_buffer_rcvd.push_back(pkt);
 }
 
-// BTPacketHandler::BTPacketHandler(Comm &comm) : PacketHandler(comm) {}
-// MCUPacketHandler::MCUPacketHandler(Comm &comm) : PacketHandler(comm) {}
-
-void BTPacketHandler::handle_approved(const Comm::Packet &pkt)
+Comm::Packet ProtocolHandler::_make_ack(const Comm::Packet &pkt)
 {
-    switch (pkt.type)
-    {
-    case 'D':
-        _actions.on_new_motion(pkt.data[0], pkt.data[1]);
-        break;
-    case 'K':
-        switch (pkt.data[0])
-        {
-        default:
-            break;
-        }
-        break;
-    case 'X':
-        _actions.on_stop();
-        break;
-    case 'R':
-        break;
-    default:
-        break;
-    }
-}
-
-void MCUPacketHandler::handle_approved(const Comm::Packet &pkt)
-{
-    switch (pkt.type)
-    {
-    case 'M':
-        break;
-    case 'H':
-        break;
-    default:
-        break;
-    }
+    Comm::Packet p = {'A', pkt.seq, {((pkt.approved) ? static_cast<uint8_t>(0x01) : static_cast<uint8_t>(0x00))}, 1, 0, true};
+    p.crc = Comm::csum(p);
+    return p;
 }

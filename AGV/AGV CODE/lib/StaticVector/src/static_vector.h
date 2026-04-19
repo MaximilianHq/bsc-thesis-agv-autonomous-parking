@@ -15,7 +15,22 @@ public:
             _v[i] = v._v[i];
     }
 
-    void push_back(const T &data)
+    T &operator[](size_t i)
+    {
+        if (i >= _count)
+            _raise_error("[FATAL ERROR] Index out of bounds");
+        return _v[i];
+    }
+
+    const T &operator[](size_t i) const
+    {
+        if (i >= _count)
+            _raise_error("[FATAL ERROR] Index out of bounds");
+        return _v[i];
+    }
+
+    void
+    push_back(const T &data)
     {
         if (_count >= N)
             _raise_error("[FATAL ERROR] Array out of bounds");
@@ -46,7 +61,7 @@ public:
         if (_count == 0)
             _raise_error("[FATAL ERROR] Array out of bounds");
 
-        T tmp = _v[_count - 1];
+        T tmp = _v[0];
         pop(0);
         return tmp;
     }
@@ -54,9 +69,13 @@ public:
     template <typename Predicate>
     void pop_if(Predicate pred)
     {
-        for (size_t i = 0; i < _count; i++)
+        for (size_t i = 0; i < _count;)
+        {
             if (pred(_v[i]))
                 pop(i);
+            else
+                i++;
+        }
     }
 
     void clear() { _count = 0; }
