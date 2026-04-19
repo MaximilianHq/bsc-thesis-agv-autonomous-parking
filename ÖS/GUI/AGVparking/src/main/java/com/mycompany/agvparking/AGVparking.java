@@ -19,22 +19,32 @@ public class AGVparking {
 
     AGVparking() {
 
-        /*
-         * Initialize the DataStore call where all "global" data will be stored
-         */
+        // Initialize the DataStore call where all "global" data will be stored 
         ds = new DataStore();
 
-        /*
-         * This sets the file path and read network text file. Adjust for your needs.
-         */
+        // This sets the file path and read network text file. Adjust for your needs. 
+        
         ds.setFileName("C:\\Users\\fredr\\OneDrive - Linköpings universitet\\TNK132\\TNK132\\GUI\\Lab2\\Autopark-Lab2\\loc.txt");
         ds.readCoords();
-        /*
-         * Initialize and show the GUI. The constructor gets access to the DataStore
-         */
-        cui = new ControlUI(ds);
-        cui.setVisible(true);
-        cui.showStatus();
+
+        Object[] options = {"Demo-läge", "Drift-läge"}; 
+        int choice = javax.swing.JOptionPane.showOptionDialog( 
+        null, 
+        "Välj startläge för Autopark:", 
+        "Startinställningar", 
+        javax.swing.JOptionPane.YES_NO_OPTION, 
+        javax.swing.JOptionPane.QUESTION_MESSAGE, 
+        null, 
+        options, 
+        options[0]); 
+        
+        boolean isDemo = (choice == 0); 
+        
+        
+        // Initialize and show the GUI. The constructor gets access to the DataStore         
+        cui = new ControlUI(ds, isDemo); 
+        cui.setVisible(true); 
+        cui.showStatus(); 
 
         /* Initialize the objects rr and gui
          */
@@ -47,7 +57,7 @@ public class AGVparking {
 
         // 4. Starta trådarna
         t1.start();
-        t2.start();
+        // t2.start(); 
         
         
         OptPlan op = new OptPlan(ds);

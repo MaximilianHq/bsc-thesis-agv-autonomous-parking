@@ -1,1 +1,6 @@
-Fixa GitHub repo och projekt
+skicka och te emot data :
+  crc, respons
+alla kretskort designade
+kommunikation mellan mcuer
+sonar fungerande
+kommunikation med DWM?

@@ -1,109 +1,198 @@
-/* 
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license 
- */ 
+package com.mycompany.bluetoothtransceiver;
 
-package com.mycompany.bluetoothtransceiver; 
+import java.io.*;
+import javax.microedition.io.*;
 
-/** 
- * Interaktiv klient för tvåvägskommunikation (chatt-klient). 
- * Denna kod körs hos sändaren och ansluter till en server (t.ex. BluetoothMirror). 
- * Den läser in text från tangentbordet, skickar det, och väntar därefter på 
- * att få ett svar (ACK) tillbaka från servern innan nästa meddelande kan skickas. 
- * Följande kod kräver att Linux körs som OS hos både sändare och mottagare. 
- * * @author kts 
- */ 
+public class BluetoothTransceiver {
 
-import java.io.*; 
-import javax.microedition.io.*; 
-import javax.bluetooth.*; 
+    // Gör ut-strömmen statisk så att metoder som skickaACK också kommer åt den
+    static OutputStream bluetooth_ut; 
 
-public class BluetoothTransceiver { 
-    
-    public static void main(String args[]) { 
-        try { 
-            // 1. Försöker upprätta en anslutning till mottagaren (Servern) 
-            // Byt ut MAC-adressen till mottagarens aktuella adress och kanal 
-            StreamConnection anslutning = (StreamConnection) Connector.open("btspp://d4d252ed2d43:1"); // MAC-address och kanal ändras till AGV:n 
-            
-            // 2. Förbereder strömmar för kommunikation: 
-            // bluetooth_ut: För att skicka text TILL mottagaren 
-            PrintStream bluetooth_ut = new PrintStream(anslutning.openOutputStream()); 
-            
-            // bluetooth_in: För att läsa inkommande svar FRÅN mottagaren 
-            BufferedReader bluetooth_in = new BufferedReader(new InputStreamReader(anslutning.openInputStream())); 
-            
-            // 3. Startar en oändlig loop för kontinuerlig kommunikation 
-            while (true) { // tangentbord: För att läsa det användaren skriver lokalt i konsolen 
-            BufferedReader tangentbord = new BufferedReader(new InputStreamReader(System.in)); 
-            // Den här ska bytas ut mot att "tangentbord" ska vara den instruktion som krävs för att följa linjen 
-            // som tagits fram med vår variant av Dijkstras algoritm. Det Fredrik har gjort! 
-            
-            int Instruktion_ut = new Dijkstras_Algoritm(value_for_an_Instruction); 
-            // Dessa är samma tanke! Inte löst hur det ska göras än! 
-            vector Instruktion_ut = [x1, x2, x3, x4, Node_for_new_Instruction, Instruktion_Langd]; 
-            // = [vänster fram, höger fram, vänster bak, höger bak, Nod där ny rörelse ska påbörjas, tid/celler]; 
-            // x1, x2, x3, x4 = [-1, 0 , 1] = [Back, Stilla, Fram] 
+    public static void main(String args[]) {
+        try {
+            // 1. Upprätta anslutning
+            System.out.println("Ansluter till AGV...");
+            StreamConnection anslutning = (StreamConnection) Connector.open("btspp://3c71bfcf083e:1");
+            System.out.println("Ansluten!");
+
+            // 2. Förbered strömmar (rena data-strömmar för bytes)
+            bluetooth_ut = anslutning.openOutputStream();
+            InputStream bluetooth_in = anslutning.openInputStream(); 
+            BufferedReader tangentbord = new BufferedReader(new InputStreamReader(System.in));
+
+            // 3. Huvudloop (Ping-pong testning)
+            while (true) {
+                // --- SÄNDA DATA (TEST) ---
+                System.out.println("\nSkriv testdata (t.ex. 'M123') eller tryck Enter för att vänta på mottagning:");
+                String meddelande_ut = tangentbord.readLine();
                 
-                // Läs en rad text som användaren skriver in via tangentbordet 
-                // Tas bort? 
-                String meddelande_ut = tangentbord.readLine(); 
-                
+                if (meddelande_ut != null && !meddelande_ut.isEmpty()) {
+                    if (meddelande_ut.equalsIgnoreCase("exit")) break;
 
-        /* 
-                if (Instruktion_ut == Instruktion_Forward) { 
-                // Instruktion för vänster framhjul kör framåt, höger framhjul kör framåt, vänster bakhjul kör framåt & höger bakhjul kör framåt. 
-                } 
-                else if (Instruktion_ut == Instruktion_Reverse) { 
-                // Instruktion för vänster framhjul kör bakåt, höger framhjul kör bakåt, vänster bakhjul kör bakåt & höger bakhjul kör bakåt. 
-                } 
-                else if (Instruktion_ut == Instruktion_Left) { 
-                // Instruktion för vänster framhjul kör framåt, höger framhjul kör bakåt, vänster bakhjul kör bakåt & höger bakhjul kör framåt. 
-                } 
-                else if (Instruktion_ut == Instruktion_Right) { 
-                // Instruktion för vänster framhjul kör bakåt, höger framhjul kör framåt, vänster bakhjul kör framåt & höger bakhjul kör bakåt. 
-                } 
-                else if (Instruktion_ut == Instruktion_Forward_Left) { 
-                // Instruktion för vänster framhjul kör framåt, höger framhjul är still, vänster bakhjul är still & höger bakhjul kör framåt. 
-                } 
-                else if (Instruktion_ut == Instruktion_Forward_Right) { 
-                // Instruktion för vänster framhjul är still, höger framhjul kör framåt, vänster bakhjul kör framåt & höger bakhjul är still. 
-                } 
-                else if (Instruktion_ut == Instruktion_Reverse_Left) { 
-                // Instruktion för vänster framhjul är still, höger framhjul kör bakåt, vänster bakhjul kör bakåt & höger bakhjul är still. 
-                } 
-                else if (Instruktion_ut == Instruktion_Reverse_Right) { 
-                // Instruktion för vänster framhjul kör bakåt, höger framhjul är still, vänster bakhjul är still & höger bakhjul kör bakåt. 
-                } 
-        } 
-          */       
-                // Om användaren avbryter (t.ex. Ctrl+C), bryt loopen 
-                if (Instruktion == null) { 
-                    break; 
-                } 
-                
-                // Skicka tangentbordsinmatningen över Bluetooth till mottagaren 
-                bluetooth_ut.println(Instruktion_ut); 
-                
-                // Blockerar (väntar) tills mottagaren skickar ett svar tillbaka 
-                String Position_in = bluetooth_in.readLine(); 
+                    // Bygg ett testpaket (För testning från tangentbord)
+                    byte typeByte = (byte) meddelande_ut.charAt(0);
+                    byte[] dataBytes = meddelande_ut.substring(1).getBytes();
 
-                vector Stopp = [0, 0, 0, 0, 
+                    // 3A. Skapa en temporär array (Typ + Data) för att använda vår checksumme-funktion
+                    byte[] dataForChecksumma = new byte[1 + dataBytes.length];
+                    dataForChecksumma[0] = typeByte;
+                    System.arraycopy(dataBytes, 0, dataForChecksumma, 1, dataBytes.length);
 
-                // int eller double eller vector Position_in = bluetooth.in.readLine(); 
-                // if (Position_in != inom +-1 cell från linjen) { 
-                // bluetooth_ut.println(Stopp); 
-                // Här behöver det nog delas upp på något vis så det är tydligt vad som läses in till vilken variabel. 
+                    // 3B. BERÄKNA CHECKSUMMA VID SÄNDNING
+                    byte checksum = beraknaChecksumma(dataForChecksumma);
+                    System.out.println("Skickar paket med checksum: " + checksum);
 
-            } 
+                    // 3C. Skicka iväg paketet
+                    bluetooth_ut.write('$');
+                    bluetooth_ut.write(typeByte);
+                    bluetooth_ut.write(dataBytes);
+                    bluetooth_ut.write(checksum);
+                    bluetooth_ut.write('\n');
+                    bluetooth_ut.flush();
+                }
+
+                // --- TA EMOT DATA (BYTE FÖR BYTE) ---
+                ByteArrayOutputStream mottagarBuffer = new ByteArrayOutputStream();
+                int inkommandeByte;
+                boolean startHittad = false;
+
+                // Läs en byte i taget. Avbryt loopen när vi hittar '\n'
+                while ((inkommandeByte = bluetooth_in.read()) != -1) {
+                    if (inkommandeByte == '$') {
+                        startHittad = true;
+                        mottagarBuffer.reset(); // Rensa gammalt skräp
+                    }
+                    
+                    if (startHittad) {
+                        mottagarBuffer.write(inkommandeByte);
+                        
+                        if (inkommandeByte == '\n') {
+                            break; // Hela meddelandet är nu inläst!
+                        }
+                    }
+                }
+
+                byte[] fardigtMeddelande = mottagarBuffer.toByteArray();
                 
-                // Skriv ut svaret från mottagaren 
-                System.out.println("Fick tillbaka position: " + position_in); 
-            } 
-            
-            // Stäng anslutningen om loopen bryts 
-            anslutning.close(); 
+                // Tolka och konvertera meddelandet till variabler 
+                hanteraInkommandeMeddelande(fardigtMeddelande);
+            }
+
+            // Stäng anslutningen snyggt om loopen bryts
+            anslutning.close();
         } catch (Exception e) {
-            System.out.print(e.toString());
+            System.out.print("Ett fel uppstod: " + e.toString());
         }
+    }
+
+    // --- METOD FÖR ATT TOLKA INKOMMANDE MEDDELANDEN ---
+    public static void hanteraInkommandeMeddelande(byte[] data) {
+        if (data == null || data.length < 4) return;
+        
+        if (data[0] != '$') {
+            System.out.println("Ogiltigt meddelande, saknar startbyte.");
+            return;
+        }
+
+        byte meddelandeTyp = data[1];
+        byte mottagenChecksumma = data[data.length - 2]; // Näst sista byten är alltid C
+
+        // 1. BERÄKNA CHECKSUMMA VID MOTTAGNING FÖR ATT VALIDERA
+        // Vi plockar ut all data mellan $ och C (dvs Typ, Positioner, Status, Sekvens)
+        int dataLangd = data.length - 3; 
+        byte[] dataForChecksumma = new byte[dataLangd];
+        System.arraycopy(data, 1, dataForChecksumma, 0, dataLangd);
+
+        if (beraknaChecksumma(dataForChecksumma) != mottagenChecksumma) {
+            System.out.println("Felaktig checksumma mottagen! Kastar paketet.");
+            
+            // Frivilligt: Här hade ni kunnat svara med ett NACK för fel checksumma
+            // skickaACK(bluetooth_ut, (byte) 3, data[data.length - 3]); 
+            return;
+        }
+
+        // 2. TOLKA MEDDELANDET (Nu vet vi att det är helt och felfritt)
+        switch (meddelandeTyp) {
+            case 'M':
+                if (data.length == 8) { // Protokoll: $, M, XX, YY, L, S, C, \n
+                    int posX = data[2] & 0xFF;
+                    int posY = data[3] & 0xFF;
+                    int status = data[4] & 0xFF;
+                    int sekvensnummer = data[5] & 0xFF;
+                    
+                    System.out.println("--- POSITION UPPDATERAD ---");
+                    System.out.println("X: " + posX + ", Y: " + posY);
+                    System.out.println("Status: " + status + ", Sekvens: " + sekvensnummer);
+                    
+                    // SKICKA ACK! (Status 1 = Godkänt)
+                    skickaACK(bluetooth_ut, (byte) 1, sekvensnummer);
+                }   break;
+            case 'H':
+                if (data.length == 7) { // Protokoll: $, H, XX, YY, S, C, \n
+                    int posX = data[2] & 0xFF;
+                    int posY = data[3] & 0xFF;
+                    int sekvensnummer = data[4] & 0xFF;
+                    
+                    System.out.println("--- Akta HINDER!!! ---");
+                    System.out.println("Hinder vid X: " + posX + ", Y: " + posY);
+                    
+                    // SKICKA ACK! (Status 1 = Godkänt)
+                    skickaACK(bluetooth_ut, (byte) 1, sekvensnummer);
+                }   break;
+            case 'A':
+                // Om AGV:n skickar en ACK/NACK till oss
+                if (data.length == 6) { // Protokoll: $, A, B, S, C, \n
+                    int statusB = data[2] & 0xFF;
+                    int sekvensnummer = data[3] & 0xFF;
+                    System.out.println("Mottog svarsmeddelande från AGV! Statuskod: " + statusB + " för sekvens: " + sekvensnummer);
+                }   break;
+            default:
+                System.out.println("Okänd meddelandetyp: " + (char)meddelandeTyp);
+                break;
+        }
+    }
+
+    // --- METOD FÖR ATT SKICKA SVAR (ACK/NACK) ---
+    public static void skickaACK(OutputStream ut, byte status, int sekvensnummer) {
+        try {
+            byte sekvensByte = (byte) sekvensnummer;
+            
+            // 1. Skapa array för de bytes som ska ingå i checksumman
+            byte[] dataForChecksumma = new byte[] { 'A', status, sekvensByte };
+            
+            // 2. BERÄKNA CHECKSUMMA IGEN (För svarsmeddelandet)
+            byte checksum = beraknaChecksumma(dataForChecksumma);
+            
+            // 3. Bygg det kompletta paketet
+            byte[] ackPaket = new byte[] {
+                '$', 
+                'A', 
+                status, 
+                sekvensByte, 
+                checksum, 
+                '\n'
+            };
+            
+            // 4. Skicka iväg det
+            ut.write(ackPaket);
+            ut.flush(); 
+            
+            if (status == 1) {
+                System.out.println("-> Skickade ACK för sekvens: " + sekvensnummer);
+            } else {
+                System.out.println("-> Skickade NACK (Felkod " + status + ") för sekvens: " + sekvensnummer);
+            }
+            
+        } catch (Exception e) {
+            System.out.println("Kunde inte skicka svarsmeddelande: " + e.getMessage());
+        }
+    }
+
+    public static byte beraknaChecksumma(byte[] data) {
+        byte crc = 0;
+        for (byte b : data) {
+            crc ^= b; 
+        }
+        return crc;
     }
 }
