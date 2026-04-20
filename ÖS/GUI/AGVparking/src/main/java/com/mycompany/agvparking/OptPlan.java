@@ -91,13 +91,40 @@ public class OptPlan {
         LinkedList<Vertex> path = null;
 
         if (startNodeId >= 0 && startNodeId < nodes.size() && endNodeId >= 0 && endNodeId < nodes.size()) {
-            dijkstra.execute(nodes.get(startNodeId));
-            path = dijkstra.getPath(nodes.get(endNodeId));
             
-            ds.currentPath = path; // Spara till DataStore
+            // Beräkna raksträckan (70 cm / gridsize 10 = 7 rutor)
+            int straightDistance = 7;
+            int entryNodeId = endNodeId - straightDistance;
+            
+            
+            // Kontrollera att infarten är på samma rad och inom kartan
+            if (entryNodeId >= 0 && (entryNodeId / ds.columns == endNodeId / ds.columns)) // Kör Dijkstra till punkten där raksträckan börjar
+            {
+            dijkstra.execute(nodes.get(startNodeId));
+            path = dijkstra.getPath(nodes.get(entryNodeId));
+            
+            if (path != null) {
+                    // Lägg manuellt till de sista 7 rutorna fram till målet
+                    for (int k = 1; k <= straightDistance; k++) {
+                        path.add(nodes.get(entryNodeId + k));
+                    }
+
+                    System.out.println("Rutt hittad: " + path.size() + "steg");
+            }
+            }
+            
+            if (path == null) {
+                    // Om vi inte kan köra rakt (t.ex. nära väggen), kör vanlig Dijkstra som backup så programmet ej kraschar
+                    dijkstra.execute(nodes.get(startNodeId));
+                    path = dijkstra.getPath(nodes.get(endNodeId));
+                    System.out.println("Rutt hittad, AGVs rotation ej godkänd för parkeringsmanöver");
+                }
+
+                // Spara till DataStore 
+                ds.currentPath = path;
 
             if (path != null) {
-                System.out.println("Rutt hittad: " + path.size() + " steg.");
+                
                 // Rita ut vägen i matrisen
                 for (Vertex v : path) {
                     int id = Integer.parseInt(v.getId());
