@@ -56,8 +56,8 @@ public class RouteOptimizer {
                 if (dx == currentDx && dy == currentDy) {
                     stepCount++;
                 } else {
-                    // Riktningen ändrades! Skriv ut den gamla instruktionen...
-                    printInstruction(currentDx, currentDy, stepCount);
+                    // Skriv ut instruktion
+                    printInstruction(currentDx, currentDy, stepCount, currentX, currentY);
 
                     // ... och börja räkna på den nya riktningen
                     currentDx = dx;
@@ -69,14 +69,20 @@ public class RouteOptimizer {
 
         // När loopen är klar måste vi skriva ut den sista rörelsen som vi räknat på
         if (!firstMove) {
-            printInstruction(currentDx, currentDy, stepCount);
+            // Räkna ut slutmålet för den allra sista sträckan ---
+            Vertex lastNode = path.get(path.size() - 1);
+            int lastId = Integer.parseInt(lastNode.getId());
+            int finalX = lastId % ds.columns;
+            int finalY = lastId / ds.columns;
+            // Skriv ut instruktion
+            printInstruction(currentDx, currentDy, stepCount, finalX, finalY);
         }
 
         System.out.println("--- Optimering klar ---\n");
     }
 
     // Hjälpmetod för att tolka dx och dy till de 8 möjliga manövrarna
-    private void printInstruction(int dx, int dy, int steps) {
+    private void printInstruction(int dx, int dy, int steps, int targetX, int targetY) {
         String directionText = "";
         int direction = 0;
 
@@ -112,5 +118,11 @@ public class RouteOptimizer {
         // Här skriver vi ut det i konsolen. Längre fram är det kanske här 
         // du skapar ett meddelande och skickar det via nätverk/Bluetooth!
         System.out.println("Körinstruktion: Åk " + directionText + " i " + steps + " steg.");
+        
+        // --- NYTT: Lägg till instruktionen i brevlådan för Bluetooth! ---
+        if (ds.instructionQueue != null) {
+            // Skapar ny AgvInstruction(manöver, hastighet, steg, mål-X, mål-Y)
+            ds.instructionQueue.add(new AgvInstruction(direction, 100, steps, targetX, targetY));
+        }
     }
 }

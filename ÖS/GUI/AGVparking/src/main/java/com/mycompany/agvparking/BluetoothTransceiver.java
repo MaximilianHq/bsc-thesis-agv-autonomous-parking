@@ -1,4 +1,4 @@
-package com.mycompany.agvparking; // Se till att namnet matchar ditt paket!
+package com.mycompany.agvparking;
 
 import java.io.*;
 import javax.microedition.io.*;
@@ -10,7 +10,7 @@ public class BluetoothTransceiver implements Runnable {
     private OutputStream bluetooth_ut;
     private InputStream bluetooth_in;
     
-    private int nuvarandeSekvens = 0; // Håller koll på sekvensnummer (0-255)
+    private int nuvarandeSekvens = 0; // Sekvensnummer enligt protokoll [cite: 19, 88]
 
     public BluetoothTransceiver(DataStore ds, ControlUI cui) {
         this.ds = ds;
@@ -20,187 +20,131 @@ public class BluetoothTransceiver implements Runnable {
     @Override
     public void run() {
         try {
-            cui.appendStatus("Bluetooth: Ansluter till AGV...\n");
-            // OBS: Byt ut adressen till er riktiga AGV-adress!
+            cui.appendStatus("Bluetooth: Försöker ansluta till AGV...\n");
+            // ANPASSNING: Se till att adressen matchar din AGV!
             StreamConnection anslutning = (StreamConnection) Connector.open("btspp://3c71bfcf083e:1");
-            cui.appendStatus("Bluetooth: Ansluten!\n");
+            cui.appendStatus("Bluetooth: Ansluten och redo!\n");
 
             bluetooth_ut = anslutning.openOutputStream();
             bluetooth_in = anslutning.openInputStream();
 
-            // 1. Starta mottagartråden (Lyssnar på AGVn)
+            // 1. Starta mottagartråden (Lyssnar på AGV:ns $P-meddelanden)
             startaMottagarTrad();
 
-            // 2. Huvudloop (Sänder till AGVn)
+            // 2. Sändarloop: Håller koll på kön och väntar på rätt position
             while (!ds.isStopped) {
                 
-                // Om användaren tryckt på STOP
                 if (ds.isPaused) {
-                    // Om vi behöver skicka Stanna ($XSC\n) direkt
-                    // skickaStannaKommando(); 
                     Thread.sleep(500);
                     continue;
                 }
 
-                // Finns det instruktioner att skicka?
+                // Finns det en ny instruktion i brevlådan?
                 if (ds.instructionQueue != null && !ds.instructionQueue.isEmpty()) {
-                    AgvInstruction instruktion = ds.instructionQueue.poll(); // Plocka ut och ta bort från kön
+                    AgvInstruction instruktion = ds.instructionQueue.poll();
                     
-                    // Skapa datan för checksumman: [Typ, Manöver, Hastighet] -> ['D', M, V]
-                    byte[] dataForChecksumma = new byte[] {
-                        'D', 
-                        (byte) instruktion.maneuver, 
-                        (byte) instruktion.velocity
-                    };
-                    
-                    byte checksum = beraknaChecksumma(dataForChecksumma);
-                    byte sekvensByte = (byte) nuvarandeSekvens;
+                    // Skapa Körkommando enligt protokoll: $ D M V S C \n [cite: 19]
+                    // Checksumman beräknas på Typ + Data (D + M + V) [cite: 94]
+                    byte[] dataForCrc = new byte[] { 'D', (byte) instruktion.maneuver, (byte) instruktion.velocity };
+                    byte checksum = beraknaChecksumma(dataForCrc);
+                    byte seq = (byte) nuvarandeSekvens;
 
-                    // Bygg hela paketet: $ D M V S C \n
-                    byte[] komplettPaket = new byte[] {
-                        '$',
-                        'D',
-                        (byte) instruktion.maneuver,
-                        (byte) instruktion.velocity,
-                        sekvensByte,
-                        checksum,
-                        '\n'
-                    };
+                    byte[] paket = new byte[] { '$', 'D', (byte) instruktion.maneuver, (byte) instruktion.velocity, seq, checksum, '\n' };
 
-                    bluetooth_ut.write(komplettPaket);
+                    // Skicka till AGV
+                    bluetooth_ut.write(paket);
                     bluetooth_ut.flush();
                     
-                    cui.logSent("Körkommando M:" + instruktion.maneuver + " V:" + instruktion.velocity + " Seq:" + nuvarandeSekvens);
-                    
-                    // Stega sekvensnumret (0-255)
+                    cui.logSent("M:" + instruktion.maneuver + " (Mål: " + instruktion.targetX + "," + instruktion.targetY + ") Seq:" + nuvarandeSekvens);
                     nuvarandeSekvens = (nuvarandeSekvens + 1) % 256;
-                    
-                    // Här borde man egentligen lägga in en Stop-And-Wait logik 
-                    // som väntar på ACK innan vi loopar och skickar nästa meddelande!
-                    Thread.sleep(1000); // Tillfällig paus
+
+                    // --- POSITIONS-LÅS (Stop and Wait för koordinater) ---
+                    // Vi pausar här och väntar på att AGV:n skickar en position som matchar målet
+                    boolean framme = false;
+                    while (!framme && !ds.isStopped && !ds.isPaused) {
+                        
+                        // Räkna ut AGV:ns nuvarande position i rutnätet (baserat på inkommande P-meddelanden)
+                        int currentGridX = (int) (ds.robotX / ds.gridsize);
+                        int currentGridY = (int) (ds.robotY / ds.gridsize);
+                        
+                        if (currentGridX == instruktion.targetX && currentGridY == instruktion.targetY) {
+                            framme = true;
+                            cui.logSent("Mål nått! Plockar nästa instruktion...");
+                        } else {
+                            Thread.sleep(100); // Vänta 100ms innan vi kollar koordinaten igen
+                        }
+                    }
                 } else {
-                    Thread.sleep(200); // Ingen data att skicka, vänta lite
+                    Thread.sleep(200); // Ingen instruktion i kön, vila lite
                 }
             }
-            
             anslutning.close();
-            cui.appendStatus("Bluetooth: Frånkopplad.\n");
             
         } catch (Exception e) {
-            cui.appendStatus("Bluetooth Fel: " + e.getMessage() + "\n");
+            cui.appendStatus("Bluetooth-fel: " + e.getMessage() + "\n");
         }
     }
 
     private void startaMottagarTrad() {
-        Thread mottagarTrad = new Thread(new Runnable() {
+        Thread t = new Thread(new Runnable() {
             public void run() {
                 try {
-                    ByteArrayOutputStream mottagarBuffer = new ByteArrayOutputStream();
-                    int inkommandeByte;
-                    boolean startHittad = false;
+                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                    int b;
+                    boolean start = false;
 
-                    while (!ds.isStopped && (inkommandeByte = bluetooth_in.read()) != -1) {
-                        if (inkommandeByte == '$') {
-                            startHittad = true;
-                            mottagarBuffer.reset();
-                        }
-                        
-                        if (startHittad) {
-                            mottagarBuffer.write(inkommandeByte);
-                            if (inkommandeByte == '\n') {
-                                byte[] fardigtMeddelande = mottagarBuffer.toByteArray();
-                                hanteraInkommandeMeddelande(fardigtMeddelande);
-                                startHittad = false;
+                    while (!ds.isStopped && (b = bluetooth_in.read()) != -1) {
+                        if (b == '$') { start = true; buffer.reset(); }
+                        if (start) {
+                            buffer.write(b);
+                            if (b == '\n') {
+                                hanteraInkommandeMeddelande(buffer.toByteArray());
+                                start = false;
                             }
                         }
                     }
-                } catch (Exception e) {
-                    System.out.println("Mottagartråden avslutades.");
-                }
+                } catch (Exception e) {}
             }
         });
-        mottagarTrad.start();
+        t.start();
     }
 
     private void hanteraInkommandeMeddelande(byte[] data) {
         if (data == null || data.length < 4) return;
         
-        byte meddelandeTyp = data[1];
-        byte mottagenChecksumma = data[data.length - 2]; 
+        byte typ = data[1];
+        
+        // Enligt protokoll (sid 7): Positionsuppdatering börjar med 'P' [cite: 71]
+        if (typ == 'P' && data.length == 8) {
+            int x = data[2] & 0xFF;
+            int y = data[3] & 0xFF;
+            int seq = data[5] & 0xFF;
 
-        // Enligt protokoll (sid 9): Checksumman beräknas på Typ + Data (exklusive Sekvens och \n)
-        int dataLangdForCrc = data.length - 4; 
-        byte[] dataForChecksumma = new byte[dataLangdForCrc];
-        System.arraycopy(data, 1, dataForChecksumma, 0, dataLangdForCrc);
-
-        if (beraknaChecksumma(dataForChecksumma) != mottagenChecksumma) {
-            int felSekvens = data[data.length - 3] & 0xFF;
-            cui.logReceived("FEL CRC från AGV! Seq: " + felSekvens);
-            skickaACK((byte) 3, felSekvens); // 3 = Checksumma icke godkänd
-            return;
-        }
-
-        switch (meddelandeTyp) {
-            case 'P': // ÄNDRAD FRÅN 'M' TILL 'P' enligt protokoll
-                if (data.length == 8) { 
-                    int posX = data[2] & 0xFF;
-                    int posY = data[3] & 0xFF;
-                    int status = data[4] & 0xFF;
-                    int sekvensnummer = data[5] & 0xFF;
-                    
-                    cui.logReceived("Position: X" + posX + " Y" + posY + " Stat:" + status);
-                    
-                    // Uppdatera GUI med AGVns riktiga position här!
-                    // ds.robotX = posX; ds.robotY = posY; ds.updateUiflag = true;
-                    
-                    skickaACK((byte) 1, sekvensnummer);
-                } 
-                break;
-
-            case 'H':
-                if (data.length == 7) { 
-                    int posX = data[2] & 0xFF;
-                    int posY = data[3] & 0xFF;
-                    int sekvensnummer = data[4] & 0xFF;
-                    
-                    cui.logReceived("Hinder upptäckt: X" + posX + " Y" + posY);
-                    skickaACK((byte) 1, sekvensnummer);
-                } 
-                break;
-
-            case 'A':
-                if (data.length == 6) { 
-                    int statusSvar = data[2] & 0xFF;
-                    int sekvensnummer = data[3] & 0xFF;
-                    
-                    cui.logReceived("ACK (" + statusSvar + ") för Seq: " + sekvensnummer);
-                    // Här borde vi flagga att "Meddelandet kom fram, okej att skicka nästa i kön!"
-                } 
-                break;
+            // VIKTIGT: Uppdatera DataStore så att sändar-loopen ser att vi rör oss!
+            ds.robotX = x * ds.gridsize + (ds.gridsize / 2.0);
+            ds.robotY = y * ds.gridsize + (ds.gridsize / 2.0);
+            ds.updateUiflag = true;
+            
+            cui.logReceived("AGV Position: (" + x + "," + y + ")");
+            cui.repaint(); // Uppdatera gula pricken på kartan direkt
+            
+            skickaACK((byte) 1, seq); // Bekräfta mottagning [cite: 19, 82]
         }
     }
 
-    private void skickaACK(byte status, int sekvensnummer) {
+    private void skickaACK(byte status, int seq) {
         try {
-            byte sekvensByte = (byte) sekvensnummer;
-            byte[] dataForChecksumma = new byte[] { 'A', status }; // Typ + Data (Enligt sid 9)
-            byte checksum = beraknaChecksumma(dataForChecksumma);
-            
-            byte[] ackPaket = new byte[] { '$', 'A', status, sekvensByte, checksum, '\n' };
-            
-            bluetooth_ut.write(ackPaket);
-            bluetooth_ut.flush(); 
-            
-        } catch (Exception e) {
-            cui.appendStatus("Kunde inte skicka svarsmeddelande.\n");
-        }
+            byte[] dataForCrc = new byte[] { 'A', status };
+            byte crc = beraknaChecksumma(dataForCrc);
+            byte[] paket = new byte[] { '$', 'A', status, (byte)seq, crc, '\n' };
+            bluetooth_ut.write(paket);
+            bluetooth_ut.flush();
+        } catch (Exception e) {}
     }
 
     private byte beraknaChecksumma(byte[] data) {
         byte crc = 0;
-        for (byte b : data) {
-            crc ^= b; 
-        }
+        for (byte b : data) { crc ^= b; } // XOR-checksumma enligt protokoll [cite: 94]
         return crc;
     }
 }
