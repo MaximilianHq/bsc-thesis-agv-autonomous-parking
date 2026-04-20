@@ -10,11 +10,13 @@ package com.mycompany.agvparking;
  */
 
 public class AgvInstruction {
-    public int direction;
+    public int maneuver;
+    public int velocity; // Kanske ska ändras till angleAGV
     public int steps;
 
-    public AgvInstruction(int direction, int steps) {
-        this.direction = direction;
+    public AgvInstruction(int maneuver, int velocity, int steps) {
+        this.maneuver = maneuver;
+        this.velocity = velocity;
         this.steps = steps;
     }
-}
+}   
