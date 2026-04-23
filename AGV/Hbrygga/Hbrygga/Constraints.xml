@@ -9,7 +9,6 @@
     <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="VREG" ConstraintNetId="8b21e80b-0f4c-4e75-8620-ea7b15d695f1" />
     <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="BH1" ConstraintNetId="7b0d74a2-e8a8-47b7-a9af-de8ca3fc1288" />
     <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="NetC11B_1" ConstraintNetId="506dde4d-1ade-4b37-b10c-dfe3557714d6" />
-    <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="NetC14A_2" ConstraintNetId="697e65fc-5f49-4ae6-b881-1f7a576c975a" />
     <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="NetC14A_1" ConstraintNetId="35af9f62-599b-4a0f-9d03-2ba28eba1a60" />
     <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="DIR" ConstraintNetId="6703c644-4803-4b78-b582-1e4a60d89720" />
     <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="DRVDIS" ConstraintNetId="845bc9e0-3c00-4705-b436-497931ec0665" />
@@ -31,7 +30,6 @@
     <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="VCC" ConstraintNetId="719782e4-a177-45f7-9c83-9b0ea42c8027" />
     <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="GH2" ConstraintNetId="80301571-4940-4cde-bb5f-4cd3bee9ab73" />
     <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="SCDL" ConstraintNetId="8d6e3983-a8c7-42ab-aad6-b8a4f4081f14" />
-    <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="NetC14B_2" ConstraintNetId="760cebe8-3a71-4a96-9192-d2d7b476f00f" />
     <FlattenedNetName2ConstraintNetIdEntry FlattenedNetName="NetC14B_1" ConstraintNetId="8f1c12fa-236c-443f-bb64-60b7a55f4b60" />
   </FlattenedNetName2ConstraintNetId>
   <CNets>
@@ -179,12 +177,6 @@
       <ConstraintSets />
       <ConstraintNodes />
     </CNet>
-    <CNet Id="760cebe8-3a71-4a96-9192-d2d7b476f00f">
-      <Constraints />
-      <ConstraintsEx />
-      <ConstraintSets />
-      <ConstraintNodes />
-    </CNet>
     <CNet Id="6ce785b4-dead-4dc5-a648-0895d2b306b5">
       <Constraints />
       <ConstraintsEx />
@@ -234,12 +226,6 @@
       <ConstraintNodes />
     </CNet>
     <CNet Id="8f1c12fa-236c-443f-bb64-60b7a55f4b60">
-      <Constraints />
-      <ConstraintsEx />
-      <ConstraintSets />
-      <ConstraintNodes />
-    </CNet>
-    <CNet Id="697e65fc-5f49-4ae6-b881-1f7a576c975a">
       <Constraints />
       <ConstraintsEx />
       <ConstraintSets />
