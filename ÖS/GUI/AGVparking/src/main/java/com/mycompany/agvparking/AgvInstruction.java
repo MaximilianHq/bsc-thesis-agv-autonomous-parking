@@ -20,6 +20,11 @@ public class AgvInstruction {
         this.maneuver = maneuver;
         this.velocity = velocity;
         this.steps = steps;
+<<<<<<< HEAD
         // this.targetX och this.targetY? 
+=======
+        this.targetX = targetX;
+        this.targetY = targetY;
+>>>>>>> 9ff34bc49171e3890eb9609bee53544a25f586a6
     }
 }
