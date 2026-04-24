@@ -16,10 +16,9 @@ public class OptPlan {
     public OptPlan(DataStore ds) {
         this.ds = ds;
     }
-    
 
-    // ÄNDRAD METOD: Tar nu startNode och endNode som parametrar
-    public void createPlan(int startNodeId, int endNodeId) {
+    private void buildGraph() {
+
         nodes = new ArrayList<Vertex>();
         edges = new ArrayList<Edge>();
 
@@ -36,11 +35,13 @@ public class OptPlan {
 // --- 2. Skapa Kanter (Edges)  ---
         for (int i = 0; i < ds.rows; i++) {
             for (int j = 0; j < ds.columns - 1; j++) {
-                
+
                 // Horisontella
                 cost = 1;
                 // Använder != 0 för att täcka in alla typer av hinder
-                if (ds.ObstacleMatrix[j + 1][i] != 0) cost = 1000; 
+                if (ds.ObstacleMatrix[j + 1][i] != 0) {
+                    cost = 1000;
+                }
                 edges.add(new Edge("r", nodes.get(i * ds.columns + j), nodes.get(i * ds.columns + j + 1), cost));
                 edges.add(new Edge("l", nodes.get(i * ds.columns + j + 1), nodes.get(i * ds.columns + j), cost));
 
@@ -48,22 +49,22 @@ public class OptPlan {
                 if (i < ds.rows - 1) {
                     cost = 1.4;
                     // LÖSNING CORNER CLIPPING: Kolla målnoden OCH de två intilliggande rutorna!
-                    if (ds.ObstacleMatrix[j + 1][i + 1] != 0 || 
-                        ds.ObstacleMatrix[j + 1][i] != 0 || 
-                        ds.ObstacleMatrix[j][i + 1] != 0) {
+                    if (ds.ObstacleMatrix[j + 1][i + 1] != 0
+                            || ds.ObstacleMatrix[j + 1][i] != 0
+                            || ds.ObstacleMatrix[j][i + 1] != 0) {
                         cost = 1000;
                     }
                     edges.add(new Edge("dr", nodes.get(i * ds.columns + j), nodes.get((i + 1) * ds.columns + j + 1), cost));
                     edges.add(new Edge("ul", nodes.get((i + 1) * ds.columns + j + 1), nodes.get(i * ds.columns + j), cost));
                 }
-                
+
                 // Diagonala (Upp-Höger & Ner-Vänster)
                 if (i > 0) {
                     cost = 1.4;
                     // LÖSNING CORNER CLIPPING: Kolla målnoden OCH de två intilliggande rutorna!
-                    if (ds.ObstacleMatrix[j + 1][i - 1] != 0 || 
-                        ds.ObstacleMatrix[j + 1][i] != 0 || 
-                        ds.ObstacleMatrix[j][i - 1] != 0) {
+                    if (ds.ObstacleMatrix[j + 1][i - 1] != 0
+                            || ds.ObstacleMatrix[j + 1][i] != 0
+                            || ds.ObstacleMatrix[j][i - 1] != 0) {
                         cost = 1000;
                     }
                     edges.add(new Edge("ur", nodes.get(i * ds.columns + j), nodes.get((i - 1) * ds.columns + j + 1), cost));
@@ -71,33 +72,64 @@ public class OptPlan {
                 }
             }
         }
-        
-        
+
         // --- 3. Skapa Vertikala Kanter ---
         for (int i = 0; i < ds.rows - 1; i++) {
             for (int j = 0; j < ds.columns; j++) {
                 cost = 1;
-                if (ds.ObstacleMatrix[j][i + 1] == 1 || ds.ObstacleMatrix[j][i + 1] == 2) cost = 1000;
-                
+                if (ds.ObstacleMatrix[j][i + 1] == 1 || ds.ObstacleMatrix[j][i + 1] == 2) {
+                    cost = 1000;
+                }
+
                 edges.add(new Edge("d", nodes.get(i * ds.columns + j), nodes.get((i + 1) * ds.columns + j), cost));
                 edges.add(new Edge("u", nodes.get((i + 1) * ds.columns + j), nodes.get(i * ds.columns + j), cost));
             }
         }
+    }
 
+    // ÄNDRAD METOD: Tar nu startNode och endNode som parametrar
+    public void createPlan(int startNodeId, int endNodeId) {
+        buildGraph();
         // --- 4. Kör Dijkstra ---
         Graph graph = new Graph(nodes, edges);
         DijkstraAlgorithm dijkstra = new DijkstraAlgorithm(graph);
-        
+
         LinkedList<Vertex> path = null;
 
         if (startNodeId >= 0 && startNodeId < nodes.size() && endNodeId >= 0 && endNodeId < nodes.size()) {
-            dijkstra.execute(nodes.get(startNodeId));
-            path = dijkstra.getPath(nodes.get(endNodeId));
-            
-            ds.currentPath = path; // Spara till DataStore
+
+            // Beräkna raksträckan (70 cm / gridsize 10 = 7 rutor)
+            int straightDistance = 7;
+            int entryNodeId = endNodeId - straightDistance;
+
+            // Kontrollera att infarten är på samma rad och inom kartan
+            if (entryNodeId >= 0 && (entryNodeId / ds.columns == endNodeId / ds.columns)) // Kör Dijkstra till punkten där raksträckan börjar
+            {
+                dijkstra.execute(nodes.get(startNodeId));
+                path = dijkstra.getPath(nodes.get(entryNodeId));
+
+                if (path != null) {
+                    // Lägg manuellt till de sista 7 rutorna fram till målet
+                    for (int k = 1; k <= straightDistance; k++) {
+                        path.add(nodes.get(entryNodeId + k));
+                    }
+
+                    System.out.println("Rutt hittad: " + path.size() + "steg");
+                }
+            }
+
+            if (path == null) {
+                // Om vi inte kan köra rakt (t.ex. nära väggen), kör vanlig Dijkstra som backup så programmet ej kraschar
+                dijkstra.execute(nodes.get(startNodeId));
+                path = dijkstra.getPath(nodes.get(endNodeId));
+                System.out.println("Rutt hittad, AGVs rotation ej godkänd för parkeringsmanöver");
+            }
+
+            // Spara till DataStore 
+            ds.currentPath = path;
 
             if (path != null) {
-                System.out.println("Rutt hittad: " + path.size() + " steg.");
+
                 // Rita ut vägen i matrisen
                 for (Vertex v : path) {
                     int id = Integer.parseInt(v.getId());
@@ -111,4 +143,23 @@ public class OptPlan {
             }
         }
     }
+
+    //Ny väg för resa tillbaks till startnod
+public void createReturnPlan(int currentNodeId, int targetStartNodeId)
+{
+    buildGraph();
+    
+          Graph graph = new Graph(nodes, edges);
+        DijkstraAlgorithm dijkstra = new DijkstraAlgorithm(graph);
+         LinkedList<Vertex> path = null;
+        dijkstra.execute(nodes.get(currentNodeId));
+                path = dijkstra.getPath(nodes.get(targetStartNodeId));
+                
+                if (path != null)
+                {
+                    ds.currentPath = path;
+                    System.out.println("Hemväg beräknad!");
+                }
+                
+}
 }
