@@ -450,6 +450,11 @@ private boolean planNextMission() {
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         appendStatus("AGV får nu köra. Startar... \n");
+        
+        // Starta Bluetooth
+        BluetoothTransceiver bt = new BluetoothTransceiver(ds, this); // this är evt
+        Thread btThread = new Thread(bt);
+        btThread.start();
 
         if (unvisitedMissions.isEmpty()) {
             unvisitedMissions.clear();
