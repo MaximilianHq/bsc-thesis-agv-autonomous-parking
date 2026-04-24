@@ -1,5 +1,13 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package com.mycompany.agvparking;
 
+/**
+ *
+ * @author fredr
+ */
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -16,22 +24,37 @@ public class DijkstraAlgorithm {
     private Set<Vertex> settledNodes;
     private Set<Vertex> unSettledNodes;
     private Map<Vertex, Vertex> predecessors;
+    
+    // ÄNDRAT: Använder Double istället för Integer för avstånd
     private Map<Vertex, Double> distance;
+    private Set<Vertex> obstacles; 
 
     public DijkstraAlgorithm(Graph graph) {
+        // create a copy of the array so that we can operate on this array
         this.nodes = new ArrayList<Vertex>(graph.getVertexes());
         this.edges = new ArrayList<Edge>(graph.getEdges());
+    }
+    
+    public void addObstacle(Vertex node) {
+        this.obstacles.add(node); 
+    }
+    
+    public void addObstacles(List<Vertex> nodes) {
+        this.obstacles.addAll(nodes); 
     }
 
     public void execute(Vertex source) {
         settledNodes = new HashSet<Vertex>();
         unSettledNodes = new HashSet<Vertex>();
+        
+        // ÄNDRAT: Double
         distance = new HashMap<Vertex, Double>();
         predecessors = new HashMap<Vertex, Vertex>();
-
+        
+        // ÄNDRAT: 0.0 istället för 0
         distance.put(source, 0.0);
         unSettledNodes.add(source);
-
+        
         while (unSettledNodes.size() > 0) {
             Vertex node = getMinimum(unSettledNodes);
             settledNodes.add(node);
@@ -43,8 +66,11 @@ public class DijkstraAlgorithm {
     private void findMinimalDistances(Vertex node) {
         List<Vertex> adjacentNodes = getNeighbors(node);
         for (Vertex target : adjacentNodes) {
+            // Här fungerar det nu eftersom getShortestDistance returnerar double
             if (getShortestDistance(target) > getShortestDistance(node) + getDistance(node, target)) {
+                
                 distance.put(target, getShortestDistance(node) + getDistance(node, target));
+                
                 predecessors.put(target, node);
                 unSettledNodes.add(target);
             }
@@ -88,6 +114,7 @@ public class DijkstraAlgorithm {
         return settledNodes.contains(vertex);
     }
 
+    // ÄNDRAT: Returnerar double. Returnerar Double.MAX_VALUE vid oändligt avstånd.
     public double getShortestDistance(Vertex destination) {
         Double d = distance.get(destination);
         if (d == null) {
@@ -97,9 +124,14 @@ public class DijkstraAlgorithm {
         }
     }
 
+    /*
+     * This method returns the path from the source to the selected target and
+     * NULL if no path exists
+     */
     public LinkedList<Vertex> getPath(Vertex target) {
         LinkedList<Vertex> path = new LinkedList<Vertex>();
         Vertex step = target;
+        // check if a path exists
         if (predecessors.get(step) == null) {
             return null;
         }
@@ -108,7 +140,9 @@ public class DijkstraAlgorithm {
             step = predecessors.get(step);
             path.add(step);
         }
+        // Put it into the correct order
         Collections.reverse(path);
         return path;
     }
-}
+
+} 

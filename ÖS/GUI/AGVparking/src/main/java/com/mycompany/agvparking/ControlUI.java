@@ -71,85 +71,122 @@ public class ControlUI extends javax.swing.JFrame {
     } 
     
 private boolean planNextMission() {
-    if (unvisitedMissions.isEmpty()) {
-        appendStatus("Alla uppdrag klara!\n");
-        return false; 
-    }
-
-    OptPlan op = new OptPlan(ds);
-    int startX = (int) (ds.LocationX[0] / ds.gridsize);
-    int startY = (int) (ds.LocationY[0] / ds.gridsize);
-    int startNodeId = (startY * ds.columns) + startX;
-
-    // --- START-KORRIDOR (3 steg rakt fram) ---
-    int dirX = 1; // Justera dessa efter er AGV:s startriktning!
-    int dirY = 0; 
-    java.util.List<Vertex> startKorridor = new java.util.ArrayList<>();
-    for (int i = 0; i <= 3; i++) {
-        int sX = startX + (dirX * i);
-        int sY = startY + (dirY * i);
-        int sId = (sY * ds.columns) + sX;
-        startKorridor.add(new Vertex(String.valueOf(sId), "Nod #" + sId));
-    }
-    int stagingNodeId = Integer.parseInt(startKorridor.get(3).getId());
-
-    int bestIndex = -1;
-    int shortestPathSize = Integer.MAX_VALUE;
-    java.util.List<Vertex> bestPath = null;
-    int bestDestX = -1, bestDestY = -1;
-
-    for (int candidateIndex : unvisitedMissions) {
-        int dX = (int) (ds.LocationX[candidateIndex] / ds.gridsize);
-        int dY = (int) (ds.LocationY[candidateIndex] / ds.gridsize);
-        op.createPlan(stagingNodeId, (dY * ds.columns) + dX);
-        if (ds.currentPath != null && ds.currentPath.size() < shortestPathSize) {
-            shortestPathSize = ds.currentPath.size();
-            bestIndex = candidateIndex;
-            bestDestX = dX; bestDestY = dY;
+        // Om listan är tom är vi färdiga!
+        if (unvisitedMissions.isEmpty()) {
+            appendStatus("Alla uppdrag klara! Alla bilar är parkerade.\n");
+            return false; 
         }
-    }
 
-    if (bestIndex != -1) { 
-        unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
+        OptPlan op = new OptPlan(ds);
+        int startX = (int) (ds.LocationX[0] / ds.gridsize);
+        int startY = (int) (ds.LocationY[0] / ds.gridsize);
+        int startNodeId = (startY * ds.columns) + startX;
 
-        // 90-GRADERS SPÄRR VID PARKERING
-        int[] bX = { bestDestX-1, bestDestX+1, bestDestX-1, bestDestX+1, bestDestX-1, bestDestX+1 };
-        int[] bY = { bestDestY, bestDestY, bestDestY-1, bestDestY+1, bestDestY+1, bestDestY-1 };
-        for (int i = 0; i < bX.length; i++) {
-            if (bX[i] >= 0 && bX[i] < ds.columns && bY[i] >= 0 && bY[i] < ds.rows) {
-                if (ds.ObstacleMatrix[bX[i]][bY[i]] == 0) ds.ObstacleMatrix[bX[i]][bY[i]] = 99;
+        int bestIndex = -1;
+        int shortestPathSize = Integer.MAX_VALUE;
+        java.util.List<Vertex> bestPath = null;
+        int bestDestX = -1;
+        int bestDestY = -1;
+
+        appendStatus("Letar efter närmaste lediga parkeringsruta...\n");
+
+        // TESTAR ALLA OBESÖKTA RUTOR FÖR ATT HITTA DEN KORTASTE VÄGEN
+        for (int candidateIndex : unvisitedMissions) {
+            int destX = (int) (ds.LocationX[candidateIndex] / ds.gridsize);
+            int destY = (int) (ds.LocationY[candidateIndex] / ds.gridsize);
+            int endNodeId = (destY * ds.columns) + destX;
+
+            op.createPlan(startNodeId, endNodeId);
+
+            if (ds.currentPath != null && !ds.currentPath.isEmpty()) {
+                // Är denna väg kortare än vår hittills bästa?
+                if (ds.currentPath.size() < shortestPathSize) {
+                    shortestPathSize = ds.currentPath.size();
+                    bestIndex = candidateIndex;
+                    bestPath = new java.util.ArrayList<>(ds.currentPath); // Spara kopia av vägen
+                    bestDestX = destX;
+                    bestDestY = destY;
+                }
             }
         }
 
-        op.createPlan(stagingNodeId, (bestDestY * ds.columns) + bestDestX);
-        java.util.List<Vertex> outPath = new java.util.ArrayList<>(startKorridor);
-        if (ds.currentPath != null) {
-            outPath.remove(outPath.size() - 1); 
-            outPath.addAll(ds.currentPath);
-        }
+        // NÄR VI HAR TESTAT ALLA, KOLLA OM VI HITTADE NÅGON VÄG ALLS 
+        if (bestIndex != -1) { 
+            appendStatus("Valde parkeringsruta Nr: " + bestIndex + " (Avstånd: " + shortestPathSize + " steg)\n"); 
+            
+            // Ta bort den valda bilen från "att-göra"-listan 
+            unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
 
-        // LÅS UPP SPÄRRAR & MARKERA P-RUTA SOM HINDER
-        for (int i = 0; i < bX.length; i++) {
-            if (bX[i] >= 0 && bX[i] < ds.columns && bY[i] >= 0 && bY[i] < ds.rows) {
-                if (ds.ObstacleMatrix[bX[i]][bY[i]] == 99) ds.ObstacleMatrix[bX[i]][bY[i]] = 0;
+            // --- Markera hela p-rutan som hinder --- 
+            int carWidthInNodes; 
+            int carHeightInNodes; 
+            int offsetX; 
+            int offsetY; 
+
+            if (bestDestY < (ds.rows / 2)) { 
+                carWidthInNodes = 11; 
+                carHeightInNodes = 5; 
+                offsetX = 1; 
+                offsetY = -2; 
+            } else { 
+                carWidthInNodes = 6; 
+                carHeightInNodes = 11; 
+                offsetX = -3; 
+                offsetY = 1; 
+            } 
+
+            for (int dx = 0; dx < carWidthInNodes; dx++) {
+                for (int dy = 0; dy < carHeightInNodes; dy++) {
+                    int blockX = bestDestX + offsetX + dx;
+                    int blockY = bestDestY + offsetY + dy;
+                    
+                    if (blockX >= 0 && blockX < ds.columns && blockY >= 0 && blockY < ds.rows) {
+                        ds.ObstacleMatrix[blockX][blockY] = 1; 
+                    }
+                }
             }
+            // ----------------------------------------
+
+            // Skapa listan för denna specifika Tur och Retur
+            java.util.List<Vertex> roundTrip = new java.util.ArrayList<>(bestPath);
+            
+            // --- NYTT: Fyll på Master-listan istället för att skriva över ---
+            int offset = masterDemoPath.size(); // Håller koll på om det är första rutten
+
+            if (masterDemoPath.isEmpty()) {
+                masterDemoStops.add(0); // Allra första startpunkten
+            }
+
+            // Lägg till vägen DIT
+            masterDemoPath.addAll(bestPath);
+            masterDemoStops.add(masterDemoPath.size() - 1); // Sparar indexet när vi är framme vid P-rutan
+
+            // Skapa vägen tillbaka (vänd på listan)
+            java.util.List<Vertex> returnPath = new java.util.ArrayList<>(bestPath);
+            java.util.Collections.reverse(returnPath);
+            if (!returnPath.isEmpty()) {
+                returnPath.remove(0); // Ta bort första steget så vi inte står stilla vid bytet
+            }
+            
+            // Lägg till vägen HEM
+            masterDemoPath.addAll(returnPath);
+            masterDemoStops.add(masterDemoPath.size() - 1); // Sparar indexet när vi är tillbaka vid basen
+
+            // VIKTIGT: Vi rör inte ds.demoStep här om vi redan är igång och kör. 
+            // Endast om det är den allra första rutten sätter vi den till 0.
+            if (offset == 0) {
+                ds.demoStep = 0; 
+            }
+            
+            updateRobotPosition();
+            return true; // Berättar att vi lyckades ladda en ny rutt
+
+        } else {
+            appendStatus("Kunde inte hitta någon väg till resterande bilar. De är förmodligen inbyggda/blockerade!\n");
+            unvisitedMissions.clear(); 
+            return false; 
         }
-        // ... (Kod för att markera hela P-rutan som hinder här) ...
-
-        op.createReturnPlan((bestDestY * ds.columns) + bestDestX, startNodeId);
-        java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
-        if (!returnPath.isEmpty()) returnPath.remove(0);
-
-        masterDemoPath.addAll(outPath);
-        masterDemoStops.add(masterDemoPath.size() - 1);
-        masterDemoPath.addAll(returnPath);
-        masterDemoStops.add(masterDemoPath.size() - 1);
-
-        updateRobotPosition();
-        return true; 
     }
-    return false;
-}
             
 
 
