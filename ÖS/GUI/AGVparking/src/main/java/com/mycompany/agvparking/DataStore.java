@@ -21,6 +21,7 @@ public class DataStore {
     int locations;
 
     public int demoStep = 0; // Håller koll på var i listan vi är
+    public double agvAngle = 0.0;
 
     
     boolean updateUiflag;
@@ -44,6 +45,7 @@ public class DataStore {
     public List<Vertex> currentPath;
     
     public Queue<AgvInstruction> instructionQueue;
+    double robotAngle;
 
     public DataStore() {
         // Initialize the datastore with fixed size arrays for storing the network data

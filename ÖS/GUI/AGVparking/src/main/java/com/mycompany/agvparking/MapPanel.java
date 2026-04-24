@@ -6,15 +6,23 @@ import javax.swing.JPanel;
 
 /**
  *
- * @author clary35
+ * @author KTS - Grupp 2
  */
 public class MapPanel extends JPanel {
 
     DataStore ds;
+    
+    private java.awt.Image agvImage; 
 
     MapPanel(DataStore ds) {
-        this.ds = ds;
-
+        this.ds = ds; 
+        
+        try { 
+            agvImage = javax.imageio.ImageIO.read(new java.io.File("agvBild.png"));
+        } catch (Exception e) { 
+            System.out.println("Hittade inte agv.png, använder triangel istället."); 
+        } 
+        
         // Din manuella initiering av hinder
         ds.ObstacleMatrix[11][11] = 1;
         ds.ObstacleMatrix[11][12] = 1;
@@ -64,7 +72,7 @@ public class MapPanel extends JPanel {
         final Color GREEN_COLOR = new Color(0, 200, 0);
         // Jag lade till denna för värde 4 (Ljusare röd/rosa)
         final Color LRED_COLOR = new Color(255, 100, 100);
-        final Color AGV_COLOR = new Color(255, 255, 0);
+        final Color AGV_COLOR = new Color(255, 160, 165);
 
         int x, y;
         final int circlesize = 10;
@@ -143,10 +151,40 @@ public class MapPanel extends JPanel {
                 }
 
                 // AGV
-                g.setColor(AGV_COLOR);
+                // g.setColor(AGV_COLOR);
+                // x = (int) (ds.robotX * xscale);
+                // y = (int) (ds.robotY * yscale);
+                // g.fillOval((int) (x - AGVsize / 2), (int) (y - AGVsize / 2), AGVsize, AGVsize);
+                
+                // Nytt, BILD & ROTATION 
                 x = (int) (ds.robotX * xscale);
                 y = (int) (ds.robotY * yscale);
-                g.fillOval((int) (x - AGVsize / 2), (int) (y - AGVsize / 2), AGVsize, AGVsize);
+
+                java.awt.Graphics2D g2d = (java.awt.Graphics2D) g;
+                java.awt.geom.AffineTransform oldTransform = g2d.getTransform();
+
+                // Flytta "pennan"/"pilen" till robotens position på skärmen
+                g2d.translate(x, y);
+                
+                // Rotera pennan med robotens vinkel
+                g2d.rotate(ds.robotAngle);
+
+                if (agvImage != null) {
+                    // Om bilden laddades, rita den!
+                    // Ändra imgWidth och imgHeight för att ändra storlek på AGV:n i GUI:t
+                    int imgWidth = 30; 
+                    int imgHeight = 20;
+                    g2d.drawImage(agvImage, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight, null);
+                } else {
+                    // RESERVLÖSNING: Ritar en gul triangel om agv.png saknas
+                    g2d.setColor(AGV_COLOR);
+                    g2d.fillPolygon(new int[]{-8, -8, 12}, new int[]{-8, 8, 0}, 3);
+                    g2d.setColor(BLACK_COLOR);
+                    g2d.drawPolygon(new int[]{-8, -8, 12}, new int[]{-8, 8, 0}, 3);
+                }
+
+                // Återställ pennan till original-läget så att inte resten av kartan roterar!
+                g2d.setTransform(oldTransform); 
 
             }
 
