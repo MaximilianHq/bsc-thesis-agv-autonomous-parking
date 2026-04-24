@@ -13,10 +13,14 @@ public class AgvInstruction {
     public int maneuver;
     public int velocity; // Kanske ska ändras till angleAGV
     public int steps;
+    public int targetX;
+    public int targetY;
 
-    public AgvInstruction(int maneuver, int velocity, int steps) {
+    public AgvInstruction(int maneuver, int velocity, int steps, int targetX, int targetY) {
         this.maneuver = maneuver;
         this.velocity = velocity;
         this.steps = steps;
+        this.targetX = targetX;
+        this.targetY = targetY;
     }
 }   

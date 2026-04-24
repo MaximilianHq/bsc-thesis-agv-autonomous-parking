@@ -116,10 +116,10 @@ public class RouteOptimizer {
         }
 
         // Här skriver vi ut det i konsolen. Längre fram är det kanske här 
-        // du skapar ett meddelande och skickar det via nätverk/Bluetooth!
+        // vi skapar ett meddelande och skickar det via Bluetooth
         System.out.println("Körinstruktion: Åk " + directionText + " i " + steps + " steg.");
         
-        // --- NYTT: Lägg till instruktionen i brevlådan för Bluetooth! ---
+        // Lägg till instruktionen i brevlådan för Bluetooth
         if (ds.instructionQueue != null) {
             // Skapar ny AgvInstruction(manöver, hastighet, steg, mål-X, mål-Y)
             ds.instructionQueue.add(new AgvInstruction(direction, 100, steps, targetX, targetY));
