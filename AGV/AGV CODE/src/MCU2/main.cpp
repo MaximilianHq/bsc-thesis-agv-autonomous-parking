@@ -5,6 +5,10 @@
 #include "motor_driver.h"
 #include "system_actions.h"
 
+// UART
+#define PIN_MTM_TXD 22
+#define PIN_MTM_RXD 23
+// DRIVER
 #define PIN_ERR 34
 #define PIN_EN 21
 #define PIN_DRV 32
@@ -23,10 +27,10 @@
 #define UART_BAUD 115200
 
 MotorDriver::MotorDriverConfig cfg = {
-    {PIN_DIR1, PIN_PWM1},
-    {PIN_DIR2, PIN_PWM2},
-    {PIN_DIR3, PIN_PWM3},
-    {PIN_DIR4, PIN_PWM4},
+    {PIN_DIR1, PIN_PWM1, 0},
+    {PIN_DIR2, PIN_PWM2, 1},
+    {PIN_DIR3, PIN_PWM3, 2},
+    {PIN_DIR4, PIN_PWM4, 3},
     PIN_DRV,
     PIN_EN,
     PIN_ERR};
@@ -44,10 +48,11 @@ Debug g_debug;
 void setup()
 {
     // ========== UART ==========
-    Serial.begin(UART_BAUD);  // PC
-    Serial1.begin(UART_BAUD); // MCU1
-    Serial.setTimeout(30);    // PC
-    Serial1.setTimeout(30);   // MCU1
+    Serial.begin(UART_BAUD, SERIAL_8N1); // PC
+    Serial1.begin(UART_BAUD, SERIAL_8N1,
+                  PIN_MTM_RXD, PIN_MTM_TXD); // MCU1
+    Serial.setTimeout(30);                   // PC
+    Serial1.setTimeout(30);                  // MCU1
 
     Serial.println("[MAIN] Running setup...");
 
@@ -59,7 +64,9 @@ void setup()
     // md.temperature_error_reset_all();
     md.outputs_enable();
     md.drivers_enable();
-    md.move(0x00, 20, 5000000);
+
+    delay(2000);
+    md.move(0x00, 50, 1000000000);
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
@@ -75,9 +82,9 @@ void loop()
     // ========== CODE ==========
 
     // Read from MCU1 and process packet
-    Comm::Packet mcu_pkt;
-    if (comm_mcu.read(mcu_pkt))
-        sysctrl.on_mcu_pkt_recieved(mcu_pkt);
+    // Comm::Packet mcu_pkt;
+    // if (comm_mcu.read(mcu_pkt))
+    //     sysctrl.on_mcu_pkt_recieved(mcu_pkt);
 
     delay(200);
 }

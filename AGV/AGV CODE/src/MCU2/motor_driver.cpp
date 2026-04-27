@@ -8,9 +8,9 @@ MotorChannel::MotorChannel(MotorChannelConfig &cfg)
 void MotorChannel::execute_move(bool dir, uint8_t percent)
 {
     digitalWrite(_pin_dir, (dir == true) ? HIGH : LOW);
-    ledcWrite(_pin_pwm, percentage_to_bits(percent));
+    ledcWrite(_chnl, percentage_to_bits(percent));
 }
-void MotorChannel::stop() { ledcWrite(_pin_pwm, 0); }
+void MotorChannel::stop() { ledcWrite(_chnl, 0); }
 
 uint32_t MotorChannel::percentage_to_bits(uint8_t percent)
 {
@@ -80,8 +80,8 @@ void MotorDriver::drivers_restart()
     drivers_enable();
 }
 
-void MotorDriver::outputs_enable() { digitalWrite(_pin_drv, HIGH); }
-void MotorDriver::outputs_disable() { digitalWrite(_pin_drv, LOW); }
+void MotorDriver::outputs_enable() { digitalWrite(_pin_drv, LOW); }
+void MotorDriver::outputs_disable() { digitalWrite(_pin_drv, HIGH); }
 void MotorDriver::outputs_restart()
 {
     if (g_debug.driver)
@@ -103,7 +103,7 @@ void MotorDriver::channels_stop_all()
 
 bool MotorDriver::has_error()
 {
-    return (!digitalRead(_pin_err) && // IF SPAM CHANGE TO HIGH
+    return (digitalRead(_pin_err) && // IF SPAM CHANGE TO HIGH
             digitalRead(_pin_en) &&
             digitalRead(_pin_drv))
                ? true
