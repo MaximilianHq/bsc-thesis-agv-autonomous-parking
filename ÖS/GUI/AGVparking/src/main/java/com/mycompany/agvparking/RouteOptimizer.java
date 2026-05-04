@@ -91,11 +91,17 @@ public class RouteOptimizer {
         // Här skriver vi ut det i konsolen. Längre fram är det kanske här 
         // vi skapar ett meddelande och skickar det via Bluetooth
         System.out.println("Körinstruktion: Åk " + directionText + " i " + steps + " steg.");
-        
+
         // Lägg till instruktionen i brevlådan för Bluetooth
-        if (ds.instructionQueue != null) {
-            // Skapar ny AgvInstruction(manöver, hastighet, steg, mål-X, mål-Y)
-            ds.instructionQueue.add(new AgvInstruction(direction, 100, steps, targetX, targetY));
-        }
-    }
+        
+        boolean shouldMonitor = true; 
+        if (direction >= 5) { 
+            shouldMonitor = false; 
+        ds.instructionQueue.add(new AgvInstruction(direction, 100, steps, targetX, targetY, shouldMonitor)); 
+        } 
+        if (direction > 0 && direction <= 4) { 
+            ds.instructionQueue.add(new AgvInstruction(direction, 100, steps, targetX, targetY, shouldMonitor)); 
+        } 
+        
+            }
 }

@@ -1,14 +1,11 @@
 package com.mycompany.agvparking;
 
-
-
 /**
  *
  * @author KTS - G2 
  */
 
 import javax.swing.SwingUtilities;
-
 
 public class ControlUI extends javax.swing.JFrame {
 
@@ -35,7 +32,11 @@ public class ControlUI extends javax.swing.JFrame {
         if (isDemoMode) { 
             jToggleButton1.setVisible(false); 
             jButton2.setVisible(false); 
-            jButton1.setVisible(false); 
+            jButton1.setVisible(false);
+            
+            jScrollPane1.setVisible(true);   // Visa stora rutan 
+            jScrollPane5.setVisible(false);  // Göm "UT"-rutan 
+            jScrollPane6.setVisible(false);  // Göm "IN"-rutan 
             
             appendStatus("Demoläge aktiverat: Beräknar första rutten... \n"); 
             
@@ -66,95 +67,148 @@ public class ControlUI extends javax.swing.JFrame {
         jScrollPane5.setVisible(true); 
         jScrollPane6.setVisible(true); 
         
-        txtSent.setText("Utgående kommandon: \n"); 
-        txtReceived.setText("Inkommande data: \n"); 
+        txtSent.setText("Utgående kommandon: \n"); // Lägg till körriktning osv. 
+        txtReceived.setText("Inkommande data: \n"); // + position, status, hinder, 
     } 
     
 private boolean planNextMission() {
-    if (unvisitedMissions.isEmpty()) {
-        appendStatus("Alla uppdrag klara!\n");
-        return false; 
-    }
-
-    OptPlan op = new OptPlan(ds);
-    int startX = (int) (ds.LocationX[0] / ds.gridsize);
-    int startY = (int) (ds.LocationY[0] / ds.gridsize);
-    int startNodeId = (startY * ds.columns) + startX;
-
-    // --- START-KORRIDOR (3 steg rakt fram) ---
-    int dirX = 1; // Justera dessa efter er AGV:s startriktning!
-    int dirY = 0; 
-    java.util.List<Vertex> startKorridor = new java.util.ArrayList<>();
-    for (int i = 0; i <= 3; i++) {
-        int sX = startX + (dirX * i);
-        int sY = startY + (dirY * i);
-        int sId = (sY * ds.columns) + sX;
-        startKorridor.add(new Vertex(String.valueOf(sId), "Nod #" + sId));
-    }
-    int stagingNodeId = Integer.parseInt(startKorridor.get(3).getId());
-
-    int bestIndex = -1;
-    int shortestPathSize = Integer.MAX_VALUE;
-    java.util.List<Vertex> bestPath = null;
-    int bestDestX = -1, bestDestY = -1;
-
-    for (int candidateIndex : unvisitedMissions) {
-        int dX = (int) (ds.LocationX[candidateIndex] / ds.gridsize);
-        int dY = (int) (ds.LocationY[candidateIndex] / ds.gridsize);
-        op.createPlan(stagingNodeId, (dY * ds.columns) + dX);
-        if (ds.currentPath != null && ds.currentPath.size() < shortestPathSize) {
-            shortestPathSize = ds.currentPath.size();
-            bestIndex = candidateIndex;
-            bestDestX = dX; bestDestY = dY;
+        if (unvisitedMissions.isEmpty()) {
+            appendStatus("Alla uppdrag klara! Alla bilar är parkerade.\n");
+            return false; 
         }
-    }
 
-    if (bestIndex != -1) { 
-        unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
+        OptPlan op = new OptPlan(ds);
+        int startX = (int) (ds.LocationX[0] / ds.gridsize);
+        int startY = (int) (ds.LocationY[0] / ds.gridsize);
+        int startNodeId = (startY * ds.columns) + startX; 
+        
+        int bestIndex = -1;
+        int shortestPathSize = Integer.MAX_VALUE; 
+        java.util.List<Vertex> bestPath = null;
+        
+        int bestExitX = 0; 
+        int bestExitY = 0; 
+        
+        appendStatus("Letar efter närmaste lediga parkeringsruta...\n");
 
-        // 90-GRADERS SPÄRR VID PARKERING
-        int[] bX = { bestDestX-1, bestDestX+1, bestDestX-1, bestDestX+1, bestDestX-1, bestDestX+1 };
-        int[] bY = { bestDestY, bestDestY, bestDestY-1, bestDestY+1, bestDestY+1, bestDestY-1 };
-        for (int i = 0; i < bX.length; i++) {
-            if (bX[i] >= 0 && bX[i] < ds.columns && bY[i] >= 0 && bY[i] < ds.rows) {
-                if (ds.ObstacleMatrix[bX[i]][bY[i]] == 0) ds.ObstacleMatrix[bX[i]][bY[i]] = 99;
+        for (int candidateIndex : unvisitedMissions) {
+            int destX = (int) (ds.LocationX[candidateIndex] / ds.gridsize);
+            int destY = (int) (ds.LocationY[candidateIndex] / ds.gridsize);
+            int endNodeId = (destY * ds.columns) + destX;
+
+            op.setTarget(destX, destY); 
+            op.createPlan(startNodeId, endNodeId);
+
+            if (ds.currentPath != null && !ds.currentPath.isEmpty()) {
+                int parkingCost = 0; 
+                int exitX = destX;   
+                int exitY = destY; 
+
+                // --- STEG 1: HÄR ÄNDRAS VART AGVN SKA HAMNA (exitX/exitY) ---
+                if (destY < (ds.rows / 2) && destX < ds.columns / 3.3) { 
+                    parkingCost = 16; 
+                    exitX = destX - 8; // Ändra dessa siffror för att flytta slutpunkten i X-led
+                    exitY = destY + 4; // Ändra dessa siffror för att flytta slutpunkten i Y-led
+                } 
+                else if (destY < (ds.rows / 2) && destX > (ds.columns / 3.3)) { 
+                    parkingCost = 12; 
+                    exitX = destX + 8; 
+                    exitY = destY + 4; 
+                } else { 
+                    parkingCost = 10; 
+                    exitX = destX;
+                    exitY = destY ; 
+                }
+                
+                int totalCost = ds.currentPath.size() + parkingCost; 
+
+                if (totalCost < shortestPathSize) {
+                    shortestPathSize = totalCost; 
+                    bestIndex = candidateIndex;
+                    bestPath = new java.util.ArrayList<>(ds.currentPath); 
+                    bestExitX = exitX;
+                    bestExitY = exitY;
+                }
             }
         }
-
-        op.createPlan(stagingNodeId, (bestDestY * ds.columns) + bestDestX);
-        java.util.List<Vertex> outPath = new java.util.ArrayList<>(startKorridor);
-        if (ds.currentPath != null) {
-            outPath.remove(outPath.size() - 1); 
-            outPath.addAll(ds.currentPath);
-        }
-
-        // LÅS UPP SPÄRRAR & MARKERA P-RUTA SOM HINDER
-        for (int i = 0; i < bX.length; i++) {
-            if (bX[i] >= 0 && bX[i] < ds.columns && bY[i] >= 0 && bY[i] < ds.rows) {
-                if (ds.ObstacleMatrix[bX[i]][bY[i]] == 99) ds.ObstacleMatrix[bX[i]][bY[i]] = 0;
-            }
-        }
-        // ... (Kod för att markera hela P-rutan som hinder här) ...
-
-        op.createReturnPlan((bestDestY * ds.columns) + bestDestX, startNodeId);
-        java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
-        if (!returnPath.isEmpty()) returnPath.remove(0);
-
-        masterDemoPath.addAll(outPath);
-        masterDemoStops.add(masterDemoPath.size() - 1);
-        masterDemoPath.addAll(returnPath);
-        masterDemoStops.add(masterDemoPath.size() - 1);
-
-        updateRobotPosition();
-        return true; 
-    }
-    return false;
-}
+        
+        if (bestIndex != -1) { 
+            appendStatus("Valde parkeringsruta Nr: " + bestIndex + "\n"); 
+            unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
             
+            int destX = (int) (ds.LocationX[bestIndex] / ds.gridsize);
+            int destY = (int) (ds.LocationY[bestIndex] / ds.gridsize);
 
+            // --- STEG 2: MANÖVERN (Nu helt utan diagonala rörelser) --- 
+            if (destY < (ds.rows / 2) && destX < ds.columns / 3.3) { 
+                appendStatus("Utför parkering: Vänster cirkelbåge \n"); 
+            /** int curX = destX;
+                int curY = destY;
 
-     
+                // 1. "Sving" utåt (Raka steg istället för diagonala)
+                curX++; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+                curY++; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+                curY++; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
 
+                // 2. Backa in (Rakt upp)
+                for(int s = 0; s < 4; s++) {
+                    curY--;
+                    bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Backa"));
+                }
+
+                // 3. "Sving" till vänster (Dela upp curX-- och curY++)
+                curX--; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+                curY++; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+                curX--; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+                curY++; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+
+                // 4. Släpp ner bilen och kör 2 steg framåt (Vänster)
+                for(int s = 0; s < 2; s++) {
+                    curX--;
+                    bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Framåt"));
+                }
+
+                // 5. Kör 4 steg i sidled (Neråt)
+                for(int s = 0; s < 4; s++) {
+                    curY++;
+                    bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Sidled"));
+                }
+                */ 
+            }
+            if (destY < (ds.rows / 2) && destX > ds.columns / 3.3) { 
+                appendStatus("Utför parkering: Höger cirkelbåge \n"); 
+            }
+                
+                else {
+                        appendStatus("Utför parkering: Vertikal backning \n"); 
+                        }
+            // (Resten av else-if blocken lämnas oförändrade förutom att man delar upp diagonaler vid behov)
+
+            // 3. SKAPA MASTERLISTAN OCH HEMRESAN
+            int offset = masterDemoPath.size(); 
+            if (masterDemoPath.isEmpty()) { masterDemoStops.add(0); }
+
+            masterDemoPath.addAll(bestPath);
+            masterDemoStops.add(masterDemoPath.size() - 1); 
+
+            if (bestExitX < 0) bestExitX = 0; 
+            if (bestExitY < 0) bestExitY = 0; 
+            
+            int returnStartNode = (bestExitY * ds.columns) + bestExitX;
+            op.createReturnPlan(returnStartNode, startNodeId); 
+            
+            java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
+            if (!returnPath.isEmpty()) { returnPath.remove(0); }
+            
+            masterDemoPath.addAll(returnPath);
+            masterDemoStops.add(masterDemoPath.size() - 1); 
+
+            if (offset == 0) { ds.demoStep = 0; }
+            updateRobotPosition();
+            return true; 
+        } 
+        return false;
+    }
 
     public void showStatus() {
         System.out.println("Start at: " + ds.LocationX[0] + ", " + ds.LocationY[0]);
@@ -173,7 +227,7 @@ private boolean planNextMission() {
         jToggleButton1 = new javax.swing.JToggleButton();
         jButton1 = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
-        jTextArea1 = new javax.swing.JTextArea();
+        jTextAreaDemo = new javax.swing.JTextArea();
         jButton2 = new javax.swing.JButton();
         jButton3 = new javax.swing.JButton();
         jButton4 = new javax.swing.JButton();
@@ -218,10 +272,10 @@ private boolean planNextMission() {
             }
         });
 
-        jTextArea1.setEditable(false);
-        jTextArea1.setColumns(20);
-        jTextArea1.setRows(5);
-        jScrollPane1.setViewportView(jTextArea1);
+        jTextAreaDemo.setEditable(false);
+        jTextAreaDemo.setColumns(20);
+        jTextAreaDemo.setRows(5);
+        jScrollPane1.setViewportView(jTextAreaDemo);
 
         jButton2.setText("Start");
         jButton2.setToolTipText("AGV startar");
@@ -232,7 +286,7 @@ private boolean planNextMission() {
         });
 
         jButton3.setText("←");
-        jButton3.setToolTipText("tar ett steg bakåt i rutten");
+        jButton3.setToolTipText("Tar ett steg bakåt i rutten");
         jButton3.setEnabled(false);
         jButton3.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -278,28 +332,26 @@ private boolean planNextMission() {
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                        .addGap(6, 6, 6)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(jButton2)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 173, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(layout.createSequentialGroup()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addGroup(layout.createSequentialGroup()
-                                        .addComponent(jButton3)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                        .addComponent(jButton4)
-                                        .addGap(12, 12, 12)
-                                        .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addGap(19, 19, 19))
-                                    .addGroup(layout.createSequentialGroup()
-                                        .addComponent(jToggleButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addGap(18, 18, 18)))
-                                .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, 173, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addGroup(layout.createSequentialGroup()
+                                    .addComponent(jButton3)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                    .addComponent(jButton4)
+                                    .addGap(18, 18, 18)
+                                    .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addComponent(jToggleButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGap(146, 146, 146)
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 153, Short.MAX_VALUE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 299, Short.MAX_VALUE))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jScrollPane5, javax.swing.GroupLayout.DEFAULT_SIZE, 173, Short.MAX_VALUE)
+                            .addComponent(jScrollPane6, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 173, Short.MAX_VALUE)))
                     .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 642, Short.MAX_VALUE))
                 .addContainerGap())
         );
@@ -308,28 +360,29 @@ private boolean planNextMission() {
             .addGroup(layout.createSequentialGroup()
                 .addGap(14, 14, 14)
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jButton2)
+                            .addComponent(jButton1))
+                        .addGap(103, 103, 103)
+                        .addComponent(jToggleButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jButton3)
+                            .addComponent(jButton4)
+                            .addComponent(jButton5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addContainerGap())
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGap(8, 8, 8)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                .addComponent(jButton2)
-                                .addComponent(jButton1))
-                            .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jScrollPane1)
                             .addGroup(layout.createSequentialGroup()
-                                .addGap(41, 41, 41)
-                                .addComponent(jToggleButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                    .addComponent(jButton3)
-                                    .addComponent(jButton4)
-                                    .addComponent(jButton5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                    .addComponent(jScrollPane1))
-                .addContainerGap())
+                                .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGap(20, 20, 20))))
         );
 
         pack();
@@ -434,68 +487,31 @@ private boolean planNextMission() {
     }//GEN-LAST:event_jButton2ActionPerformed
 
     
-    public String updateRobotPosition() { 
+public String updateRobotPosition() { 
         if (masterDemoPath != null && ds.demoStep >= 0 && ds.demoStep < masterDemoPath.size()) {
 
-            // 1. Hämta data om nuvarande steg
             Vertex v = masterDemoPath.get(ds.demoStep);
             int nodeId = Integer.parseInt(v.getId());
-            String baseId = masterDemoPath.get(0).getId();
 
-            // 2. Visa bara rutt för nuvarande delsträcka (Svart väg)
-            int segmentStart = 0;
-            int searchIndex = ds.demoStep;
-
-            if (v.getId().equals(baseId) && ds.demoStep < masterDemoPath.size() - 1) {
-                searchIndex = ds.demoStep + 1;
-            }
-
-            for (int i = searchIndex; i >= 0; i--) {
-                if (masterDemoPath.get(i).getId().equals(baseId)) {
-                    segmentStart = i;
-                    break;
-                }
-            }
-
-            int segmentEnd = masterDemoPath.size() - 1;
-            for (int i = searchIndex; i < masterDemoPath.size(); i++) {
-                if (masterDemoPath.get(i).getId().equals(baseId) && i > segmentStart) {
-                    segmentEnd = i;
-                    break;
-                }
-            }
-            ds.currentPath = new java.util.ArrayList<>(masterDemoPath.subList(segmentStart, segmentEnd + 1));
-
-            // 3. Uppdatera robotens position (gula pricken)
-            ds.robotX = (nodeId % ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
-            ds.robotY = (nodeId / ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
-
-            // 4. HISTORIK-MAGIN: Återställ och rita ut rätt röda bilar!
-            ds.clearVisitedAreas(); // Sudda allt tillfälligt
-
-            // Loopa igenom hållplatserna. Varje udda index (1, 3, 5...) är ankomsten till en bil.
-            for (int i = 1; i < masterDemoStops.size(); i += 2) {
-                int arrivalAtGoalIndex = masterDemoStops.get(i);
-                
-                // Om vi har "hunnit fram" till denna bil i tidslinjen, måla den röd!
-                if (ds.demoStep >= arrivalAtGoalIndex) {
-                    Vertex goalVertex = masterDemoPath.get(arrivalAtGoalIndex);
-                    int goalNodeId = Integer.parseInt(goalVertex.getId());
-                    double goalX = (goalNodeId % ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
-                    double goalY = (goalNodeId / ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
-                    ds.markAreaAsVisited(goalX, goalY);
-                }
-            }
-
-            // 5. Output för instruktioner
             int currentLegStart = 0;
-            int currentLegEnd = masterDemoPath.size() - 1;
+            int currentLegEnd = masterDemoPath.size() - 1; 
+            
+            ds.isLoaded = false; // AGVn är inte lastad som standard 
 
             for (int i = 0; i < masterDemoStops.size() - 1; i++) {
                 int startStop = masterDemoStops.get(i);
                 int endStop = masterDemoStops.get(i + 1);
 
                 if (ds.demoStep >= startStop && ds.demoStep <= endStop) {
+                    
+                    // --- BILD-LOGIKEN ---
+                    if (i % 2 == 0) {
+                        ds.isLoaded = true;
+                    } else {
+                        ds.isLoaded = false;
+                    }
+                    // --------------------
+
                     if (ds.demoStep == endStop && ds.demoStep != masterDemoPath.size() - 1) {
                         continue;
                     }
@@ -505,8 +521,36 @@ private boolean planNextMission() {
                 }
             }
 
+            ds.currentPath = new java.util.ArrayList<>(masterDemoPath.subList(currentLegStart, currentLegEnd + 1));
+
+            double oldX = ds.robotX; 
+            double oldY = ds.robotY; 
+            
+            ds.robotX = (nodeId % ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
+            ds.robotY = (nodeId / ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
+            
+            double dx = ds.robotX - oldX; 
+            double dy = ds.robotY - oldY; 
+            
+            if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) { 
+                ds.robotAngle = Math.atan2(dy, dx); 
+            } 
+
+            ds.clearVisitedAreas(); 
+
+            for (int i = 1; i < masterDemoStops.size(); i += 2) {
+                int arrivalAtGoalIndex = masterDemoStops.get(i);
+                if (ds.demoStep >= arrivalAtGoalIndex) {
+                    Vertex goalVertex = masterDemoPath.get(arrivalAtGoalIndex);
+                    int goalNodeId = Integer.parseInt(goalVertex.getId());
+                    double goalX = (goalNodeId % ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
+                    double goalY = (goalNodeId / ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
+                    ds.markAreaAsVisited(goalX, goalY);
+                }
+            }
+
             if (currentLegStart != lastOptimizedLegStart) {
-                java.util.List<Vertex> legPath = new java.util.ArrayList<>(masterDemoPath.subList(currentLegStart, currentLegEnd + 1));
+                java.util.List<Vertex> legPath = new java.util.ArrayList<>(ds.currentPath); 
                 if (ds.instructionQueue != null) ds.instructionQueue.clear(); 
                 RouteOptimizer optimizer = new RouteOptimizer(ds);
                 System.out.println("\n");
@@ -652,8 +696,8 @@ private boolean planNextMission() {
 } 
     
     public void appendStatus(String text) {
-    jTextArea1.append(text);
-    jTextArea1.setCaretPosition(jTextArea1.getDocument().getLength());
+    jTextAreaDemo.append(text);
+    jTextAreaDemo.setCaretPosition(jTextAreaDemo.getDocument().getLength());
 } 
     
     public void logSent(String text) {
@@ -663,7 +707,7 @@ private boolean planNextMission() {
     }
 } 
 
-    public void logReceived(String text) {
+    public void logReceived(String text) { // Tror inte det här används? 
     if (!isDemoMode) {
         txtReceived.append("IN: " + text + "\n");
         txtReceived.setCaretPosition(txtReceived.getDocument().getLength());
@@ -680,7 +724,7 @@ private boolean planNextMission() {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane5;
     private javax.swing.JScrollPane jScrollPane6;
-    private javax.swing.JTextArea jTextArea1;
+    private javax.swing.JTextArea jTextAreaDemo;
     private javax.swing.JToggleButton jToggleButton1;
     private javax.swing.JTextArea txtReceived;
     private javax.swing.JTextArea txtSent;
