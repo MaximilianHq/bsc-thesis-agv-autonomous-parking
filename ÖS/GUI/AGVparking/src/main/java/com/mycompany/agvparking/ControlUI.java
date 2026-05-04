@@ -31,8 +31,8 @@ public class ControlUI extends javax.swing.JFrame {
     private void setupModeUI() { 
         if (isDemoMode) { 
             jToggleButton1.setVisible(false); 
-            jButton2.setVisible(false); 
-            jButton1.setVisible(false);
+            jButton2.setVisible(true); 
+            jButton1.setVisible(true);
             
             jScrollPane1.setVisible(true);   // Visa stora rutan 
             jScrollPane5.setVisible(false);  // Göm "UT"-rutan 
@@ -108,12 +108,29 @@ private boolean planNextMission() {
         if (bestIndex != -1 && outPath != null) { 
             appendStatus("Valde målnod Nr: " + bestIndex + " (Avstånd: " + shortestPathSize + " steg)\n");
             unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
-
+            
 //            // Markera målnoden som besökt (Röd färg)
             int destX = (int) (ds.LocationX[bestIndex] / ds.gridsize);
             int destY = (int) (ds.LocationY[bestIndex] / ds.gridsize);
 //            ds.ObstacleMatrix[destX][destY] = 2; 
 
+            if (destY < (ds.rows / 2) && destX < ds.columns / 3.3) {
+                appendStatus("Utför parkering: Vänster cirkelbåge \n"); 
+                // Kalla på parkeringsmanöver (från ny class) ex. 12 - Det som Hanna håller på med 
+            } 
+            else if (destY < (ds.rows / 2) && destX > ds.columns / 3.3) {
+                appendStatus("Utför parkering: Höger cirkelbåge \n"); 
+                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med 
+            } 
+            else if (destY > (ds.rows / 2) && destX < ds.columns * 0.9) {
+                appendStatus("Utför parkering: Vrid vänster och backa \n"); 
+                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med 
+            } 
+            else if (destY > (ds.rows / 2) && destX > ds.columns * 0.9) {
+                appendStatus("Utför parkering: Vertikal parkering vid vägg \n"); 
+                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med 
+            } 
+            
             // 2. BERÄKNA HEMRESA
             op.createReturnPlan((destY * ds.columns) + destX, startNodeId);
             java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
