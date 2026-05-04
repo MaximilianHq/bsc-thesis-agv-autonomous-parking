@@ -16,8 +16,8 @@
 
 // ========== PINS ==========
 // UART
-#define PIN_MTM_TXD 17
-#define PIN_MTM_RXD 16
+#define PIN_MTM_TXD 16
+#define PIN_MTM_RXD 17
 #define PIN_DWM_TXD 32
 #define PIN_DWM_RXD 33
 // Sonar
@@ -42,11 +42,13 @@ constexpr int SONAR_RANGE = 200; // mm
 constexpr int SONAR_SPEED = 100; // mm
 constexpr int SONAR_ANGLE = 70;  // ∓ deg
 
+// ---------- COMM ----------
 BluetoothSerial SerialBT;
 
 Comm comm_bt(SerialBT, "BT");
 Comm comm_mcu(Serial1, "MCU");
 
+// ---------- LEDS ----------
 SRegHandler sreg(PIN_SHREG_DATA, PIN_SHREG_CLK, PIN_SHREG_LATCH);
 StatusLED led_sys(sreg, SRegHandler::pin_sreg::QA,
                   SRegHandler::pin_sreg::QB,
@@ -59,6 +61,7 @@ StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
 
 SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd);
 
+// ---------- SONAR ----------
 Sonar::SonarConfig sonar_cfg{
     PIN_SONAR_SERVO,
     PIN_SONAR_TRIG,
@@ -71,6 +74,9 @@ Sonar::SonarConfig sonar_cfg{
     180,
     false};
 Sonar sonar(sonar_cfg, sysctrl);
+
+// ---------- DWM ----------
+DWM dwm(Serial2);
 
 // ========== GLOBALS ==========
 Debug g_debug;
@@ -92,9 +98,9 @@ void setup()
     // ========== UART ==========
     Serial.begin(UART_BAUD, SERIAL_8N1); // PC
     Serial1.begin(UART_BAUD, SERIAL_8N1,
-                  PIN_MTM_RXD, PIN_MTM_TXD); // MCU2
+                  PIN_MTM_TXD, PIN_MTM_RXD); // MCU2
     Serial2.begin(UART_BAUD, SERIAL_8N1,
-                  PIN_DWM_RXD, PIN_DWM_TXD); // DWM
+                  PIN_DWM_TXD, PIN_DWM_RXD); // DWM
     Serial.setTimeout(30);                   // PC
     Serial1.setTimeout(30);                  // MCU2
     Serial2.setTimeout(30);                  // DWM
@@ -109,6 +115,9 @@ void setup()
     // ========== SONAR ==========
     sonar.setup();
 
+    // ========== DWM ==========
+    dwm.setup(1234, 100, 100);
+
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
     led_sys.set_status(StatusLED::State::STATUS_READY);
@@ -121,14 +130,7 @@ void setup()
 
 void loop()
 {
-    // ========== UPDATES ==========
-    sonar.update();
-    led_sys.update();
-    led_cmd.update();
-
     // ========== ROUTINES ==========
-
-    delay(2000);
     sysctrl.test();
 
     // ota_handle();
@@ -138,8 +140,14 @@ void loop()
     // blt_status_routine();
     // watchdog_routine();
 
+    // ========== UPDATES ==========
+    sonar.update();
+    led_sys.update();
+    led_cmd.update();
+
     // ========== CODE ==========
 
+    // ---------- COMM ----------
     // Read from Bluetooth and process packet
     Comm::Packet bt_pkt;
     if (comm_bt.read(bt_pkt))
@@ -153,7 +161,21 @@ void loop()
     if (comm_mcu.read(mcu_pkt))
         sysctrl.on_mcu_pkt_recieved(mcu_pkt);
 
-    delay(200);
+    // ---------- DWM ----------
+    DwmState s;
+    ImuState i;
+    if (dwm.dwm_status_get())
+    {
+        if (dwm.dwm_get_pos(s))
+        {
+            // get imu state
+            // sysctrl.on_new_position_data(s, i);
+        }
+    }
+    else
+        Serial.println("[DWM] Module not ready");
+
+    delay(2000);
 }
 
 void blt_status_routine()

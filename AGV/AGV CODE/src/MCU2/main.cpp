@@ -18,8 +18,8 @@
 #define PIN_DIR3 26
 #define PIN_DIR4 27
 // PWM
-#define PIN_PWM1 19
-#define PIN_PWM2 18
+#define PIN_PWM1 18
+#define PIN_PWM2 19
 #define PIN_PWM3 17
 #define PIN_PWM4 16
 
@@ -27,10 +27,10 @@
 #define UART_BAUD 115200
 
 MotorDriver::MotorDriverConfig cfg = {
-    {PIN_DIR1, PIN_PWM1, 0},
-    {PIN_DIR2, PIN_PWM2, 1},
-    {PIN_DIR3, PIN_PWM3, 2},
-    {PIN_DIR4, PIN_PWM4, 3},
+    {PIN_DIR1, PIN_PWM1, 0, true},
+    {PIN_DIR2, PIN_PWM2, 1, true},
+    {PIN_DIR3, PIN_PWM3, 2, true},
+    {PIN_DIR4, PIN_PWM4, 3, true},
     PIN_DRV,
     PIN_EN,
     PIN_ERR};
@@ -70,6 +70,15 @@ void setup()
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
+
+    md.move(0x01, 50, 5000);
+    delay(3000);
+    md.move(0x02, 50, 5000);
+    delay(3000);
+    md.move(0x03, 50, 5000);
+    delay(3000);
+    md.move(0x04, 50, 5000);
+    delay(3000);
 }
 
 void loop()
