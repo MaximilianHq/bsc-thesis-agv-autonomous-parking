@@ -30,6 +30,10 @@ public class DataStore {
     // AGV koordinater
     double robotX;
     double robotY;
+    
+    //AGV rotation
+    public int startRotation = 0;
+    public int currentRotation;
 
     // Parkeringsplatser, H: horisontella, V: vertikala
     double[] HLocationX;

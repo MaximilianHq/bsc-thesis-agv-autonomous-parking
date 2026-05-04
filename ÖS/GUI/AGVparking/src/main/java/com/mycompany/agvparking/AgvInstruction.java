@@ -15,6 +15,7 @@ public class AgvInstruction {
     public int steps;
     public int targetX;
     public int targetY;
+    public int rotation;
 
     public AgvInstruction(int maneuver, int velocity, int steps, int targetX, int targetY) {
         this.maneuver = maneuver;
@@ -22,5 +23,12 @@ public class AgvInstruction {
         this.steps = steps;
         this.targetX = targetX;
         this.targetY = targetY;
+       
+    }
+    
+    public AgvInstruction(int maneuver, int rotation)
+    {
+        this.maneuver = maneuver; 
+        this.rotation = rotation;//Behövs något mer göras för denna?
     }
 }   

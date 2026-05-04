@@ -57,6 +57,8 @@ public class RouteOptimizer {
                     stepCount++;
                 } else {
                     // Skriv ut instruktion
+                    
+                    //--------KOLLA PÅ VAD VI SKA GÖRA MED ROTATION ds.currentrotation, roteringen ska skickas innan resterande körinstruktioner-------
                     printInstruction(currentDx, currentDy, stepCount, currentX, currentY);
 
                     // ... och börja räkna på den nya riktningen
@@ -83,37 +85,8 @@ public class RouteOptimizer {
 
     // Hjälpmetod för att tolka dx och dy till de 8 möjliga manövrarna
     private void printInstruction(int dx, int dy, int steps, int targetX, int targetY) {
-        String directionText = "";
-        int direction = 0;
-
-        // OBS: Y ökar nedåt på skärmen, så dy = -1 betyder Uppåt.
-        if (dx == 0 && dy == -1) {
-            directionText = "Uppåt (Rakt fram)";
-            direction = 1;
-        } else if (dx == 0 && dy == 1) {
-            directionText = "Nedåt (Bakåt)";
-            direction = 2;
-        } else if (dx == 1 && dy == 0) {
-            directionText = "Höger (Sidled)";
-            direction = 3;
-        } else if (dx == -1 && dy == 0) {
-            directionText = "Vänster (Sidled)";
-            direction = 4;
-        } else if (dx == 1 && dy == -1) {
-            directionText = "Diagonalt Upp-Höger";
-            direction = 5;
-        } else if (dx == -1 && dy == -1) {
-            directionText = "Diagonalt Upp-Vänster";
-            direction = 6;
-        } else if (dx == 1 && dy == 1) {
-            directionText = "Diagonalt Ner-Höger";
-            direction = 7;
-        } else if (dx == -1 && dy == 1) {
-            directionText = "Diagonalt Ner-Vänster";
-            direction = 8;
-        } else {
-            directionText = "Okänd riktning (" + dx + "," + dy + ")";
-        }
+       int direction = InstructionsStore.getDirectionFromDelta(dx,dy);
+        String directionText = InstructionsStore.getInstructionText(direction);
 
         // Här skriver vi ut det i konsolen. Längre fram är det kanske här 
         // vi skapar ett meddelande och skickar det via Bluetooth
