@@ -15,6 +15,13 @@ public class AgvInstruction {
     public int steps;
     public int targetX;
     public int targetY;
+    public boolean monitorPosition; 
+
+    public AgvInstruction(int maneuver, int velocity, int steps, int targetX, int targetY, boolean monitorPosition) {
+        this.maneuver = maneuver;
+        this.velocity = velocity;
+        this.steps = steps; 
+
 
     public AgvInstruction(int maneuver, int velocity, int steps, int targetX, int targetY) {
         this.maneuver = maneuver;
@@ -23,4 +30,4 @@ public class AgvInstruction {
         this.targetX = targetX;
         this.targetY = targetY;
     }
-}   
+}

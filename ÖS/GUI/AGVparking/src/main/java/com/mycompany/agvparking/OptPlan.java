@@ -13,6 +13,11 @@ public class OptPlan {
     public OptPlan(DataStore ds) {
         this.ds = ds;
     }
+    
+    // Vi behåller denna så att ControlUI inte klagar, men den gör ingenting!
+    public void setTarget(int x, int y) {
+        // Borttaget: Det var denna som orsakade den gigantiska omvägen!
+    }
 
     private void buildGraph(boolean isLoaded) {
         nodes = new ArrayList<Vertex>();
@@ -32,60 +37,40 @@ public class OptPlan {
             for (int j = 0; j < ds.columns; j++) {
                 int currentNode = i * ds.columns + j;
 
-                // --- HÖGER & VÄNSTER (Med Highway-rabatt) ---
+                // --- HÖGER ---
                 if (j < ds.columns - 1) {
-                    double costR = (i == mainRow) ? 0.5 : 1.0;
-                    if (ds.ObstacleMatrix[j + 1][i] != 0) {
-                        costR = 1000.0;
-                    }
-                    edges.add(new Edge("r", nodes.get(currentNode), nodes.get(i * ds.columns + j + 1), costR));
+                    int nx = j + 1; int ny = i;
+                    double costR = (ny == mainRow) ? 0.5 : 1.0;
+                    int val = ds.ObstacleMatrix[nx][ny];
+                    if (val >= 2) costR = 100000.0; else if (val == 1) costR = 1000.0;
+                    edges.add(new Edge("r", nodes.get(currentNode), nodes.get(ny * ds.columns + nx), costR));
                 }
+                
+                // --- VÄNSTER ---
                 if (j > 0) {
-                    double costL = (i == mainRow) ? 0.5 : 1.0;
-                    if (ds.ObstacleMatrix[j - 1][i] != 0) {
-                        costL = 1000.0;
-                    }
-                    edges.add(new Edge("l", nodes.get(currentNode), nodes.get(i * ds.columns + j - 1), costL));
+                    int nx = j - 1; int ny = i;
+                    double costL = (ny == mainRow) ? 0.5 : 1.0;
+                    int val = ds.ObstacleMatrix[nx][ny];
+                    if (val >= 2) costL = 100000.0; else if (val == 1) costL = 1000.0;
+                    edges.add(new Edge("l", nodes.get(currentNode), nodes.get(ny * ds.columns + nx), costL));
                 }
 
-                // --- UPP & NER ---
+                // --- NER ---
                 if (i < ds.rows - 1) {
-                    double costD = (ds.ObstacleMatrix[j][i + 1] != 0) ? 1000.0 : 1.0;
-                    edges.add(new Edge("d", nodes.get(currentNode), nodes.get((i + 1) * ds.columns + j), costD));
-                }
-                if (i > 0) {
-                    double costU = (ds.ObstacleMatrix[j][i - 1] != 0) ? 1000.0 : 1.0;
-                    edges.add(new Edge("u", nodes.get(currentNode), nodes.get((i - 1) * ds.columns + j), costU));
+                    int nx = j; int ny = i + 1;
+                    double costD = 1.0;
+                    int val = ds.ObstacleMatrix[nx][ny];
+                    if (val >= 2) costD = 100000.0; else if (val == 1) costD = 1000.0;
+                    edges.add(new Edge("d", nodes.get(currentNode), nodes.get(ny * ds.columns + nx), costD));
                 }
 
-                // --- DIAGONALER ---
-                if (j < ds.columns - 1 && i < ds.rows - 1) {
-                    double costDR = diagCost;
-                    if (ds.ObstacleMatrix[j + 1][i + 1] != 0 || ds.ObstacleMatrix[j + 1][i] != 0 || ds.ObstacleMatrix[j][i + 1] != 0) {
-                        costDR = 1000.0;
-                    }
-                    edges.add(new Edge("dr", nodes.get(currentNode), nodes.get((i + 1) * ds.columns + j + 1), costDR));
-                }
-                if (j > 0 && i > 0) {
-                    double costUL = diagCost;
-                    if (ds.ObstacleMatrix[j - 1][i - 1] != 0 || ds.ObstacleMatrix[j - 1][i] != 0 || ds.ObstacleMatrix[j][i - 1] != 0) {
-                        costUL = 1000.0;
-                    }
-                    edges.add(new Edge("ul", nodes.get(currentNode), nodes.get((i - 1) * ds.columns + j - 1), costUL));
-                }
-                if (j < ds.columns - 1 && i > 0) {
-                    double costUR = diagCost;
-                    if (ds.ObstacleMatrix[j + 1][i - 1] != 0 || ds.ObstacleMatrix[j + 1][i] != 0 || ds.ObstacleMatrix[j][i - 1] != 0) {
-                        costUR = 1000.0;
-                    }
-                    edges.add(new Edge("ur", nodes.get(currentNode), nodes.get((i - 1) * ds.columns + j + 1), costUR));
-                }
-                if (j > 0 && i < ds.rows - 1) {
-                    double costDL = diagCost;
-                    if (ds.ObstacleMatrix[j - 1][i + 1] != 0 || ds.ObstacleMatrix[j - 1][i] != 0 || ds.ObstacleMatrix[j][i + 1] != 0) {
-                        costDL = 1000.0;
-                    }
-                    edges.add(new Edge("dl", nodes.get(currentNode), nodes.get((i + 1) * ds.columns + j - 1), costDL));
+                // --- UPP ---
+                if (i > 0) {
+                    int nx = j; int ny = i - 1;
+                    double costU = 1.0;
+                    int val = ds.ObstacleMatrix[nx][ny];
+                    if (val >= 2) costU = 100000.0; else if (val == 1) costU = 1000.0;
+                    edges.add(new Edge("u", nodes.get(currentNode), nodes.get(ny * ds.columns + nx), costU));
                 }
             }
         }
