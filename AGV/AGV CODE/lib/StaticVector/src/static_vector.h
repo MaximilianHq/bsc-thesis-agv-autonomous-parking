@@ -29,18 +29,34 @@ public:
         return _v[i];
     }
 
-    void
-    push_back(const T &data)
+    void push_back(const T &data)
     {
         if (_count >= N)
-            _raise_error("[FATAL ERROR] Array out of bounds");
-        _v[_count++] = data;
+            pop(); // ta bort första/äldsta
+
+        _v[_count++] = data; // lägg ny längst bak
     }
 
     void pop()
     {
+        pop_front_discard();
+    }
+
+    void pop_back()
+    {
         if (_count > 0)
             _count--;
+    }
+
+    void pop_front_discard()
+    {
+        if (_count == 0)
+            return;
+
+        for (size_t i = 0; i < _count - 1; i++)
+            _v[i] = _v[i + 1];
+
+        _count--;
     }
 
     void pop(size_t i)
@@ -59,10 +75,10 @@ public:
     T pop_front()
     {
         if (_count == 0)
-            _raise_error("[FATAL ERROR] Array out of bounds");
+            _raise_error("[FATAL ERROR] Array empty");
 
         T tmp = _v[0];
-        pop(0);
+        pop_front_discard();
         return tmp;
     }
 

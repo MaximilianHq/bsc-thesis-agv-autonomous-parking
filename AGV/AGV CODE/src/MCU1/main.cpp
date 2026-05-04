@@ -15,15 +15,15 @@
 #include "sonar.h"
 
 // ========== PINS ==========
-// Sonar
-#define PIN_SONAR_SERVO 18
-#define PIN_SONAR_TRIG 19
-#define PIN_SONAR_ECHO 35
 // UART
 #define PIN_MTM_TXD 17
 #define PIN_MTM_RXD 16
 #define PIN_DWM_TXD 32
 #define PIN_DWM_RXD 33
+// Sonar
+#define PIN_SONAR_SERVO 18
+#define PIN_SONAR_TRIG 19
+#define PIN_SONAR_ECHO 35
 // SHIFT REGISTER
 #define PIN_SHREG_DATA 27
 #define PIN_SHREG_LATCH 26
@@ -84,6 +84,7 @@ void watchdog_routine();
 
 void setup()
 {
+    delay(5000);
     // ========== STATE ==========
     // Updated by led_x.update, do not set manually!
     sreg.setup();
@@ -91,12 +92,14 @@ void setup()
     led_cmd.setup();
 
     // ========== UART ==========
-    Serial.begin(UART_BAUD);  // PC
-    Serial1.begin(UART_BAUD); // MCU2
-    Serial2.begin(UART_BAUD); // DWM
-    Serial.setTimeout(30);    // PC
-    Serial1.setTimeout(30);   // MCU2
-    Serial2.setTimeout(30);   // DWM
+    Serial.begin(UART_BAUD, SERIAL_8N1); // PC
+    Serial1.begin(UART_BAUD, SERIAL_8N1,
+                  PIN_MTM_RXD, PIN_MTM_TXD); // MCU2
+    Serial2.begin(UART_BAUD, SERIAL_8N1,
+                  PIN_DWM_RXD, PIN_DWM_TXD); // DWM
+    Serial.setTimeout(30);                   // PC
+    Serial1.setTimeout(30);                  // MCU2
+    Serial2.setTimeout(30);                  // DWM
 
     Serial.println("[MAIN] Running setup...");
 

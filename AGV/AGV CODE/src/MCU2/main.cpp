@@ -6,8 +6,8 @@
 #include "system_actions.h"
 
 // UART
-#define PIN_MTM_TXD 22
-#define PIN_MTM_RXD 23
+#define PIN_MTM_TXD 23
+#define PIN_MTM_RXD 22
 // DRIVER
 #define PIN_ERR 34
 #define PIN_EN 21
@@ -65,8 +65,8 @@ void setup()
     md.outputs_enable();
     md.drivers_enable();
 
-    delay(2000);
-    md.move(0x00, 50, 1000000000);
+    // delay(2000);
+    //  md.move(0x00, 50, 1000000000);
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
@@ -82,9 +82,11 @@ void loop()
     // ========== CODE ==========
 
     // Read from MCU1 and process packet
-    // Comm::Packet mcu_pkt;
-    // if (comm_mcu.read(mcu_pkt))
-    //     sysctrl.on_mcu_pkt_recieved(mcu_pkt);
-
+    Comm::Packet mcu_pkt;
+    if (comm_mcu.read(mcu_pkt))
+    {
+        Serial.println("HELP");
+        sysctrl.on_mcu_pkt_recieved(mcu_pkt);
+    }
     delay(200);
 }

@@ -51,7 +51,6 @@ void SysCtrl::on_stop(Comm::Packet &pkt)
     if (!_forward_to_mcu(pkt))
         if (g_debug.IAction)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: 'stop' to [MCU2]");
-
     _led_cmd.set_status(StatusLED::State::STATUS_CMD_STOPPING);
 }
 
