@@ -92,7 +92,47 @@ public class OptPlan {
         buildGraph(false);
         Graph graph = new Graph(nodes, edges);
         DijkstraAlgorithm dijkstra = new DijkstraAlgorithm(graph);
+        LinkedList<Vertex> path = null;
         dijkstra.execute(nodes.get(currentNodeId));
-        ds.currentPath = dijkstra.getPath(nodes.get(targetStartNodeId));
+          path = dijkstra.getPath(nodes.get(targetStartNodeId));
+        ds.currentPath = path;
+      
+        
+
+
+        if (path != null) {
+            ds.currentPath = path;
+
+           // Skapa körinstruktionerna för resan hem ---
+            RouteOptimizer optimizer = new RouteOptimizer(ds);
+            optimizer.compressPath(path);
+            
+            //LÄgger till rotation på slutnoden
+            //Räkna ut differensen mellan nuvarande rotation och önskad
+            int diff = ds.currentRotation - ds.startRotation;
+
+           // Normalisera vinkeln till spannet -180 till 180 grader
+        while (diff > 180) diff -= 360;
+        while (diff <= -180) diff += 360;
+
+        // 3. Lägg till rotationsinstruktioner i kön
+        if (Math.abs(diff) > 2) { // En liten tolerans på 2 grader för att slippa mikro-justeringar
+            if (diff > 0) {
+                // Positiv diff betyder att vi står för långt åt "vänster/ner" 
+                // i ett standardsystem, så vi roterar höger för att nå 0.
+                // OBS: Dubbelkolla om ROTATE_RIGHT minskar eller ökar grader i din AGV.
+                ds.instructionQueue.add(new AgvInstruction(InstructionsStore.ROTATE_RIGHT, Math.abs(diff)));
+                System.out.println("Avslutar med högerrotation: " + Math.abs(diff) + " grader.");
+            } else {
+                ds.instructionQueue.add(new AgvInstruction(InstructionsStore.ROTATE_LEFT, Math.abs(diff)));
+                System.out.println("Avslutar med vänsterrotation: " + Math.abs(diff) + " grader.");
+            }
+        } else {
+            System.out.println("Ingen avslutande rotation krävs (redan vänd mot " + ds.startRotation + "°).");
+        }
+
+    } else {
+        System.out.println("Ingen väg kunde hittas tillbaka till startnoden.");
+    }
     }
 }
