@@ -22,6 +22,11 @@ public class AgvInstruction {
         this.velocity = velocity;
         this.steps = steps; 
 
+
+    public AgvInstruction(int maneuver, int velocity, int steps, int targetX, int targetY) {
+        this.maneuver = maneuver;
+        this.velocity = velocity;
+        this.steps = steps;
         this.targetX = targetX;
         this.targetY = targetY;
     }

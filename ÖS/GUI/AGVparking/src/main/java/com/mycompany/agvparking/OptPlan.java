@@ -19,7 +19,7 @@ public class OptPlan {
         // Borttaget: Det var denna som orsakade den gigantiska omvägen!
     }
 
-    private void buildGraph() {
+    private void buildGraph(boolean isLoaded) {
         nodes = new ArrayList<Vertex>();
         edges = new ArrayList<Edge>();
 
@@ -31,6 +31,7 @@ public class OptPlan {
         }
 
         int mainRow = (int) (ds.LocationY[0] / ds.gridsize);
+        double diagCost = isLoaded ? 2.1 : 1.4;
 
         for (int i = 0; i < ds.rows; i++) {
             for (int j = 0; j < ds.columns; j++) {
@@ -76,7 +77,7 @@ public class OptPlan {
     }
 
     public void createPlan(int startNodeId, int endNodeId) {
-        buildGraph();
+        buildGraph(true);
         Graph graph = new Graph(nodes, edges);
         DijkstraAlgorithm dijkstra = new DijkstraAlgorithm(graph);
         LinkedList<Vertex> path = null;
@@ -88,7 +89,7 @@ public class OptPlan {
     }
 
     public void createReturnPlan(int currentNodeId, int targetStartNodeId) {
-        buildGraph();
+        buildGraph(false);
         Graph graph = new Graph(nodes, edges);
         DijkstraAlgorithm dijkstra = new DijkstraAlgorithm(graph);
         dijkstra.execute(nodes.get(currentNodeId));
