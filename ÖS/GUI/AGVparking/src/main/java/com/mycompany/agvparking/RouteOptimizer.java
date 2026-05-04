@@ -52,21 +52,27 @@ public class RouteOptimizer {
                 stepCount = 1;
                 firstMove = false;
             } else {
-                // Om vi fortsätter i exakt samma riktning
-                if (dx == currentDx && dy == currentDy) {
-                    stepCount++;
-                } else {
-                    // Skriv ut instruktion
-                    
-                    //--------KOLLA PÅ VAD VI SKA GÖRA MED ROTATION ds.currentrotation, roteringen ska skickas innan resterande körinstruktioner-------
+                    // Skriv ut instruktion för raksträckan vi precis kört
                     printInstruction(currentDx, currentDy, stepCount, currentX, currentY);
+
+                    // --- NYTT: IDENTIFIERA SVÄNG OCH LÄGG TILL CURVED TRAJECTORY ---
+                    // Kryssprodukten avslöjar om vi svänger höger eller vänster
+                    int crossProduct = currentDx * dy - currentDy * dx;
+                    
+                    if (crossProduct > 0) { // HÖGERSVÄNG
+                        System.out.println("Körinstruktion: Kurvad bana Höger (90 grader)");
+                        ds.instructionQueue.add(new AgvInstruction(InstructionsStore.CURVED_TRAJECTORY_RIGHT, 100, 0, currentX, currentY, false));
+                    } else if (crossProduct < 0) { // VÄNSTERSVNG
+                        System.out.println("Körinstruktion: Kurvad bana Vänster (90 grader)");
+                        ds.instructionQueue.add(new AgvInstruction(InstructionsStore.CURVED_TRAJECTORY_LEFT, 100, 0, currentX, currentY, false));
+                    }
+                    // ---------------------------------------------------------------
 
                     // ... och börja räkna på den nya riktningen
                     currentDx = dx;
                     currentDy = dy;
                     stepCount = 1;
                 }
-            }
         }
 
         // När loopen är klar måste vi skriva ut den sista rörelsen som vi räknat på
