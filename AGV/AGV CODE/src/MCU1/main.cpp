@@ -76,8 +76,6 @@ Sonar sonar(sonar_cfg, sysctrl);
 Debug g_debug;
 unsigned long last_packet_time = 0;
 
-// TODO MESSAGE SENDING BUFFER
-
 // ========== PROTOTYPES ==========
 void blt_status_routine();
 void watchdog_routine();
@@ -117,6 +115,8 @@ void setup()
 
     // watchdog start
     last_packet_time = millis();
+
+    sysctrl.test();
 }
 
 void loop()
@@ -128,12 +128,15 @@ void loop()
 
     // ========== ROUTINES ==========
 
+    delay(2000);
+    sysctrl.test();
+
     // ota_handle();
     //  read BT. packet: ös movement, ös command
     //  $TCXXYYTTC\n or $TCCC\n
 
-    blt_status_routine();
-    watchdog_routine();
+    // blt_status_routine();
+    // watchdog_routine();
 
     // ========== CODE ==========
 
