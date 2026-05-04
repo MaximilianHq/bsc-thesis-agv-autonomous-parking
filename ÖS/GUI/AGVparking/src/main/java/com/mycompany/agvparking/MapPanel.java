@@ -13,31 +13,33 @@ public class MapPanel extends JPanel {
     DataStore ds;
     
     private java.awt.Image agvImage; 
+    private java.awt.Image agvLoadedImage; 
 
     MapPanel(DataStore ds) {
         this.ds = ds; 
         
         try { 
             agvImage = javax.imageio.ImageIO.read(new java.io.File("agvBild.png"));
+            agvLoadedImage = javax.imageio.ImageIO.read(new java.io.File("agvLoaded.png")); 
         } catch (Exception e) { 
-            System.out.println("Hittade inte agv.png, använder triangel istället."); 
+            System.out.println("Hittade inte agv.png eller agvLoaded.png, använder triangel istället."); 
         } 
         
         // Din manuella initiering av hinder
-        ds.ObstacleMatrix[11][11] = 1;
-        ds.ObstacleMatrix[11][12] = 1;
-        ds.ObstacleMatrix[11][13] = 1;
-        ds.ObstacleMatrix[12][13] = 1;
-        ds.ObstacleMatrix[13][13] = 1;
-        ds.ObstacleMatrix[13][12] = 1;
-        ds.ObstacleMatrix[13][11] = 1;
-        ds.ObstacleMatrix[12][11] = 1;
+//        ds.ObstacleMatrix[11][11] = 1;
+//        ds.ObstacleMatrix[11][12] = 1;
+//        ds.ObstacleMatrix[11][13] = 1;
+//        ds.ObstacleMatrix[12][13] = 1;
+//        ds.ObstacleMatrix[13][13] = 1;
+//        ds.ObstacleMatrix[13][12] = 1;
+//        ds.ObstacleMatrix[13][11] = 1;
+//        ds.ObstacleMatrix[12][11] = 1;
 
         // Horisontella parkeringsrutor (Fixad loop)
         for (int k = 0; k < ds.Hspaces; k++) {
             int xpos = (int) (ds.HLocationX[k] / ds.gridsize);
             int ypos = (int) (ds.HLocationY[k] / ds.gridsize);
-            for (int i = 0; i < (int) (110 / ds.gridsize); i = i + 1) {
+            for (int i = 0; i < (int) (120 / ds.gridsize); i = i + 1) {
                 for (int j = 0; j < (int) (60 / ds.gridsize); j = j + 1) {
                     ds.ObstacleMatrix[xpos + i][ypos + j] = 1;
                 }
@@ -49,7 +51,7 @@ public class MapPanel extends JPanel {
             int xpos = (int) (ds.VLocationX[k] / ds.gridsize);
             int ypos = (int) (ds.VLocationY[k] / ds.gridsize);
             for (int i = 0; i < (int) (60 / ds.gridsize); i = i + 1) {
-                for (int j = 0; j <= (int) (110 / ds.gridsize); j = j + 1) {
+                for (int j = 0; j <= (int) (120 / ds.gridsize); j = j + 1) {
                     ds.ObstacleMatrix[xpos + i][ypos + j] = 1;
                 }
             }
@@ -168,13 +170,16 @@ public class MapPanel extends JPanel {
                 
                 // Rotera pennan med robotens vinkel
                 g2d.rotate(ds.robotAngle);
+                g2d.rotate(ds.robotAngle); 
+                
+                java.awt.Image currentImage = ds.isLoaded ? agvLoadedImage : agvImage; 
 
-                if (agvImage != null) {
+                if (currentImage != null) {
                     // Om bilden laddades, rita den!
                     // Ändra imgWidth och imgHeight för att ändra storlek på AGV:n i GUI:t
-                    int imgWidth = 30; 
+                    int imgWidth = ds.isLoaded ? 50 : 30; 
                     int imgHeight = 20;
-                    g2d.drawImage(agvImage, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight, null);
+                    g2d.drawImage(currentImage, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight, null);
                 } else {
                     // RESERVLÖSNING: Ritar en gul triangel om agv.png saknas
                     g2d.setColor(AGV_COLOR);

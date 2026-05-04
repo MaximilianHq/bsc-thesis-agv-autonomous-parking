@@ -21,7 +21,8 @@ public class DataStore {
     int locations;
 
     public int demoStep = 0; // Håller koll på var i listan vi är
-    public double agvAngle = 0.0;
+    public double agvAngle = 0.0; 
+    public boolean isLoaded; 
 
     
     boolean updateUiflag;
@@ -51,10 +52,10 @@ public class DataStore {
         // Initialize the datastore with fixed size arrays for storing the network data
         LocationX = new double[20];
         LocationY = new double[20];
-        ObstacleMatrix = new int[541][361];
+        ObstacleMatrix = new int[524][351];
         DataAvail = false;
-        xsize = 540;
-        ysize = 360;
+        xsize = 523;
+        ysize = 350;
         gridsize = 10;
         updateUiflag = false;
 
@@ -145,49 +146,60 @@ public class DataStore {
         robotY = LocationY[0];
     }
 
-    public void markAreaAsVisited(double xCoord, double yCoord) {
-    // ökar marginalen lite (gridsize * 4 istället för 2) så att den 
-    // garanterat hittar rutan även om roboten inte stannar exakt i mitten.
-    double tolerance = gridsize * 4; 
+public void markAreaAsVisited(double xCoord, double yCoord) {
+        int bestType = -1; // 0 = Horisontell, 1 = Vertikal
+        int bestIndex = -1;
+        double minDistance = Double.MAX_VALUE;
 
-    // 1. Kolla om vi står på en Horisontell ruta
-    for (int k = 0; k < Hspaces; k++) {
-        double dist = Math.sqrt(Math.pow(xCoord - HLocationX[k], 2) + Math.pow(yCoord - HLocationY[k], 2));
-        
-        if (dist < tolerance) {
-            int xpos = (int) (HLocationX[k] / gridsize);
-            int ypos = (int) (HLocationY[k] / gridsize);
+        // 1. Leta upp den Horisontella ruta som är närmast pricken
+        for (int k = 0; k < Hspaces; k++) {
+            double centerX = HLocationX[k] + 60; // Mitten på rutan
+            double centerY = HLocationY[k] + 30; 
+            double dist = Math.hypot(centerX - xCoord, centerY - yCoord);
+            if (dist < minDistance) {
+                minDistance = dist;
+                bestType = 0;
+                bestIndex = k;
+            }
+        }
 
-            for (int i = 0; i < (int) (110 / gridsize); i++) {
-                for (int j = 0; j < (int) (60 / gridsize); j++) {
-                    if (xpos + i < columns && ypos + j < rows) {
+        // 2. Leta upp den Vertikala ruta som är närmast
+        for (int k = 0; k < Vspaces; k++) {
+            double centerX = VLocationX[k] + 30; 
+            double centerY = VLocationY[k] + 60; 
+            double dist = Math.hypot(centerX - xCoord, centerY - yCoord);
+            if (dist < minDistance) {
+                minDistance = dist;
+                bestType = 1;
+                bestIndex = k;
+            }
+        }
+
+        // 3. Färga den som var allra närmast till röd (2)
+        if (bestType == 0 && bestIndex != -1) {
+            int xpos = (int) (HLocationX[bestIndex] / gridsize);
+            int ypos = (int) (HLocationY[bestIndex] / gridsize);
+            for (int i = 0; i < (int)(120/gridsize); i++) {
+                for (int j = 0; j < (int)(60/gridsize); j++) {
+                    if (xpos + i >= 0 && xpos + i < columns && ypos + j >= 0 && ypos + j < rows) {
                         ObstacleMatrix[xpos + i][ypos + j] = 2;
                     }
                 }
             }
-            return;
-        }
-    }
-
-    // Kolla om vi står på en Vertikal ruta
-    for (int k = 0; k < Vspaces; k++) {
-        double dist = Math.sqrt(Math.pow(xCoord - VLocationX[k], 2) + Math.pow(yCoord - VLocationY[k], 2));
-        
-        if (dist < tolerance) {
-            int xpos = (int) (VLocationX[k] / gridsize);
-            int ypos = (int) (VLocationY[k] / gridsize);
-
-            for (int i = 0; i < (int) (60 / gridsize); i++) {
-                for (int j = 0; j <= (int) (110 / gridsize); j++) {
-                    if (xpos + i < columns && ypos + j < rows) {
+        } else if (bestType == 1 && bestIndex != -1) {
+            int xpos = (int) (VLocationX[bestIndex] / gridsize);
+            int ypos = (int) (VLocationY[bestIndex] / gridsize);
+            for (int i = 0; i < (int)(60/gridsize); i++) {
+                // HÄR ÄR ÄNDRINGEN: (130 istället för 110/120 drar ner färgen)
+                for (int j = 0; j <= (int)(130/gridsize); j++) {
+                    if (xpos + i >= 0 && xpos + i < columns && ypos + j >= 0 && ypos + j < rows) {
                         ObstacleMatrix[xpos + i][ypos + j] = 2;
                     }
                 }
             }
-            return;
         }
     }
-}
+
     // Återställer alla besökta (röda) rutor till vanliga (grå/svarta) rutor
     public void clearVisitedAreas() {
         for (int i = 0; i < columns; i++) {

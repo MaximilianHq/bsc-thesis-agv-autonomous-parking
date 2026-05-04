@@ -1,14 +1,11 @@
 package com.mycompany.agvparking;
 
-
-
 /**
  *
  * @author KTS - G2 
  */
 
 import javax.swing.SwingUtilities;
-
 
 public class ControlUI extends javax.swing.JFrame {
 
@@ -75,7 +72,6 @@ public class ControlUI extends javax.swing.JFrame {
     } 
     
 private boolean planNextMission() {
-        // Om listan är tom är vi färdiga!
         if (unvisitedMissions.isEmpty()) {
             appendStatus("Alla uppdrag klara! Alla bilar är parkerade.\n");
             return false; 
@@ -84,118 +80,135 @@ private boolean planNextMission() {
         OptPlan op = new OptPlan(ds);
         int startX = (int) (ds.LocationX[0] / ds.gridsize);
         int startY = (int) (ds.LocationY[0] / ds.gridsize);
-        int startNodeId = (startY * ds.columns) + startX;
-
+        int startNodeId = (startY * ds.columns) + startX; 
+        
         int bestIndex = -1;
-        int shortestPathSize = Integer.MAX_VALUE;
+        int shortestPathSize = Integer.MAX_VALUE; 
         java.util.List<Vertex> bestPath = null;
-        int bestDestX = -1;
-        int bestDestY = -1;
-
+        
+        int bestExitX = 0; 
+        int bestExitY = 0; 
+        
         appendStatus("Letar efter närmaste lediga parkeringsruta...\n");
 
-        // TESTAR ALLA OBESÖKTA RUTOR FÖR ATT HITTA DEN KORTASTE VÄGEN
         for (int candidateIndex : unvisitedMissions) {
             int destX = (int) (ds.LocationX[candidateIndex] / ds.gridsize);
             int destY = (int) (ds.LocationY[candidateIndex] / ds.gridsize);
             int endNodeId = (destY * ds.columns) + destX;
 
+            op.setTarget(destX, destY); 
             op.createPlan(startNodeId, endNodeId);
 
             if (ds.currentPath != null && !ds.currentPath.isEmpty()) {
-                // Är denna väg kortare än vår hittills bästa?
-                if (ds.currentPath.size() < shortestPathSize) {
-                    shortestPathSize = ds.currentPath.size();
+                int parkingCost = 0; 
+                int exitX = destX;   
+                int exitY = destY; 
+
+                // --- STEG 1: HÄR ÄNDRAS VART AGVN SKA HAMNA (exitX/exitY) ---
+                if (destY < (ds.rows / 2) && destX < ds.columns / 3.3) { 
+                    parkingCost = 16; 
+                    exitX = destX - 8; // Ändra dessa siffror för att flytta slutpunkten i X-led
+                    exitY = destY + 4; // Ändra dessa siffror för att flytta slutpunkten i Y-led
+                } 
+                else if (destY < (ds.rows / 2) && destX > (ds.columns / 3.3)) { 
+                    parkingCost = 12; 
+                    exitX = destX + 8; 
+                    exitY = destY + 4; 
+                } else { 
+                    parkingCost = 10; 
+                    exitX = destX;
+                    exitY = destY ; 
+                }
+                
+                int totalCost = ds.currentPath.size() + parkingCost; 
+
+                if (totalCost < shortestPathSize) {
+                    shortestPathSize = totalCost; 
                     bestIndex = candidateIndex;
-                    bestPath = new java.util.ArrayList<>(ds.currentPath); // Spara kopia av vägen
-                    bestDestX = destX;
-                    bestDestY = destY;
+                    bestPath = new java.util.ArrayList<>(ds.currentPath); 
+                    bestExitX = exitX;
+                    bestExitY = exitY;
                 }
             }
         }
-
-        // NÄR VI HAR TESTAT ALLA, KOLLA OM VI HITTADE NÅGON VÄG ALLS 
+        
         if (bestIndex != -1) { 
-            appendStatus("Valde parkeringsruta Nr: " + bestIndex + " (Avstånd: " + shortestPathSize + " steg)\n"); 
-            
-            // Ta bort den valda bilen från "att-göra"-listan 
+            appendStatus("Valde parkeringsruta Nr: " + bestIndex + "\n"); 
             unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
+            
+            int destX = (int) (ds.LocationX[bestIndex] / ds.gridsize);
+            int destY = (int) (ds.LocationY[bestIndex] / ds.gridsize);
 
-            // --- Markera hela p-rutan som hinder --- 
-            int carWidthInNodes; 
-            int carHeightInNodes; 
-            int offsetX; 
-            int offsetY; 
+            // --- STEG 2: MANÖVERN (Nu helt utan diagonala rörelser) --- 
+            if (destY < (ds.rows / 2) && destX < ds.columns / 3.3) { 
+                appendStatus("Utför parkering: Vänster cirkelbåge \n"); 
+            /** int curX = destX;
+                int curY = destY;
 
-            if (bestDestY < (ds.rows / 2)) { 
-                carWidthInNodes = 11; 
-                carHeightInNodes = 5; 
-                offsetX = 1; 
-                offsetY = -2; 
-            } else { 
-                carWidthInNodes = 6; 
-                carHeightInNodes = 11; 
-                offsetX = -3; 
-                offsetY = 1; 
-            } 
+                // 1. "Sving" utåt (Raka steg istället för diagonala)
+                curX++; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+                curY++; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+                curY++; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
 
-            for (int dx = 0; dx < carWidthInNodes; dx++) {
-                for (int dy = 0; dy < carHeightInNodes; dy++) {
-                    int blockX = bestDestX + offsetX + dx;
-                    int blockY = bestDestY + offsetY + dy;
-                    
-                    if (blockX >= 0 && blockX < ds.columns && blockY >= 0 && blockY < ds.rows) {
-                        ds.ObstacleMatrix[blockX][blockY] = 1; 
-                    }
+                // 2. Backa in (Rakt upp)
+                for(int s = 0; s < 4; s++) {
+                    curY--;
+                    bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Backa"));
                 }
+
+                // 3. "Sving" till vänster (Dela upp curX-- och curY++)
+                curX--; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+                curY++; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+                curX--; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+                curY++; bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Manöver"));
+
+                // 4. Släpp ner bilen och kör 2 steg framåt (Vänster)
+                for(int s = 0; s < 2; s++) {
+                    curX--;
+                    bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Framåt"));
+                }
+
+                // 5. Kör 4 steg i sidled (Neråt)
+                for(int s = 0; s < 4; s++) {
+                    curY++;
+                    bestPath.add(new Vertex(String.valueOf(curY * ds.columns + curX), "Sidled"));
+                }
+                */ 
             }
-            // ----------------------------------------
-
-            // Skapa listan för denna specifika Tur och Retur
-            java.util.List<Vertex> roundTrip = new java.util.ArrayList<>(bestPath);
-            
-            // --- NYTT: Fyll på Master-listan istället för att skriva över ---
-            int offset = masterDemoPath.size(); // Håller koll på om det är första rutten
-
-            if (masterDemoPath.isEmpty()) {
-                masterDemoStops.add(0); // Allra första startpunkten
+            if (destY < (ds.rows / 2) && destX > ds.columns / 3.3) { 
+                appendStatus("Utför parkering: Höger cirkelbåge \n"); 
             }
+                
+                else {
+                        appendStatus("Utför parkering: Vertikal backning \n"); 
+                        }
+            // (Resten av else-if blocken lämnas oförändrade förutom att man delar upp diagonaler vid behov)
 
-            // Lägg till vägen DIT
+            // 3. SKAPA MASTERLISTAN OCH HEMRESAN
+            int offset = masterDemoPath.size(); 
+            if (masterDemoPath.isEmpty()) { masterDemoStops.add(0); }
+
             masterDemoPath.addAll(bestPath);
-            masterDemoStops.add(masterDemoPath.size() - 1); // Sparar indexet när vi är framme vid P-rutan
+            masterDemoStops.add(masterDemoPath.size() - 1); 
 
-            // Skapa vägen tillbaka (vänd på listan)
-            java.util.List<Vertex> returnPath = new java.util.ArrayList<>(bestPath);
-            java.util.Collections.reverse(returnPath);
-            if (!returnPath.isEmpty()) {
-                returnPath.remove(0); // Ta bort första steget så vi inte står stilla vid bytet
-            }
+            if (bestExitX < 0) bestExitX = 0; 
+            if (bestExitY < 0) bestExitY = 0; 
             
-            // Lägg till vägen HEM
+            int returnStartNode = (bestExitY * ds.columns) + bestExitX;
+            op.createReturnPlan(returnStartNode, startNodeId); 
+            
+            java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
+            if (!returnPath.isEmpty()) { returnPath.remove(0); }
+            
             masterDemoPath.addAll(returnPath);
-            masterDemoStops.add(masterDemoPath.size() - 1); // Sparar indexet när vi är tillbaka vid basen
+            masterDemoStops.add(masterDemoPath.size() - 1); 
 
-            // VIKTIGT: Vi rör inte ds.demoStep här om vi redan är igång och kör. 
-            // Endast om det är den allra första rutten sätter vi den till 0.
-            if (offset == 0) {
-                ds.demoStep = 0; 
-            }
-            
+            if (offset == 0) { ds.demoStep = 0; }
             updateRobotPosition();
-            return true; // Berättar att vi lyckades ladda en ny rutt
-
-        } else {
-            appendStatus("Kunde inte hitta någon väg till resterande bilar. De är förmodligen inbyggda/blockerade!\n");
-            unvisitedMissions.clear(); 
-            return false; 
-        }
+            return true; 
+        } 
+        return false;
     }
-            
-
-
-     
-
 
     public void showStatus() {
         System.out.println("Start at: " + ds.LocationX[0] + ", " + ds.LocationY[0]);
@@ -273,7 +286,7 @@ private boolean planNextMission() {
         });
 
         jButton3.setText("←");
-        jButton3.setToolTipText("tar ett steg bakåt i rutten");
+        jButton3.setToolTipText("Tar ett steg bakåt i rutten");
         jButton3.setEnabled(false);
         jButton3.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -353,7 +366,7 @@ private boolean planNextMission() {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jButton2)
                             .addComponent(jButton1))
-                        .addGap(112, 112, 112)
+                        .addGap(103, 103, 103)
                         .addComponent(jToggleButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -474,81 +487,31 @@ private boolean planNextMission() {
     }//GEN-LAST:event_jButton2ActionPerformed
 
     
-    public String updateRobotPosition() { 
+public String updateRobotPosition() { 
         if (masterDemoPath != null && ds.demoStep >= 0 && ds.demoStep < masterDemoPath.size()) {
 
-            // 1. Hämta data om nuvarande steg
             Vertex v = masterDemoPath.get(ds.demoStep);
             int nodeId = Integer.parseInt(v.getId());
-            String baseId = masterDemoPath.get(0).getId();
 
-            // 2. Visa bara rutt för nuvarande delsträcka (Svart väg)
-            int segmentStart = 0;
-            int searchIndex = ds.demoStep;
-
-            if (v.getId().equals(baseId) && ds.demoStep < masterDemoPath.size() - 1) {
-                searchIndex = ds.demoStep + 1;
-            }
-
-            for (int i = searchIndex; i >= 0; i--) {
-                if (masterDemoPath.get(i).getId().equals(baseId)) {
-                    segmentStart = i;
-                    break;
-                }
-            }
-
-            int segmentEnd = masterDemoPath.size() - 1;
-            for (int i = searchIndex; i < masterDemoPath.size(); i++) {
-                if (masterDemoPath.get(i).getId().equals(baseId) && i > segmentStart) {
-                    segmentEnd = i;
-                    break;
-                }
-            }
-            ds.currentPath = new java.util.ArrayList<>(masterDemoPath.subList(segmentStart, segmentEnd + 1));
-
-            // 3. Uppdatera robotens position (gula pricken)
-            
-            double oldX = ds.robotX; 
-            double oldY = ds.robotY; 
-            
-            ds.robotX = (nodeId % ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
-            ds.robotY = (nodeId / ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
-            
-            double dx = ds.robotX - oldX; 
-            double dy = ds.robotY - oldY; 
-            
-            // Om roboten faktiskt har flyttat sig, uppdatera vinkeln
-            if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) { 
-                // Math.atan2 ger oss riktningen i radianer. 
-                ds.robotAngle = Math.atan2(dy, dx); 
-            } 
-
-            // 4. HISTORIK-MAGIN: Återställ och rita ut rätt röda bilar!
-            ds.clearVisitedAreas(); // Sudda allt tillfälligt
-
-            // Loopa igenom hållplatserna. Varje udda index (1, 3, 5...) är ankomsten till en bil.
-            for (int i = 1; i < masterDemoStops.size(); i += 2) {
-                int arrivalAtGoalIndex = masterDemoStops.get(i);
-                
-                // Om vi har "hunnit fram" till denna bil i tidslinjen, måla den röd!
-                if (ds.demoStep >= arrivalAtGoalIndex) {
-                    Vertex goalVertex = masterDemoPath.get(arrivalAtGoalIndex);
-                    int goalNodeId = Integer.parseInt(goalVertex.getId());
-                    double goalX = (goalNodeId % ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
-                    double goalY = (goalNodeId / ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
-                    ds.markAreaAsVisited(goalX, goalY);
-                }
-            }
-
-            // 5. Output för instruktioner
             int currentLegStart = 0;
-            int currentLegEnd = masterDemoPath.size() - 1;
+            int currentLegEnd = masterDemoPath.size() - 1; 
+            
+            ds.isLoaded = false; // AGVn är inte lastad som standard 
 
             for (int i = 0; i < masterDemoStops.size() - 1; i++) {
                 int startStop = masterDemoStops.get(i);
                 int endStop = masterDemoStops.get(i + 1);
 
                 if (ds.demoStep >= startStop && ds.demoStep <= endStop) {
+                    
+                    // --- BILD-LOGIKEN ---
+                    if (i % 2 == 0) {
+                        ds.isLoaded = true;
+                    } else {
+                        ds.isLoaded = false;
+                    }
+                    // --------------------
+
                     if (ds.demoStep == endStop && ds.demoStep != masterDemoPath.size() - 1) {
                         continue;
                     }
@@ -558,8 +521,36 @@ private boolean planNextMission() {
                 }
             }
 
+            ds.currentPath = new java.util.ArrayList<>(masterDemoPath.subList(currentLegStart, currentLegEnd + 1));
+
+            double oldX = ds.robotX; 
+            double oldY = ds.robotY; 
+            
+            ds.robotX = (nodeId % ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
+            ds.robotY = (nodeId / ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
+            
+            double dx = ds.robotX - oldX; 
+            double dy = ds.robotY - oldY; 
+            
+            if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) { 
+                ds.robotAngle = Math.atan2(dy, dx); 
+            } 
+
+            ds.clearVisitedAreas(); 
+
+            for (int i = 1; i < masterDemoStops.size(); i += 2) {
+                int arrivalAtGoalIndex = masterDemoStops.get(i);
+                if (ds.demoStep >= arrivalAtGoalIndex) {
+                    Vertex goalVertex = masterDemoPath.get(arrivalAtGoalIndex);
+                    int goalNodeId = Integer.parseInt(goalVertex.getId());
+                    double goalX = (goalNodeId % ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
+                    double goalY = (goalNodeId / ds.columns) * ds.gridsize + (ds.gridsize / 2.0);
+                    ds.markAreaAsVisited(goalX, goalY);
+                }
+            }
+
             if (currentLegStart != lastOptimizedLegStart) {
-                java.util.List<Vertex> legPath = new java.util.ArrayList<>(masterDemoPath.subList(currentLegStart, currentLegEnd + 1));
+                java.util.List<Vertex> legPath = new java.util.ArrayList<>(ds.currentPath); 
                 if (ds.instructionQueue != null) ds.instructionQueue.clear(); 
                 RouteOptimizer optimizer = new RouteOptimizer(ds);
                 System.out.println("\n");

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 C:\Users\andre\OneDrive - Linköpings universitet\GitHub\Kandidatprojekt\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\AGVparking.java
 C:\Users\andre\OneDrive - Linköpings universitet\GitHub\Kandidatprojekt\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\GuiUpdate.java
 C:\Users\andre\OneDrive - Linköpings universitet\GitHub\Kandidatprojekt\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\MapPanel.java
@@ -13,19 +12,3 @@ C:\Users\andre\OneDrive - Linköpings universitet\GitHub\Kandidatprojekt\Kandita
 C:\Users\andre\OneDrive - Linköpings universitet\GitHub\Kandidatprojekt\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\RouteOptimizer.java
 C:\Users\andre\OneDrive - Linköpings universitet\GitHub\Kandidatprojekt\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\BluetoothTransceiver.java
 C:\Users\andre\OneDrive - Linköpings universitet\GitHub\Kandidatprojekt\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\DataStore.java
-=======
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\RobotRead.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\Graph.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\MapPanel.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\Vertex.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\RouteOptimizer.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\AgvInstruction.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\OptPlan.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\ControlUI.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\AGVparking.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\DataStore.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\Edge.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\BluetoothTransceiver.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\GuiUpdate.java
-C:\Users\fredr\OneDrive - Linköpings universitet\Dokument\GitHub\Kanditatprojekt-2026\ÖS\GUI\AGVparking\src\main\java\com\mycompany\agvparking\DijkstraAlgorithm.java
->>>>>>> 9ff34bc49171e3890eb9609bee53544a25f586a6
