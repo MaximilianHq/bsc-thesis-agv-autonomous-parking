@@ -6,7 +6,7 @@ const StatusLED::LEDConfig StatusLED::_led_states[] = {
     {{255, 0, 0}, false, 500},   // STATUS_BOOT
     {{0, 255, 0}, false, 500},   // STATUS_READY
     {{0, 0, 255}, true, 500},    // STATUS_BLE_SEARCHING
-    {{0, 0, 255}, false, 500},   // STATUS_BLE_CONNECTED
+    {{0, 0, 255}, true, 500},    // STATUS_BLE_CONNECTED
     {{0, 255, 255}, false, 500}, // STATUS_CMD_RECEIVING
     {{255, 0, 0}, false, 500},   // STATUS_ERROR
 

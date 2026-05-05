@@ -11,6 +11,7 @@ public:
     struct MotorChannelConfig
     {
         int pin_dir, pin_pwm, channel;
+        bool invert_dir;
     };
 
     MotorChannel(MotorChannelConfig &cfg);
@@ -23,6 +24,7 @@ public:
 private:
     void _setup();
     int _pin_dir, _pin_pwm, _chnl;
+    bool _invert_dir;
 
     friend class MotorDriver;
 };
