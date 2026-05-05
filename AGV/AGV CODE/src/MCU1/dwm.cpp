@@ -3,91 +3,20 @@
 #include "dwm.h"
 #include "system_actions.h"
 
-DWM::DWM(Stream &str) : _str(str) {}
+DWM::DWM(Stream &str, unsigned long d_rate) : _str(str), _d_rate(d_rate) {}
 
-void DWM::setup(uint16_t id, uint16_t p_stat, uint16_t p_mov)
+void DWM::_request_pos()
 {
-    delay(200);
-}
-
-void DWM::_clear_rx()
-{
-    while (_str.available())
-        _str.read();
-}
-
-bool DWM::_read_exact(uint8_t *rx, size_t expected_len, const char *cmd_name)
-{
-    size_t n = 0;
-    unsigned long start = millis();
-
-    while (n < expected_len && (millis() - start) < 500)
-    {
-        if (_str.available())
-        {
-            rx[n++] = (uint8_t)_str.read();
-        }
-    }
-
-    if (g_debug.dwm)
-    {
-        Serial.print("[DWM] ");
-        Serial.print(cmd_name);
-        Serial.print(" RX ");
-        Serial.print(n);
-        Serial.print("/");
-        Serial.print(expected_len);
-        Serial.print(": ");
-
-        for (size_t i = 0; i < n; i++)
-        {
-            if (rx[i] < 0x10)
-                Serial.print("0");
-            Serial.print(rx[i], HEX);
-            Serial.print(" ");
-        }
-
-        Serial.println();
-    }
-
-    if (n != expected_len)
-    {
-        if (g_debug.dwm)
-        {
-            Serial.print("[DWM] Response (");
-            Serial.print(cmd_name);
-            Serial.println(") incomplete/corrupt");
-        }
-
-        return false;
-    }
-
-    return true;
-}
-
-bool DWM::dwm_status_get()
-{
-    _clear_rx();
-
-    uint8_t msg[2];
-    msg[0] = 0x32;
-    msg[1] = 0x00;
-
-    _str.write(msg, sizeof(msg));
+    uint8_t cmd[] = {0x0C, 0x00}; // dwm_loc_get
+    _str.write(cmd, sizeof(cmd));
     _str.flush();
 
-    uint8_t rx[6];
+    _last_req = millis();
+    _request_start = millis();
+    _waiting_for_response = true;
 
-    if (!_read_exact(rx, sizeof(rx), "TYPE_CMD_STATUS_GET"))
-        return false;
-
-    if (!_tvl_success(rx))
-        return false;
-
-    if (rx[3] != 0x5A || rx[4] != 0x01)
-        return false;
-
-    return true;
+    _reset_parser();
+    _reset_response();
 }
 
 bool DWM::dwm_cfg_get(uint16_t &cfg_node)
@@ -167,102 +96,234 @@ bool DWM::dwm_cfg_get(uint16_t &cfg_node)
     return true;
 }
 
-bool DWM::dwm_get_pos(DwmState &s)
+void DWM::_reset_parser()
 {
-    _clear_rx();
+    _state = WAIT_TYPE;
+    _read_index = 0;
+    _expected_len = 0;
+}
 
-    uint8_t cmd[] = {0x0C, 0x00}; // dwm_loc_get
-    _str.write(cmd, sizeof(cmd));
-    _str.flush();
+void DWM::_reset_response()
+{
+    _response_has_status = false;
+    _response_has_position = false;
+}
 
-    uint8_t buffer[256];
-    size_t bufferIndex = 0;
+bool DWM::read(DwmState &out)
+{
+    bool packet_delivered = false;
 
-    unsigned long start = millis();
-
-    while ((millis() - start) < 500)
+    if (!_waiting_for_response)
     {
-        while (_str.available())
-        {
-            uint8_t b = (uint8_t)_str.read();
+        if (_d_rate == 0 || (millis() - _last_req) >= _d_rate)
+            _request_pos();
+    }
 
-            if (bufferIndex >= sizeof(buffer))
+    while (_str.available())
+    {
+        uint8_t b = static_cast<uint8_t>(_str.read());
+
+        switch (_state)
+        {
+        case WAIT_TYPE:
+            _pkt[0] = b;
+            _read_index = 1;
+            _state = READ_LEN;
+            break;
+
+        case READ_LEN:
+            _pkt[1] = b;
+            _read_index = 2;
+            _expected_len = static_cast<size_t>(b) + 2;
+
+            if (_expected_len > sizeof(_pkt))
             {
-                bufferIndex = 0;
+                if (g_debug.dwm)
+                    Serial.println("[DWM] Packet too large");
+
+                _waiting_for_response = false;
+                _reset_parser();
+                _reset_response();
+                break;
             }
 
-            buffer[bufferIndex++] = b;
+            _state = READ_BODY;
+            break;
 
-            if (bufferIndex >= 2)
+        case READ_BODY:
+            _pkt[_read_index++] = b;
+
+            if (_read_index >= _expected_len)
             {
-                uint8_t packet_len = buffer[1];
-
-                if (packet_len > 250)
+                if (g_debug.dwm)
                 {
-                    bufferIndex = 0;
-                    continue;
+                    Serial.print("[DWM] TLV 0x");
+                    if (_pkt[0] < 0x10)
+                        Serial.print("0");
+                    Serial.print(_pkt[0], HEX);
+                    Serial.print(" RX ");
+                    Serial.print(_expected_len);
+                    Serial.print(": ");
+
+                    for (size_t i = 0; i < _expected_len; i++)
+                    {
+                        if (_pkt[i] < 0x10)
+                            Serial.print("0");
+                        Serial.print(_pkt[i], HEX);
+                        Serial.print(" ");
+                    }
+                    Serial.println();
                 }
 
-                size_t total_len = packet_len + 2;
+                uint8_t type = _pkt[0];
+                uint8_t length = _pkt[1];
+                _reset_parser();
 
-                if (bufferIndex >= total_len)
+                if (type == 0x40 && length >= 1)
+                {
+                    _response_has_status = (_pkt[2] == 0x00);
+
+                    if (g_debug.dwm)
+                    {
+                        Serial.print("[DWM] Status: ");
+                        Serial.println(_pkt[2], HEX);
+                    }
+
+                    if (_pkt[2] != 0x00)
+                    {
+                        _waiting_for_response = false;
+                        _reset_response();
+                    }
+                }
+                else if (type == 0x41 && length >= 13)
+                {
+                    int32_t x = 0;
+                    int32_t y = 0;
+                    int32_t z = 0;
+
+                    memcpy(&x, &_pkt[2], 4);
+                    memcpy(&y, &_pkt[6], 4);
+                    memcpy(&z, &_pkt[10], 4);
+
+                    out.pos.x = static_cast<int16_t>(x);
+                    out.pos.y = static_cast<int16_t>(y);
+                    out.pos.z = static_cast<int16_t>(z);
+                    out.q = _pkt[14];
+
+                    _response_has_position = true;
+                    packet_delivered = true;
+
+                    if (g_debug.dwm)
+                    {
+                        Serial.print("[DWM] X: ");
+                        Serial.print(out.pos.x / 1000.0f, 3);
+                        Serial.print("  Y: ");
+                        Serial.print(out.pos.y / 1000.0f, 3);
+                        Serial.print("  Z: ");
+                        Serial.println(out.pos.z / 1000.0f, 3);
+                    }
+                }
+                else if (type == 0x48 && length >= 1)
                 {
                     if (g_debug.dwm)
                     {
-                        Serial.print("[DWM] TYPE_CMD_LOC_GET RX ");
-                        Serial.print(total_len);
-                        Serial.print(": ");
-
-                        for (size_t i = 0; i < total_len; i++)
-                        {
-                            if (buffer[i] < 0x10)
-                                Serial.print("0");
-                            Serial.print(buffer[i], HEX);
-                            Serial.print(" ");
-                        }
-
-                        Serial.println();
+                        Serial.print("[DWM] Distances count: ");
+                        Serial.println(_pkt[2]);
                     }
 
-                    uint8_t type = buffer[0];
-                    uint8_t length = buffer[1];
-
-                    if ((type == 0x41 || type == 0x40) && length >= 13 && total_len >= 15)
+                    _waiting_for_response = false;
+                    _reset_response();
+                }
+                else if (type == 0x49 && length >= 1)
+                {
+                    if (g_debug.dwm)
                     {
-                        memcpy(&s.pos.x, &buffer[2], 4);
-                        memcpy(&s.pos.y, &buffer[6], 4);
-                        memcpy(&s.pos.z, &buffer[10], 4);
-                        memcpy(&s.q, &buffer[14], 1);
-
-                        float x_cm = s.pos.x / 1000.0f;
-                        float y_cm = s.pos.y / 1000.0f;
-                        float z_cm = s.pos.z / 1000.0f;
-
-                        if (g_debug.dwm)
-                        {
-                            Serial.print("[DWM] X: ");
-                            Serial.print(x_cm, 3);
-                            Serial.print("  Y: ");
-                            Serial.print(y_cm, 3);
-                            Serial.print("  Z: ");
-                            Serial.println(z_cm, 3);
-                        }
-
-                        return true;
+                        Serial.print("[DWM] Anchors count: ");
+                        Serial.println(_pkt[2]);
                     }
 
-                    bufferIndex = 0;
+                    _waiting_for_response = false;
+                    _reset_response();
+                }
+                else
+                {
+                    if (g_debug.dwm)
+                    {
+                        Serial.print("[DWM] Unhandled TLV type 0x");
+                        if (type < 0x10)
+                            Serial.print("0");
+                        Serial.println(type, HEX);
+                    }
                 }
             }
+            break;
         }
+    }
+
+    if (_waiting_for_response && (millis() - _request_start) > RESPONSE_TIMEOUT_MS)
+    {
+        if (g_debug.dwm)
+            Serial.println("[DWM] Response timeout");
+
+        _waiting_for_response = false;
+        _reset_parser();
+        _reset_response();
+    }
+
+    return packet_delivered;
+}
+
+void DWM::_clear_rx()
+{
+    while (_str.available())
+        _str.read();
+}
+
+bool DWM::_read_exact(uint8_t *rx, size_t expected_len, const char *cmd_name)
+{
+    size_t n = 0;
+    unsigned long start = millis();
+
+    while (n < expected_len && (millis() - start) < 500)
+    {
+        if (_str.available())
+            rx[n++] = static_cast<uint8_t>(_str.read());
     }
 
     if (g_debug.dwm)
     {
-        Serial.println("[DWM] TYPE_CMD_LOC_GET timeout/no valid packet");
+        Serial.print("[DWM] ");
+        Serial.print(cmd_name);
+        Serial.print(" RX ");
+        Serial.print(n);
+        Serial.print("/");
+        Serial.print(expected_len);
+        Serial.print(": ");
+
+        for (size_t i = 0; i < n; i++)
+        {
+            if (rx[i] < 0x10)
+                Serial.print("0");
+            Serial.print(rx[i], HEX);
+            Serial.print(" ");
+        }
+
+        Serial.println();
     }
 
-    return false;
+    if (n != expected_len)
+    {
+        if (g_debug.dwm)
+        {
+            Serial.print("[DWM] Response (");
+            Serial.print(cmd_name);
+            Serial.println(") incomplete/corrupt");
+        }
+
+        return false;
+    }
+
+    return true;
 }
 
 bool DWM::_tvl_success(const uint8_t *rx)

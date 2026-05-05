@@ -116,7 +116,6 @@ void setup()
     sonar.setup();
 
     // ========== DWM ==========
-    dwm.setup(0x1234, 100, 100);
     uint16_t cfg;
     if (dwm.dwm_cfg_get(cfg))
         Serial.println("cfg_get ok");
@@ -134,8 +133,6 @@ void setup()
 void loop()
 {
     // ========== ROUTINES ==========
-    sysctrl.test();
-
     // ota_handle();
     //  read BT. packet: ös movement, ös command
     //  $TCXXYYTTC\n or $TCCC\n
@@ -167,10 +164,8 @@ void loop()
     // ---------- DWM ----------
     DwmState s;
     ImuState i;
-    delay(1000);
-    dwm.dwm_get_pos(s);
-
-    delay(2000);
+    if (dwm.read(s))
+        sysctrl.on_new_position_data(s, i);
 }
 
 void blt_status_routine()
