@@ -220,15 +220,8 @@ public class ControlUI extends javax.swing.JFrame {
 
             if (bestIndex >= 5 && bestIndex <= 9) {
                 appendStatus("Utför parkering: Cirkelbåge och backning \n"); 
-                // Klistra fast manövern i slutet av utresan!
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 java.util.List<RobotState> maneuver = transformer.generateParkingManeuver(lastState, destX, destY);
-                detailedOut.addAll(maneuver);
-                } else if (bestIndex == 1) {
-                appendStatus("Utför parkering: Komplex U-sväng och backning vänster \n"); 
-                RobotState lastState = detailedOut.get(detailedOut.size() - 1);
-                java.util.List<RobotState> maneuver = transformer.generateComplexParkingManeuver(lastState, destX, destY);
-                detailedOut.addAll(maneuver);
                 detailedOut.addAll(maneuver); 
             } else if (bestIndex == 1) { 
                 appendStatus("Utför parkering: U-sväng och backning vänster \n"); 
@@ -236,16 +229,12 @@ public class ControlUI extends javax.swing.JFrame {
                 java.util.List<RobotState> maneuver = transformer.generateComplexParkingManeuver(lastState, destX, destY); 
                 detailedOut.addAll(maneuver); 
             } else if (bestIndex >= 2 && bestIndex <= 4) {
-                appendStatus("Utför parkering: Komplex U-sväng och backning höger \n"); 
-                RobotState lastState = detailedOut.get(detailedOut.size() - 1); 
-                java.util.List<RobotState> maneuver = transformer.generateTopParkingManeuver(lastState, destX, destY); 
                 appendStatus("Utför parkering: U-sväng och backning höger \n"); 
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 java.util.List<RobotState> maneuver = transformer.generateTopParkingManeuver(lastState, destX, destY);
                 detailedOut.addAll(maneuver); 
                 
             } else if (bestIndex == 10) { 
-                appendStatus("Utför parkering: Komplex backning i hörn \n"); 
                 appendStatus("Utför parkering: backning vid hörn \n"); 
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 java.util.List<RobotState> maneuver = transformer.generateSpot10Maneuver(lastState);
@@ -253,8 +242,6 @@ public class ControlUI extends javax.swing.JFrame {
                 
             } else { // Bör inte ske 
                 appendStatus("Utför parkering: Standard \n"); 
-                RobotState lastState = detailedOut.get(detailedOut.size() -1); 
-                for(int i = 0; i < 10; i++) detailedOut.add(new RobotState(lastState.agvX, lastState.agvY, lastState.axleX, lastState.axleY, lastState.angle, false)); 
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 for(int i = 0; i < 10; i++) detailedOut.add(new RobotState(lastState.agvX, lastState.agvY, lastState.axleX, lastState.axleY, lastState.angle, false));
             }
@@ -262,7 +249,6 @@ public class ControlUI extends javax.swing.JFrame {
             // Spara allt till demon
             masterDemoPath.addAll(detailedOut);
             
-            // --- NYTT: SPARA EXAKT VAR RUTAN LIGGER SÅ FÄRGEN BLIR RÄTT ---
             // --- SPARA EXAKT VAR RUTAN LIGGER SÅ FÄRGEN BLIR RÄTT ---
             masterDemoRedSpots.add(new Point2D(ds.LocationX[bestIndex], ds.LocationY[bestIndex]));
             masterDemoStops.add(masterDemoPath.size() - 1); 
@@ -279,6 +265,7 @@ public class ControlUI extends javax.swing.JFrame {
             java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
             if (!returnPath.isEmpty()) returnPath.remove(0);
 
+            // Förvandla hemresan 
             RobotState stateAfterManeuver = masterDemoPath.get(masterDemoPath.size() - 1);
             java.util.List<RobotState> detailedReturn = transformer.transformPath(returnPath, false, stateAfterManeuver);
             
@@ -298,7 +285,6 @@ public class ControlUI extends javax.swing.JFrame {
             for (RobotState state : detailedReturn) {
                 currentReturnLine.add(new Point2D(state.agvX, state.agvY)); 
             }
-            // --------------------------------------------------------
             
             // Dölj den svarta rutten (eftersom den visar hemresan i förtid och förvirrar)
             ds.currentPath = null; 
@@ -648,7 +634,6 @@ public class ControlUI extends javax.swing.JFrame {
                     RobotState goalState = masterDemoPath.get(arrivalAtGoalIndex);
                     ds.markAreaAsVisited(goalState.axleX, goalState.axleY);
                 }
-            // -------------------------------------
             } 
             
             // --- BYT BLÅ LINJE BEROENDE PÅ OM VI ÅKER UT ELLER HEM ---

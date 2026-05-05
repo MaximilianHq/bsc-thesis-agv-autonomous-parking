@@ -147,8 +147,6 @@ public class KinematicsTransformer {
             agvX += (forwardDist / steps) * Math.cos(angle);
             agvY += (forwardDist / steps) * Math.sin(angle);
             maneuver.add(new RobotState(agvX, agvY, agvX - L*Math.cos(angle), agvY - L*Math.sin(angle), angle, false));
-        }
-        return maneuver;
         } 
         for(int i = 0; i < 150; i++) maneuver.add(new RobotState(agvX, agvY, agvX - L*Math.cos(angle), agvY - L*Math.sin(angle), angle, false)); 
         return maneuver; 
@@ -231,8 +229,6 @@ public class KinematicsTransformer {
             finalAgvX += (sideDist / steps) * Math.cos(sideAngle);
             finalAgvY += (sideDist / steps) * Math.sin(sideAngle);
             maneuver.add(new RobotState(finalAgvX, finalAgvY, finalAgvX - L*Math.cos(angle), finalAgvY - L*Math.sin(angle), angle, false));
-        }
-
         } 
         for(int i = 0; i < 150; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, finalAgvX - L*Math.cos(angle), finalAgvY - L*Math.sin(angle), angle, false)); 
         return maneuver;
@@ -264,7 +260,6 @@ public class KinematicsTransformer {
         while(angle > Math.PI) angle -= 2*Math.PI;
         while(angle < -Math.PI) angle += 2*Math.PI;
         
-        // 2. Backa 60 cm neråt i rutan
         // 2. Backa 80 cm in i rutan
         double backDist = 80.0;
         steps = 80;
@@ -298,9 +293,6 @@ public class KinematicsTransformer {
         // 4. Lasta av och pausa
         for(int i = 0; i < 100; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, axleX, axleY, angle, false));
 
-        // 5. Kör 30 cm framåt
-        double forwardDist = 30.0;
-        steps = 30;
         // 5. Kör 20 cm framåt // Oklart vad som krävs för att inte träffa väggen med AGVn 
         double forwardDist = 20.0;
         steps = 20;
@@ -319,8 +311,6 @@ public class KinematicsTransformer {
             finalAgvX += (sideDist / steps) * Math.cos(sideAngle);
             finalAgvY += (sideDist / steps) * Math.sin(sideAngle);
             maneuver.add(new RobotState(finalAgvX, finalAgvY, finalAgvX - L*Math.cos(angle), finalAgvY - L*Math.sin(angle), angle, false));
-        }
-
         } 
         
         for(int i = 0; i < 150; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, finalAgvX - L*Math.cos(angle), finalAgvY - L*Math.sin(angle), angle, false)); 
@@ -402,8 +392,6 @@ public class KinematicsTransformer {
             finalAgvX += (forwardDist / steps) * Math.cos(angle);
             finalAgvY += (forwardDist / steps) * Math.sin(angle);
             maneuver.add(new RobotState(finalAgvX, finalAgvY, finalAgvX - L*Math.cos(angle), finalAgvY - L*Math.sin(angle), angle, false));
-        }
-
         } 
         return maneuver;
     }     
