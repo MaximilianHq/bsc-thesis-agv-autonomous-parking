@@ -15,15 +15,15 @@
 #include "sonar.h"
 
 // ========== PINS ==========
+// UART
+#define PIN_MTM_TXD 16
+#define PIN_MTM_RXD 17
+#define PIN_DWM_TXD 32
+#define PIN_DWM_RXD 33
 // Sonar
 #define PIN_SONAR_SERVO 18
 #define PIN_SONAR_TRIG 19
 #define PIN_SONAR_ECHO 35
-// UART
-#define PIN_MTM_TXD 17
-#define PIN_MTM_RXD 16
-#define PIN_DWM_TXD 32
-#define PIN_DWM_RXD 33
 // SHIFT REGISTER
 #define PIN_SHREG_DATA 27
 #define PIN_SHREG_LATCH 26
@@ -42,11 +42,13 @@ constexpr int SONAR_RANGE = 200; // mm
 constexpr int SONAR_SPEED = 100; // mm
 constexpr int SONAR_ANGLE = 70;  // ∓ deg
 
+// ---------- COMM ----------
 BluetoothSerial SerialBT;
 
 Comm comm_bt(SerialBT, "BT");
 Comm comm_mcu(Serial1, "MCU");
 
+// ---------- LEDS ----------
 SRegHandler sreg(PIN_SHREG_DATA, PIN_SHREG_CLK, PIN_SHREG_LATCH);
 StatusLED led_sys(sreg, SRegHandler::pin_sreg::QA,
                   SRegHandler::pin_sreg::QB,
@@ -59,6 +61,7 @@ StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
 
 SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd);
 
+// ---------- SONAR ----------
 Sonar::SonarConfig sonar_cfg{
     PIN_SONAR_SERVO,
     PIN_SONAR_TRIG,
@@ -72,11 +75,12 @@ Sonar::SonarConfig sonar_cfg{
     false};
 Sonar sonar(sonar_cfg, sysctrl);
 
+// ---------- DWM ----------
+DWM dwm(Serial2);
+
 // ========== GLOBALS ==========
 Debug g_debug;
 unsigned long last_packet_time = 0;
-
-// TODO MESSAGE SENDING BUFFER
 
 // ========== PROTOTYPES ==========
 void blt_status_routine();
@@ -84,6 +88,7 @@ void watchdog_routine();
 
 void setup()
 {
+    delay(5000);
     // ========== STATE ==========
     // Updated by led_x.update, do not set manually!
     sreg.setup();
@@ -91,12 +96,14 @@ void setup()
     led_cmd.setup();
 
     // ========== UART ==========
-    Serial.begin(UART_BAUD);  // PC
-    Serial1.begin(UART_BAUD); // MCU2
-    Serial2.begin(UART_BAUD); // DWM
-    Serial.setTimeout(30);    // PC
-    Serial1.setTimeout(30);   // MCU2
-    Serial2.setTimeout(30);   // DWM
+    Serial.begin(UART_BAUD, SERIAL_8N1); // PC
+    Serial1.begin(UART_BAUD, SERIAL_8N1,
+                  PIN_MTM_TXD, PIN_MTM_RXD); // MCU2
+    Serial2.begin(UART_BAUD, SERIAL_8N1,
+                  PIN_DWM_TXD, PIN_DWM_RXD); // DWM
+    Serial.setTimeout(30);                   // PC
+    Serial1.setTimeout(30);                  // MCU2
+    Serial2.setTimeout(30);                  // DWM
 
     Serial.println("[MAIN] Running setup...");
 
@@ -108,32 +115,39 @@ void setup()
     // ========== SONAR ==========
     sonar.setup();
 
+    // ========== DWM ==========
+    dwm.setup(1234, 100, 100);
+
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
     led_sys.set_status(StatusLED::State::STATUS_READY);
 
     // watchdog start
     last_packet_time = millis();
+
+    sysctrl.test();
 }
 
 void loop()
 {
-    // ========== UPDATES ==========
-    sonar.update();
-    led_sys.update();
-    led_cmd.update();
-
     // ========== ROUTINES ==========
+    sysctrl.test();
 
     // ota_handle();
     //  read BT. packet: ös movement, ös command
     //  $TCXXYYTTC\n or $TCCC\n
 
-    blt_status_routine();
-    watchdog_routine();
+    // blt_status_routine();
+    // watchdog_routine();
+
+    // ========== UPDATES ==========
+    sonar.update();
+    led_sys.update();
+    led_cmd.update();
 
     // ========== CODE ==========
 
+    // ---------- COMM ----------
     // Read from Bluetooth and process packet
     Comm::Packet bt_pkt;
     if (comm_bt.read(bt_pkt))
@@ -147,7 +161,21 @@ void loop()
     if (comm_mcu.read(mcu_pkt))
         sysctrl.on_mcu_pkt_recieved(mcu_pkt);
 
-    delay(200);
+    // ---------- DWM ----------
+    DwmState s;
+    ImuState i;
+    if (dwm.dwm_status_get())
+    {
+        if (dwm.dwm_get_pos(s))
+        {
+            // get imu state
+            // sysctrl.on_new_position_data(s, i);
+        }
+    }
+    else
+        Serial.println("[DWM] Module not ready");
+
+    delay(2000);
 }
 
 void blt_status_routine()
