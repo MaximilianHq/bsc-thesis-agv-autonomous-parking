@@ -116,7 +116,10 @@ void setup()
     sonar.setup();
 
     // ========== DWM ==========
-    dwm.setup(1234, 100, 100);
+    dwm.setup(0x1234, 100, 100);
+    uint16_t cfg;
+    if (dwm.dwm_cfg_get(cfg))
+        Serial.println("cfg_get ok");
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
@@ -164,16 +167,8 @@ void loop()
     // ---------- DWM ----------
     DwmState s;
     ImuState i;
-    if (dwm.dwm_status_get())
-    {
-        if (dwm.dwm_get_pos(s))
-        {
-            // get imu state
-            // sysctrl.on_new_position_data(s, i);
-        }
-    }
-    else
-        Serial.println("[DWM] Module not ready");
+    delay(1000);
+    dwm.dwm_get_pos(s);
 
     delay(2000);
 }

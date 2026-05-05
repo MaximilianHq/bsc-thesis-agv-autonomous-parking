@@ -11,9 +11,8 @@ public:
 
     void setup(uint16_t id, uint16_t p_stat, uint16_t p_mov);
 
-    bool dwm_cfg_tag_set(uint16_t cfg_tag);
+    bool dwm_cfg_get(uint16_t &cfg_node);
     bool dwm_status_get();
-    bool dwm_upd_rate_set(uint16_t period_stationary_ms, uint16_t period_moving_ms);
     bool dwm_get_pos(DwmState &s);
 
 private:
