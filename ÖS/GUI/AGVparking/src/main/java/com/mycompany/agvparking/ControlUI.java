@@ -221,43 +221,60 @@ public class ControlUI extends javax.swing.JFrame {
             // Förvandla utresan (Lastad = true)
             java.util.List<RobotState> detailedOut = transformer.transformPath(outPath, true, null);
 
-            // --- VÄLJ MANÖVER BASERAT PÅ RUTA ---
             if (bestIndex >= 5 && bestIndex <= 9) {
                 appendStatus("Utför parkering: Cirkelbåge och backning \n"); 
-                // Klistra fast manövern i slutet av utresan!
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 java.util.List<RobotState> maneuver = transformer.generateParkingManeuver(lastState, destX, destY);
-                detailedOut.addAll(maneuver);
-                } else if (bestIndex == 1) {
-                appendStatus("Utför parkering: Komplex U-sväng och backning vänster \n"); 
-                RobotState lastState = detailedOut.get(detailedOut.size() - 1);
-                java.util.List<RobotState> maneuver = transformer.generateComplexParkingManeuver(lastState, destX, destY);
-                detailedOut.addAll(maneuver);
-            } else if (bestIndex >= 2 && bestIndex <= 4) {
-                appendStatus("Utför parkering: Komplex U-sväng och backning höger \n"); 
-                RobotState lastState = detailedOut.get(detailedOut.size() - 1); 
-                java.util.List<RobotState> maneuver = transformer.generateTopParkingManeuver(lastState, destX, destY); 
                 detailedOut.addAll(maneuver); 
+            } else if (bestIndex == 1) { 
+                appendStatus("Utför parkering: U-sväng och backning vänster \n"); 
+                RobotState lastState = detailedOut.get(detailedOut.size() -1); 
+                java.util.List<RobotState> maneuver = transformer.generateComplexParkingManeuver(lastState, destX, destY); 
+                detailedOut.addAll(maneuver); 
+            } else if (bestIndex >= 2 && bestIndex <= 4) {
+                appendStatus("Utför parkering: U-sväng och backning höger \n"); 
+                RobotState lastState = detailedOut.get(detailedOut.size() - 1);
+                java.util.List<RobotState> maneuver = transformer.generateTopParkingManeuver(lastState, destX, destY);
+                detailedOut.addAll(maneuver); 
+                
             } else if (bestIndex == 10) { 
-                appendStatus("Utför parkering: Komplex backning i hörn \n"); 
-                // for(int i = 0; i < 10; i++) detailedOut.add(new RobotState(lastState.agvX, lastState.agvY, lastState.axleX, lastState.axleY, lastState.angle, false));
+                appendStatus("Utför parkering: backning vid hörn \n"); 
+                RobotState lastState = detailedOut.get(detailedOut.size() - 1);
+                java.util.List<RobotState> maneuver = transformer.generateSpot10Maneuver(lastState);
+                detailedOut.addAll(maneuver);
+                
+            } else { // Bör inte ske 
+                appendStatus("Utför parkering: Standard \n"); 
+                RobotState lastState = detailedOut.get(detailedOut.size() - 1);
+                for(int i = 0; i < 10; i++) detailedOut.add(new RobotState(lastState.agvX, lastState.agvY, lastState.axleX, lastState.axleY, lastState.angle, false));
             }
 
             // Spara allt till demon
             masterDemoPath.addAll(detailedOut);
             
-            // --- NYTT: SPARA EXAKT VAR RUTAN LIGGER SÅ FÄRGEN BLIR RÄTT ---
+            // --- SPARA EXAKT VAR RUTAN LIGGER SÅ FÄRGEN BLIR RÄTT ---
             masterDemoRedSpots.add(new Point2D(ds.LocationX[bestIndex], ds.LocationY[bestIndex]));
             masterDemoStops.add(masterDemoPath.size() - 1); 
-
-            // 2. BERÄKNA HEMRESA (Alltid från målnoden så den inte fastnar i en vägg)
-            op.createReturnPlan((destY * ds.columns) + destX, startNodeId);
+            
+            // --- NYTT: DYNAMISK STARTPUNKT FÖR ALLA HEMRESOR ---
+            // Läs av exakt vilken grid-ruta AGV:n befinner sig i när pausen är klar
+            RobotState finalState = detailedOut.get(detailedOut.size() - 1);
+            int returnStartX = (int) (finalState.agvX / ds.gridsize);
+            int returnStartY = (int) (finalState.agvY / ds.gridsize);
+            
+// 2. BERÄKNA HEMRESA (Rakt från där den stannade!)
+            op.createReturnPlan((returnStartY * ds.columns) + returnStartX, startNodeId);
+            
             java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
             if (!returnPath.isEmpty()) returnPath.remove(0);
 
-            // Förvandla hemresan (Börja mjukt från där manövern precis slutade!)
+            // Förvandla hemresan 
             RobotState stateAfterManeuver = masterDemoPath.get(masterDemoPath.size() - 1);
             java.util.List<RobotState> detailedReturn = transformer.transformPath(returnPath, false, stateAfterManeuver);
+            
+            // --- NYTT: SPARA EXAKT VILKET STEG HEMRESAN BÖRJAR PÅ ---
+            returnTripStartIndex = masterDemoPath.size(); 
+            
             masterDemoPath.addAll(detailedReturn);
             masterDemoStops.add(masterDemoPath.size() - 1);
 
@@ -265,26 +282,27 @@ public class ControlUI extends javax.swing.JFrame {
                 ds.demoStep = 0;
             }
 
-            if (ds.robotTrajectory != null) {
-                ds.robotTrajectory.clear();
-                
-                // Spara BARA den aktuella utresan
-                for (RobotState state : detailedOut) {
-                    ds.robotTrajectory.add(new Point2D(state.agvX, state.agvY)); 
-                }
-                
-                // Spara BARA den aktuella hemresan
-                for (RobotState state : detailedReturn) {
-                    ds.robotTrajectory.add(new Point2D(state.agvX, state.agvY)); 
-                }
+            // --- SPARA LINJERNA SEPARAT ---
+            currentOutboundLine.clear();
+            for (RobotState state : detailedOut) {
+                currentOutboundLine.add(new Point2D(state.agvX, state.agvY)); 
             }
-            // --------------------------------------------------------
+            
+            currentReturnLine.clear();
+            for (RobotState state : detailedReturn) {
+                currentReturnLine.add(new Point2D(state.agvX, state.agvY)); 
+            }
+            
+            // Dölj den svarta rutten (eftersom den visar hemresan i förtid och förvirrar)
+            ds.currentPath = null; 
+            // ------------------------------------------
 
             if (offset == 0) ds.demoStep = 0; 
             
             updateRobotPosition();
             return true; 
-        }         
+        }
+        
         appendStatus("Kunde inte hitta någon väg till resterande mål.\n");
         unvisitedMissions.clear();
         return false;
@@ -534,6 +552,11 @@ public class ControlUI extends javax.swing.JFrame {
     private javax.swing.Timer forwardTimer; // Timer för framåt-knapp
     private int lastOptimizedLegStart = -1; // Håll koll på vilka instruktioner som senast skickades 
     private java.util.List<Point2D> masterDemoRedSpots = new java.util.ArrayList<>(); 
+    
+    private java.util.List<Point2D> currentOutboundLine = new java.util.ArrayList<>(); 
+    private java.util.List<Point2D> currentReturnLine = new java.util.ArrayList<>();
+    private int returnTripStartIndex = 0; 
+
 
     private void jToggleButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButton1ActionPerformed
 
@@ -621,9 +644,14 @@ public class ControlUI extends javax.swing.JFrame {
                     RobotState goalState = masterDemoPath.get(arrivalAtGoalIndex);
                     ds.markAreaAsVisited(goalState.axleX, goalState.axleY);
                 }
-            }
-            // -------------------------------------
+            } 
             
+            // --- BYT BLÅ LINJE BEROENDE PÅ OM VI ÅKER UT ELLER HEM ---
+            if (ds.demoStep < returnTripStartIndex) {
+                ds.robotTrajectory = currentOutboundLine; // Visa bara vägen till målet
+            } else {
+                ds.robotTrajectory = currentReturnLine;   // Visa bara vägen hem
+            }            
             repaint();
             return String.format("(%.1f, %.1f)", ds.robotX, ds.robotY); 
         }
