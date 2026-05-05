@@ -14,10 +14,11 @@ struct DwmState
     uint8_t q = 0;
 };
 
-struct ImuState
-{
-    int wz = 0; // tmp
-    int dt = 0; // tmp
+struct ImuState {
+    float ax;   // acceleration x (m/s^2)
+    float ay;   // acceleration y (m/s^2)
+    float wz;   // yaw rate (rad/s)
+    float dt;   // tidssteg (s)
 };
 
 struct AgvState
