@@ -13,7 +13,8 @@ public class RobotRead implements Runnable {
     @Override 
     public void run() { 
         try { 
-            cui.appendStatus("RobotRead väntar på kommando...\n"); 
+            // cui.appendStatus("RobotRead väntar på kommando...\n"); Känns lite onödig 
+            cui.logSent(""); 
             
             while(!ds.isStopped) { 
                 
@@ -42,14 +43,14 @@ public class RobotRead implements Runnable {
                     
                     // Tillbaka vid startpunkt 
                     if (!ds.isStopped) { 
-                        cui.appendStatus("Robot är tillbaka vid startpunkten.\n"); 
+                        cui.logReceived("Robot är tillbaka vid startpunkten.\n"); 
                         
                         // Hämta nästa bil! 
                         boolean hasMore = cui.triggerNextRealMission(); 
                         
                         if (!hasMore) { 
                             cui.masterDemoPath = null; 
-                            cui.appendStatus("AGV är klar med alla uppdrag i Autoläget \n"); 
+                            cui.appendStatus("AGV är klar med alla uppdrag i Drift-läget \n"); 
                             ds.isPaused = true; 
                         } 
                     } 

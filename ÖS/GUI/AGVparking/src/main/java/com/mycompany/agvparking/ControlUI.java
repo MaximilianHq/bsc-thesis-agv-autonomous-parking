@@ -222,29 +222,33 @@ public class ControlUI extends javax.swing.JFrame {
             java.util.List<RobotState> detailedOut = transformer.transformPath(outPath, true, null);
 
             if (bestIndex >= 5 && bestIndex <= 9) {
-                appendStatus("Utför parkering: Cirkelbåge och backning \n"); 
+                logSent("Utför parkering: Cirkelbåge och backning \n"); 
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 java.util.List<RobotState> maneuver = transformer.generateParkingManeuver(lastState, destX, destY);
                 detailedOut.addAll(maneuver); 
+                logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n"); 
             } else if (bestIndex == 1) { 
-                appendStatus("Utför parkering: U-sväng och backning vänster \n"); 
+                logSent("Utför parkering: U-sväng och backning vänster \n"); 
                 RobotState lastState = detailedOut.get(detailedOut.size() -1); 
                 java.util.List<RobotState> maneuver = transformer.generateComplexParkingManeuver(lastState, destX, destY); 
                 detailedOut.addAll(maneuver); 
+                logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n"); 
             } else if (bestIndex >= 2 && bestIndex <= 4) {
-                appendStatus("Utför parkering: U-sväng och backning höger \n"); 
+                logSent("Utför parkering: U-sväng och backning höger \n"); 
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 java.util.List<RobotState> maneuver = transformer.generateTopParkingManeuver(lastState, destX, destY);
                 detailedOut.addAll(maneuver); 
+                logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n");  
                 
             } else if (bestIndex == 10) { 
-                appendStatus("Utför parkering: backning vid hörn \n"); 
+                logSent("Utför parkering: backning vid hörn \n"); 
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 java.util.List<RobotState> maneuver = transformer.generateSpot10Maneuver(lastState);
-                detailedOut.addAll(maneuver);
+                detailedOut.addAll(maneuver); 
+                logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n"); 
                 
             } else { // Bör inte ske 
-                appendStatus("Utför parkering: Standard \n"); 
+                logSent("Utför parkering: Standard \n"); 
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 for(int i = 0; i < 10; i++) detailedOut.add(new RobotState(lastState.agvX, lastState.agvY, lastState.axleX, lastState.axleY, lastState.angle, false));
             }
@@ -668,7 +672,7 @@ public class ControlUI extends javax.swing.JFrame {
         }
 
         if (ds.demoStep <= 0) {
-            appendStatus("Demo: Redan vid den absoluta startpunkten.\n");
+            appendStatus("Redan vid den absoluta startpunkten.\n");
             return;
         }
 
@@ -686,7 +690,7 @@ public class ControlUI extends javax.swing.JFrame {
         // Hoppa direkt bakåt i tiden till den hållplatsen!
         ds.demoStep = prevStop;
         String pos = updateRobotPosition();
-        appendStatus("Demo: Hoppade tillbaka i historiken | Position: " + pos + "\n");
+        logSent("Hoppade tillbaka i historiken | Position: " + pos + "\n");
     }//GEN-LAST:event_jButton3ActionPerformed
 
     private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
@@ -711,12 +715,12 @@ public class ControlUI extends javax.swing.JFrame {
         }
 
         final int targetStep = nextStop;
-        appendStatus("Demo: Kör sträckan fram till nästa mål/bas...\n");
+        appendStatus("Kör sträckan fram till nästa mål/bas...\n");
 
         // Inaktivera knapparna under körning
         jButton3.setEnabled(false);
         jButton4.setEnabled(false);
-        jButton5.setEnabled(false);
+        jButton5.setEnabled(false); 
 
         if (forwardTimer != null && forwardTimer.isRunning()) {
             forwardTimer.stop();
@@ -729,9 +733,9 @@ public class ControlUI extends javax.swing.JFrame {
                 if (ds.demoStep < targetStep) {
                     ds.demoStep++;
                     updateRobotPosition();
-                } else {
+                } else { 
                     ((javax.swing.Timer) e.getSource()).stop();
-                    appendStatus("Demo: Framme!\n");
+                    logSent("Framme vid parkeringsruta \n");
                     jButton3.setEnabled(true);
                     jButton4.setEnabled(true);
                     jButton5.setEnabled(true);
@@ -744,16 +748,16 @@ public class ControlUI extends javax.swing.JFrame {
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
 
         if (masterDemoPath == null || ds.demoStep >= masterDemoPath.size() - 1) {
-            appendStatus("Inget kvar att snabbspola!\n");
+            logSent("Inget kvar att snabbspola!\n");
             return;
         }
 
-        appendStatus("Snabbspolar...\n");
+        logSent("Snabbspolar...\n");
 
         // Inaktivera knappar under körning för att undvika krockar 
         jButton4.setEnabled(false);
         jButton5.setEnabled(false);
-        appendStatus("Snabbspolar från steg " + ds.demoStep + "...\n");
+        logSent("Snabbspolar från steg " + ds.demoStep + "...\n");
 
         // Timer börjar loopa direkt från nuvarande ds.demoStep 
         javax.swing.Timer timer = new javax.swing.Timer(5, new java.awt.event.ActionListener() {
@@ -774,7 +778,7 @@ public class ControlUI extends javax.swing.JFrame {
                     if (!success) {
                         // Inga fler bilar i listan, eller alla var inbyggda. Stanna! 
                         ((javax.swing.Timer) e.getSource()).stop();
-                        appendStatus("Snabbspolning slutförd.\n");
+                        logReceived("Snabbspolning slutförd.\n");
                         jButton5.setEnabled(true); // Gör så vi kan trycka igen 
                     }
                 }
@@ -789,23 +793,21 @@ public class ControlUI extends javax.swing.JFrame {
         return success;
     }
 
-    public void appendStatus(String text) {
-        jTextAreaDemo.append(text);
-        jTextAreaDemo.setCaretPosition(jTextAreaDemo.getDocument().getLength());
+public void appendStatus(String text) {
+        // Styr om alla gamla systemmeddelanden till UT-rutan
+        txtSent.append(text);
+        txtSent.setCaretPosition(txtSent.getDocument().getLength());
     }
 
     public void logSent(String text) {
-        if (!isDemoMode) {
-            txtSent.append("UT: " + text + "\n");
-            txtSent.setCaretPosition(txtSent.getDocument().getLength());
-        }
+        txtSent.append(text + "\n");
+        txtSent.setCaretPosition(txtSent.getDocument().getLength());
     }
 
-    public void logReceived(String text) { // Tror inte det här används? 
-        if (!isDemoMode) {
-            txtReceived.append("IN: " + text + "\n");
-            txtReceived.setCaretPosition(txtReceived.getDocument().getLength());
-        }
+    public void logReceived(String text) {
+        // Nu fungerar denna i både Demo och Drift!
+        txtReceived.append(text + "\n"); 
+        txtReceived.setCaretPosition(txtReceived.getDocument().getLength());
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

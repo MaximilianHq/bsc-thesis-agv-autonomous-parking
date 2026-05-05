@@ -154,6 +154,10 @@ public class DataStore {
         robotX = LocationX[0];
         robotY = LocationY[0];
         
+        robotAngle = 0.0; // Peka rakt åt höger
+        axleX = robotX - (agvOffset * gridsize); // Bakaxeln hamnar L pixlar bakom
+        axleY = robotY;
+        isLoaded = true; // Vi startar med en bil påkopplad 
     }
     
     
