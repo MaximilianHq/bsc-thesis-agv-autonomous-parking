@@ -153,3 +153,69 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send no movement error to [ÖS]");
     }
 }
+
+void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
+{
+    if (_state.size() == 0)
+    {
+        AgvState init_state;
+        init_state.pos = dwm.pos;
+        init_state.theta = 0.0f;
+        init_state.t_ms = millis();
+        _state.push_front(init_state);
+        return;
+    }
+
+    const AgvState prev_state = _state[0];
+    AgvState pred_state = prev_state;
+
+    // predicted state
+    // x = \cos θ, y = \sin θ
+    // x_{agv} = \cos θ * v_x + \cos(θ-90\deg) * v_y = \cos θ * v_x - \sin θ * v_y
+    // y_{agv} = \sin θ * v_y + \sin(θ-90\deg) * v_y = \sin θ * v_x + \cos θ * v_y
+
+    pred_state.pos.x = prev_state.pos.x + prev_state.vx * cosf(prev_state.theta) - prev_state.vy * sinf(prev_state.theta);
+    pred_state.pos.y = prev_state.pos.y + prev_state.vx * sinf(prev_state.theta) + prev_state.vy * cosf(prev_state.theta);
+    pred_state.theta = _norm_ang(prev_state.theta + imu.wz * imu.dt);
+
+    pred_state.vx += imu.ax * imu.dt;
+    pred_state.vy += imu.ay * imu.dt;
+
+    // position error
+    float err_x = dwm.pos.x - pred_state.pos.x;
+    float err_y = dwm.pos.y - pred_state.pos.y;
+
+    // position correction
+    AgvState upd = pred_state;
+    upd.pos.x += _err_co_dwm * err_x;
+    upd.pos.y += _err_co_dwm * err_y;
+    upd.t_ms = millis();
+
+    float dx = static_cast<float>(upd.pos.x - prev_state.pos.x);
+    float dy = static_cast<float>(upd.pos.y - prev_state.pos.y);
+
+    float dist = sqrtf(dx * dx + dy * dy);
+
+    if (dist > 0.05f)
+    {
+        float theta_meas = atan2f(dy, dx);
+        float theta_err = _norm_ang(theta_meas - upd.theta);
+        upd.theta = _norm_ang(upd.theta + _err_co_imu * theta_err);
+    }
+
+    _state.push_front(upd);
+
+    auto x = _state[0].pos.x;
+    auto y = _state[0].pos.y;
+
+    Comm::Packet p = {'P', _proto_handler_bt.get_sequence(), {static_cast<uint8_t>((x >> 8) & 0xFF), static_cast<uint8_t>(x & 0xFF), static_cast<uint8_t>((y >> 8) & 0xFF), static_cast<uint8_t>(y & 0xFF)}, 4, 0, true};
+    p.crc = Comm::csum(p);
+
+    if (_comm_mcu.write(p))
+    {
+        _proto_handler_bt.itterate_sequence();
+        _proto_handler_bt.add_buffer_sent(p);
+    }
+    else if (g_debug.IAction)
+        Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send position update to [ÖS]");
+};

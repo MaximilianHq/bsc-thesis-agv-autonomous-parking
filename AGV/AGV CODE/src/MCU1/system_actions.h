@@ -19,18 +19,7 @@ public:
     void on_stop();
     void on_stop(Comm::Packet &pkt);
     void on_obstacle_detected(const Position &pos);
-    void on_new_position_data(const DwmState &dwm, const ImuState &imu) { return; };
-
-    void test()
-    {
-        Comm::Packet p = {'D', _proto_handler_mcu.get_sequence(), {0x00, 20}, 2, 0, true};
-        p.crc = Comm::csum(p);
-
-        if (!_forward_to_mcu(p))
-            if (g_debug.IAction)
-                Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: 'test' to [MCU2]");
-        Serial.println("test finished");
-    };
+    void on_new_position_data(const DwmState &dwm, const ImuState &imu);
 
 private:
     Comm &_comm_bt;
@@ -39,6 +28,16 @@ private:
     StatusLED &_led_cmd;
 
     StaticVector<AgvState, 10> _state;
+    float _err_co_dwm = 1.0f;
+    float _err_co_imu = 1.0f;
+    static float _norm_ang(float ang)
+    {
+        while (ang > PI)
+            ang -= 2.0f * PI;
+        while (ang < -PI)
+            ang += 2.0f * PI;
+        return ang;
+    };
     StaticVector<Comm::Packet, 20> _motion_buffert;
 
     ProtocolHandler _proto_handler_bt, _proto_handler_mcu;

@@ -13,7 +13,6 @@
 #include "imu.h"
 #include "dwm.h"
 #include "sonar.h"
-#include <agv_state.h>
 
 // ========== PINS ==========
 // UART
@@ -76,8 +75,9 @@ Sonar::SonarConfig sonar_cfg{
     false};
 Sonar sonar(sonar_cfg, sysctrl);
 
-// ---------- DWM ----------
+// ---------- POS ----------
 DWM dwm(Serial2);
+IMU imu(PIN_SDA, PIN_SCL);
 
 // ========== GLOBALS ==========
 Debug g_debug;
@@ -89,7 +89,6 @@ void watchdog_routine();
 
 void setup()
 {
-    delay(5000);
     // ========== STATE ==========
     // Updated by led_x.update, do not set manually!
     sreg.setup();
@@ -116,10 +115,11 @@ void setup()
     // ========== SONAR ==========
     sonar.setup();
 
-    // ========== DWM ==========
-    uint16_t cfg;
-    if (dwm.dwm_cfg_get(cfg))
-        Serial.println("cfg_get ok");
+    // ========== POS ==========
+    // uint16_t cfg;
+    // if (dwm.dwm_cfg_get(cfg))
+    //     Serial.println("cfg_get ok");
+    imu.setup();
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
@@ -127,8 +127,6 @@ void setup()
 
     // watchdog start
     last_packet_time = millis();
-
-    sysctrl.test();
 }
 
 void loop()
@@ -163,10 +161,11 @@ void loop()
         sysctrl.on_mcu_pkt_recieved(mcu_pkt);
 
     // ---------- DWM ----------
-    DwmState s;
+    DwmState d;
     ImuState i;
-    if (dwm.read(s))
-        sysctrl.on_new_position_data(s, i);
+    if (dwm.read(d))
+        if (imu.read(i))
+            sysctrl.on_new_position_data(d, i);
 }
 
 void blt_status_routine()
