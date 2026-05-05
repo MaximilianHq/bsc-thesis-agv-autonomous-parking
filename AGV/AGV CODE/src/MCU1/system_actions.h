@@ -21,6 +21,17 @@ public:
     void on_obstacle_detected(const Position &pos);
     void on_new_position_data(const DwmState &dwm, const ImuState &imu) { return; };
 
+    void test()
+    {
+        Comm::Packet p = {'D', _proto_handler_mcu.get_sequence(), {0x00, 20}, 2, 0, true};
+        p.crc = Comm::csum(p);
+
+        if (!_forward_to_mcu(p))
+            if (g_debug.IAction)
+                Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: 'test' to [MCU2]");
+        Serial.println("test finished");
+    };
+
 private:
     Comm &_comm_bt;
     Comm &_comm_mcu;

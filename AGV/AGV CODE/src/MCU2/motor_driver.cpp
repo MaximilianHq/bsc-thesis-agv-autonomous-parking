@@ -3,13 +3,15 @@
 #include "motor_driver.h"
 
 MotorChannel::MotorChannel(MotorChannelConfig &cfg)
-    : _pin_dir(cfg.pin_dir), _pin_pwm(cfg.pin_pwm), _chnl(cfg.channel) {}
+    : _pin_dir(cfg.pin_dir), _pin_pwm(cfg.pin_pwm),
+      _chnl(cfg.channel), _invert_dir(cfg.invert_dir) {}
 
 void MotorChannel::execute_move(bool dir, uint8_t percent)
 {
-    digitalWrite(_pin_dir, (dir == true) ? HIGH : LOW);
+    digitalWrite(_pin_dir, (dir ^ _invert_dir) ? HIGH : LOW);
     ledcWrite(_chnl, percentage_to_bits(percent));
 }
+
 void MotorChannel::stop() { ledcWrite(_chnl, 0); }
 
 uint32_t MotorChannel::percentage_to_bits(uint8_t percent)
@@ -24,6 +26,7 @@ uint32_t MotorChannel::percentage_to_bits(uint8_t percent)
 
 void MotorChannel::_setup()
 {
+    pinMode(_pin_dir, OUTPUT);
     ledcSetup(_chnl, PWM_FREQ, PWM_RES);
     ledcAttachPin(_pin_pwm, _chnl);
     stop();
