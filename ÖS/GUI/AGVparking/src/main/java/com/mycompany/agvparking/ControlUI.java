@@ -237,7 +237,13 @@ public class ControlUI extends javax.swing.JFrame {
                 detailedOut.addAll(maneuver); 
             } else if (bestIndex == 10) { 
                 appendStatus("Utför parkering: Komplex backning i hörn \n"); 
-                // for(int i = 0; i < 10; i++) detailedOut.add(new RobotState(lastState.agvX, lastState.agvY, lastState.axleX, lastState.axleY, lastState.angle, false));
+                RobotState lastState = detailedOut.get(detailedOut.size() - 1);
+                java.util.List<RobotState> maneuver = transformer.generateSpot10Maneuver(lastState);
+                detailedOut.addAll(maneuver); 
+            } else { 
+                appendStatus("Utför parkering: Standard \n"); 
+                RobotState lastState = detailedOut.get(detailedOut.size() -1); 
+                for(int i = 0; i < 10; i++) detailedOut.add(new RobotState(lastState.agvX, lastState.agvY, lastState.axleX, lastState.axleY, lastState.angle, false)); 
             }
 
             // Spara allt till demon
