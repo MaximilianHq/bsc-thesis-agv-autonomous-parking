@@ -26,6 +26,7 @@ uint32_t MotorChannel::percentage_to_bits(uint8_t percent)
 
 void MotorChannel::_setup()
 {
+    pinMode(_pin_dir, OUTPUT);
     ledcSetup(_chnl, PWM_FREQ, PWM_RES);
     ledcAttachPin(_pin_pwm, _chnl);
     stop();
