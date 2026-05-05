@@ -8,7 +8,7 @@ MotorChannel::MotorChannel(MotorChannelConfig &cfg)
 
 void MotorChannel::execute_move(bool dir, uint8_t percent)
 {
-    digitalWrite(_pin_dir, (dir ^ _invert_dir) ? HIGH : LOW);
+    digitalWrite(_pin_dir, (dir ^ _invert_dir) ? LOW : HIGH);
     ledcWrite(_chnl, percentage_to_bits(percent));
 }
 
@@ -149,6 +149,8 @@ void MotorDriver::temperature_error_reset_all()
 
 void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_ms)
 {
+    uint8_t spd_diff = spd_percent / 2;
+    
     if (duration_ms > 0)
     {
         channels_stop_all();
@@ -265,19 +267,30 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
 
     case 0x0A:
         // Curved-Trajectory-Right
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(true, spd_percent - spd_diff);
+        c3.execute_move(true, spd_percent);
+        c4.execute_move(true, spd_percent - spd_diff);
+
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Right");
         break;
 
     case 0x0B:
         // Curved-Trajectory-Left
+        c1.execute_move(true, spd_percent - spd_diff);
+        c2.execute_move(true, spd_percent);
+        c3.execute_move(true, spd_percent - spd_diff);
+        c4.execute_move(true, spd_percent);
+
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Left");
         break;
 
     case 0x0C:
         // Lateral-Arc-Right
-
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(false, spd_percent);
 
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Right");
@@ -285,7 +298,8 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
 
     case 0x0D:
         // Lateral-Arc-Left
-
+        c1.execute_move(false, spd_percent);
+        c2.execute_move(true, spd_percent);
 
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Left");
