@@ -10,6 +10,10 @@ package com.mycompany.agvparking;
  */
 
 public class AgvInstruction {
+    
+    public char type = 'D'; // Standard, eftersom de flesta meddelanden är av typen D (körkommando)
+    public int instructionByte; // Kommer användas för 'K' kommandon (enskilt kommando
+    
     public int maneuver;
     public int velocity; // Kanske ska ändras till angleAGV
     public int steps;
@@ -37,5 +41,17 @@ public class AgvInstruction {
     {
         this.maneuver = maneuver; 
         this.rotation = rotation;//Behövs något mer göras för denna?
+    }
+    
+    
+    // Denna används för Enskilda kommandon type 'K'
+    public AgvInstruction(char type, int instructionByte) {
+        this.type = type;
+        this.instructionByte = instructionByte;
+    }
+
+    // Används för Stanna type 'X'
+    public AgvInstruction(char type) {
+        this.type = type;
     }
 }

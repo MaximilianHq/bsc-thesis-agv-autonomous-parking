@@ -121,10 +121,10 @@ public class OptPlan {
                 // Positiv diff betyder att vi står för långt åt "vänster/ner" 
                 // i ett standardsystem, så vi roterar höger för att nå 0.
                 // OBS: Dubbelkolla om ROTATE_RIGHT minskar eller ökar grader i din AGV.
-                ds.instructionQueue.add(new AgvInstruction(InstructionsStore.ROTATE_RIGHT, Math.abs(diff)));
+                ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_RIGHT, Math.abs(diff)));
                 System.out.println("Avslutar med högerrotation: " + Math.abs(diff) + " grader.");
             } else {
-                ds.instructionQueue.add(new AgvInstruction(InstructionsStore.ROTATE_LEFT, Math.abs(diff)));
+                ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_LEFT, Math.abs(diff)));
                 System.out.println("Avslutar med vänsterrotation: " + Math.abs(diff) + " grader.");
             }
         } else {
