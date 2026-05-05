@@ -76,11 +76,109 @@ public class ControlUI extends javax.swing.JFrame {
     public void showStatus() {
         System.out.println("Start at: " + ds.LocationX[0] + ", " + ds.LocationY[0]);
     }
-
+    
+//private boolean planNextMission() {
+//        if (unvisitedMissions.isEmpty()) {
+//            appendStatus("Alla uppdrag klara! Alla bilar är parkerade.\n");
+//            return false; 
+//        }
+//
+//        OptPlan op = new OptPlan(ds);
+//        int startX = (int) (ds.LocationX[0] / ds.gridsize);
+//        int startY = (int) (ds.LocationY[0] / ds.gridsize);
+//        int startNodeId = (startY * ds.columns) + startX;
+//
+//        int bestIndex = -1;
+//        int shortestPathSize = Integer.MAX_VALUE;
+//        java.util.List<Vertex> outPath = null;
+//
+//        // 1. HITTA NÄRMASTE MÅLNOD
+//        for (int candidateIndex : unvisitedMissions) {
+//            int dX = (int) (ds.LocationX[candidateIndex] / ds.gridsize);
+//            int dY = (int) (ds.LocationY[candidateIndex] / ds.gridsize);
+//            
+//            op.createPlan(startNodeId, (dY * ds.columns) + dX);
+//            
+//            if (ds.currentPath != null && ds.currentPath.size() < shortestPathSize) {
+//                shortestPathSize = ds.currentPath.size();
+//                bestIndex = candidateIndex;
+//                outPath = new java.util.ArrayList<>(ds.currentPath);
+//            }
+//        }
+//
+//        if (bestIndex != -1 && outPath != null) { 
+//            appendStatus("Valde målnod Nr: " + bestIndex + " (Avstånd: " + shortestPathSize + " steg)\n");
+//            unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
+//            
+////            // Markera målnoden som besökt (Röd färg)
+//            int destX = (int) (ds.LocationX[bestIndex] / ds.gridsize);
+//            int destY = (int) (ds.LocationY[bestIndex] / ds.gridsize);
+////            ds.ObstacleMatrix[destX][destY] = 2; 
+//            // if (destY < (ds.rows / 2) && destX < ds.columns / 3.3) {
+//            switch (bestIndex) {
+//                case 1 -> appendStatus("Utför parkering: Vänster cirkelbåge \n");
+//                // Kalla på parkeringsmanöver (från ny class) ex. 12 - Det som Hanna håller på med
+//                case 2, 3, 4 -> appendStatus("Utför parkering: Höger cirkelbåge \n");
+//                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med
+//                case 5, 6, 7, 8, 9 -> appendStatus("Utför parkering: Vrid vänster och backa \n");
+//                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med
+//                case 10 -> appendStatus("Utför parkering: Vertikal parkering vid vägg \n");
+//                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med
+//                default -> {
+//                }
+//            }
+//            
+//            // 2. BERÄKNA HEMRESA
+//            op.createReturnPlan((destY * ds.columns) + destX, startNodeId);
+//            java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
+//            if (!returnPath.isEmpty()) returnPath.remove(0);
+//
+//            // 3. GENERERA HÖGUPPLÖST TIDSLINJE (KINEMATIK)
+//            KinematicsTransformer transformer = new KinematicsTransformer(ds);
+//            
+//            int offset = masterDemoPath.size(); 
+//            if (masterDemoPath.isEmpty()) masterDemoStops.add(0);
+//
+//            // Förvandla utresan (Lastad = true)
+//            java.util.List<RobotState> detailedOut = transformer.transformPath(outPath, true);
+//            
+//            // --- ÅTERSTÄLL DEN BLÅ LINJEN ---
+//            if (ds.robotTrajectory != null) {
+//                ds.robotTrajectory.clear();
+//                // Plocka ut x/y från vår nya tidslinje och lägg i trajectory-listan
+//                for (RobotState state : detailedOut) {
+//                    ds.robotTrajectory.add(new Point2D(state.agvX, state.agvY)); 
+//                }
+//            }
+//            // --------------------------------
+//
+//            masterDemoPath.addAll(detailedOut);
+//            masterDemoStops.add(masterDemoPath.size() - 1); 
+//
+//            // Förvandla hemresan (Lastad = false)
+//            java.util.List<RobotState> detailedReturn = transformer.transformPath(returnPath, false);
+//            masterDemoPath.addAll(detailedReturn);
+//            masterDemoStops.add(masterDemoPath.size() - 1); 
+//
+//            if (offset == 0) ds.demoStep = 0; 
+//            
+//            updateRobotPosition();
+//            return true; 
+//        }
+//        
+//        appendStatus("Kunde inte hitta någon väg till resterande mål.\n");
+//        unvisitedMissions.clear(); 
+//        return false;
+//    } 
+    
     private boolean planNextMission() {
         if (unvisitedMissions.isEmpty()) {
-            appendStatus("Alla uppdrag klara! Alla bilar är parkerade.\n");
-            return false;
+            appendStatus("Alla uppdrag klara! Alla bilar är parkerade.\n"); 
+            
+            if (ds.robotTrajectory != null) ds.robotTrajectory.clear(); 
+            repaint(); 
+            
+            return false; 
         }
 
         OptPlan op = new OptPlan(ds);
@@ -108,35 +206,11 @@ public class ControlUI extends javax.swing.JFrame {
 
         if (bestIndex != -1 && outPath != null) {
             appendStatus("Valde målnod Nr: " + bestIndex + " (Avstånd: " + shortestPathSize + " steg)\n");
-            unvisitedMissions.remove(Integer.valueOf(bestIndex));
-
-//            // Markera målnoden som besökt (Röd färg)
+            unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
+            
             int destX = (int) (ds.LocationX[bestIndex] / ds.gridsize);
             int destY = (int) (ds.LocationY[bestIndex] / ds.gridsize);
-//            ds.ObstacleMatrix[destX][destY] = 2; 
 
-            if (destY < (ds.rows / 2) && destX < ds.columns / 3.3) {
-                appendStatus("Utför parkering: Vänster cirkelbåge \n");
-                // Kalla på parkeringsmanöver (från ny class) ex. 12 - Det som Hanna håller på med 
-            } else if (destY < (ds.rows / 2) && destX > ds.columns / 3.3) {
-                appendStatus("Utför parkering: Höger cirkelbåge \n");
-                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med 
-            } else if (destY > (ds.rows / 2) && destX < ds.columns * 0.9) {
-                appendStatus("Utför parkering: Vrid vänster och backa \n");
-                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med 
-            } else if (destY > (ds.rows / 2) && destX > ds.columns * 0.9) {
-                appendStatus("Utför parkering: Vertikal parkering vid vägg \n");
-                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med 
-            }
-
-            // 2. BERÄKNA HEMRESA
-            op.createReturnPlan((destY * ds.columns) + destX, startNodeId);
-            java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
-            if (!returnPath.isEmpty()) {
-                returnPath.remove(0);
-            }
-
-            // 3. GENERERA HÖGUPPLÖST TIDSLINJE (KINEMATIK)
             KinematicsTransformer transformer = new KinematicsTransformer(ds);
 
             int offset = masterDemoPath.size();
@@ -145,23 +219,45 @@ public class ControlUI extends javax.swing.JFrame {
             }
 
             // Förvandla utresan (Lastad = true)
-            java.util.List<RobotState> detailedOut = transformer.transformPath(outPath, true);
+            java.util.List<RobotState> detailedOut = transformer.transformPath(outPath, true, null);
 
-            // --- ÅTERSTÄLL DEN BLÅ LINJEN ---
-            if (ds.robotTrajectory != null) {
-                ds.robotTrajectory.clear();
-                // Plocka ut x/y från vår nya tidslinje och lägg i trajectory-listan
-                for (RobotState state : detailedOut) {
-                    ds.robotTrajectory.add(new Point2D(state.agvX, state.agvY));
-                }
+            // --- VÄLJ MANÖVER BASERAT PÅ RUTA ---
+            if (bestIndex >= 5 && bestIndex <= 9) {
+                appendStatus("Utför parkering: Cirkelbåge och backning \n"); 
+                // Klistra fast manövern i slutet av utresan!
+                RobotState lastState = detailedOut.get(detailedOut.size() - 1);
+                java.util.List<RobotState> maneuver = transformer.generateParkingManeuver(lastState, destX, destY);
+                detailedOut.addAll(maneuver);
+                } else if (bestIndex == 1) {
+                appendStatus("Utför parkering: Komplex U-sväng och backning vänster \n"); 
+                RobotState lastState = detailedOut.get(detailedOut.size() - 1);
+                java.util.List<RobotState> maneuver = transformer.generateComplexParkingManeuver(lastState, destX, destY);
+                detailedOut.addAll(maneuver);
+            } else if (bestIndex >= 2 && bestIndex <= 4) {
+                appendStatus("Utför parkering: Komplex U-sväng och backning höger \n"); 
+                RobotState lastState = detailedOut.get(detailedOut.size() - 1); 
+                java.util.List<RobotState> maneuver = transformer.generateTopParkingManeuver(lastState, destX, destY); 
+                detailedOut.addAll(maneuver); 
+            } else if (bestIndex == 10) { 
+                appendStatus("Utför parkering: Komplex backning i hörn \n"); 
+                // for(int i = 0; i < 10; i++) detailedOut.add(new RobotState(lastState.agvX, lastState.agvY, lastState.axleX, lastState.axleY, lastState.angle, false));
             }
-            // --------------------------------
 
+            // Spara allt till demon
             masterDemoPath.addAll(detailedOut);
-            masterDemoStops.add(masterDemoPath.size() - 1);
+            
+            // --- NYTT: SPARA EXAKT VAR RUTAN LIGGER SÅ FÄRGEN BLIR RÄTT ---
+            masterDemoRedSpots.add(new Point2D(ds.LocationX[bestIndex], ds.LocationY[bestIndex]));
+            masterDemoStops.add(masterDemoPath.size() - 1); 
 
-            // Förvandla hemresan (Lastad = false)
-            java.util.List<RobotState> detailedReturn = transformer.transformPath(returnPath, false);
+            // 2. BERÄKNA HEMRESA (Alltid från målnoden så den inte fastnar i en vägg)
+            op.createReturnPlan((destY * ds.columns) + destX, startNodeId);
+            java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
+            if (!returnPath.isEmpty()) returnPath.remove(0);
+
+            // Förvandla hemresan (Börja mjukt från där manövern precis slutade!)
+            RobotState stateAfterManeuver = masterDemoPath.get(masterDemoPath.size() - 1);
+            java.util.List<RobotState> detailedReturn = transformer.transformPath(returnPath, false, stateAfterManeuver);
             masterDemoPath.addAll(detailedReturn);
             masterDemoStops.add(masterDemoPath.size() - 1);
 
@@ -169,14 +265,60 @@ public class ControlUI extends javax.swing.JFrame {
                 ds.demoStep = 0;
             }
 
-            updateRobotPosition();
-            return true;
-        }
+            if (ds.robotTrajectory != null) {
+                ds.robotTrajectory.clear();
+                
+                // Spara BARA den aktuella utresan
+                for (RobotState state : detailedOut) {
+                    ds.robotTrajectory.add(new Point2D(state.agvX, state.agvY)); 
+                }
+                
+                // Spara BARA den aktuella hemresan
+                for (RobotState state : detailedReturn) {
+                    ds.robotTrajectory.add(new Point2D(state.agvX, state.agvY)); 
+                }
+            }
+            // --------------------------------------------------------
 
+            if (offset == 0) ds.demoStep = 0; 
+            
+            updateRobotPosition();
+            return true; 
+        }         
         appendStatus("Kunde inte hitta någon väg till resterande mål.\n");
         unvisitedMissions.clear();
         return false;
     }
+
+
+//    public String updateRobotPosition() { 
+//        if (masterDemoPath != null && ds.demoStep >= 0 && ds.demoStep < masterDemoPath.size()) {
+//            RobotState state = masterDemoPath.get(ds.demoStep);
+//            
+//            ds.robotX = state.agvX;
+//            ds.robotY = state.agvY;
+//            ds.axleX = state.axleX; 
+//            ds.axleY = state.axleY;
+//            ds.robotAngle = state.angle;
+//            ds.isLoaded = state.isLoaded;
+//
+//            // --- HISTORIK: RÖDMARKERA RÄTT RUTA NÄR MANÖVERN ÄR KLAR ---
+//            ds.clearVisitedAreas(); 
+//            for (int i = 1; i < masterDemoStops.size(); i += 2) {
+//                int arrivalAtGoalIndex = masterDemoStops.get(i);
+//                
+//                // Måla om tidslinjen har passerat avlastningen
+//                if (ds.demoStep >= arrivalAtGoalIndex) {
+//                    Point2D redSpot = masterDemoRedSpots.get(i / 2);
+//                    ds.markAreaAsVisited(redSpot.x, redSpot.y);
+//                }
+//            }
+//            
+//            repaint();
+//            return String.format("(%.1f, %.1f)", ds.robotX, ds.robotY); 
+//        }
+//        return "";
+//    }
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -386,7 +528,8 @@ public class ControlUI extends javax.swing.JFrame {
     java.util.List<RobotState> masterDemoPath = new java.util.ArrayList<>();
     private java.util.List<Integer> masterDemoStops = new java.util.ArrayList<>(); // Målpunkter för demo
     private javax.swing.Timer forwardTimer; // Timer för framåt-knapp
-    private int lastOptimizedLegStart = -1; // Håll koll på vilka instruktioner som senast skickades
+    private int lastOptimizedLegStart = -1; // Håll koll på vilka instruktioner som senast skickades 
+    private java.util.List<Point2D> masterDemoRedSpots = new java.util.ArrayList<>(); 
 
     private void jToggleButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButton1ActionPerformed
 
@@ -450,11 +593,11 @@ public class ControlUI extends javax.swing.JFrame {
         jButton1.setEnabled(true);
     }//GEN-LAST:event_jButton2ActionPerformed
 
-    public String updateRobotPosition() {
+    public String updateRobotPosition() { 
         if (masterDemoPath != null && ds.demoStep >= 0 && ds.demoStep < masterDemoPath.size()) {
             // Hämta det förberäknade tillståndet för detta tidssteg
             RobotState state = masterDemoPath.get(ds.demoStep);
-
+            
             // Uppdatera DataStore med exakta koordinater för GUI:t
             ds.robotX = state.agvX;
             ds.robotY = state.agvY;
@@ -463,13 +606,26 @@ public class ControlUI extends javax.swing.JFrame {
             ds.robotAngle = state.angle;
             ds.isLoaded = state.isLoaded;
 
-            // Vid varje nytt uppdrag (leg), kör optimeraren för Bluetooth (Drift-läge)
-            // (Samma logik som förut för att trigga RouteOptimizer...)
+            // --- HÄR ÄR STEG 2: RÖDMARKERINGEN ---
+            ds.clearVisitedAreas(); // Sudda allt tillfälligt
+            
+            // Loopa igenom hållplatserna. Varje udda index (1, 3, 5...) är ankomsten till en bil.
+            for (int i = 1; i < masterDemoStops.size(); i += 2) {
+                int arrivalAtGoalIndex = masterDemoStops.get(i);
+                
+                // Om vi har "hunnit fram" till denna bil i tidslinjen, måla den röd!
+                if (ds.demoStep >= arrivalAtGoalIndex) {
+                    RobotState goalState = masterDemoPath.get(arrivalAtGoalIndex);
+                    ds.markAreaAsVisited(goalState.axleX, goalState.axleY);
+                }
+            }
+            // -------------------------------------
+            
             repaint();
-            return String.format("(%.1f, %.1f)", ds.robotX, ds.robotY);
+            return String.format("(%.1f, %.1f)", ds.robotX, ds.robotY); 
         }
         return "";
-    }
+    } 
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
         // Om roboten körs just nu (av framåt-knappen eller snabbspolning), stoppa den!
@@ -536,7 +692,7 @@ public class ControlUI extends javax.swing.JFrame {
         }
 
         // Starta timer för att köra framåt mjukt
-        forwardTimer = new javax.swing.Timer(12, new java.awt.event.ActionListener() {
+        forwardTimer = new javax.swing.Timer(10, new java.awt.event.ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
                 if (ds.demoStep < targetStep) {
@@ -569,7 +725,7 @@ public class ControlUI extends javax.swing.JFrame {
         appendStatus("Snabbspolar från steg " + ds.demoStep + "...\n");
 
         // Timer börjar loopa direkt från nuvarande ds.demoStep 
-        javax.swing.Timer timer = new javax.swing.Timer(7, new java.awt.event.ActionListener() {
+        javax.swing.Timer timer = new javax.swing.Timer(5, new java.awt.event.ActionListener() {
 
             @Override
             public void actionPerformed(java.awt.event.ActionEvent e) {
