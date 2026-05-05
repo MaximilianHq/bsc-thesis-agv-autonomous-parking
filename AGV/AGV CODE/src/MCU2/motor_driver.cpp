@@ -177,32 +177,123 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
         break;
 
     case 0x01:
-        c1.execute_move(true, spd_percent);
+        // Backward
+        c1.execute_move(false, spd_percent);
+        c2.execute_move(false, spd_percent);
+        c3.execute_move(false, spd_percent);
+        c4.execute_move(false, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Backward");
         break;
+
     case 0x02:
+        // Right
+        c1.execute_move(false, spd_percent);
         c2.execute_move(true, spd_percent);
+        c3.execute_move(true, spd_percent);
+        c4.execute_move(false, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Right");
         break;
     case 0x03:
-        c3.execute_move(true, spd_percent);
+        // Left
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(false, spd_percent);
+        c3.execute_move(false, spd_percent);
+        c4.execute_move(true, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Left");
         break;
     case 0x04:
-        c4.execute_move(true, spd_percent);
+        // Forward-Right
+        c2.execute_move(true, spd_percent);
+        c3.execute_move(true, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Forward-Right");
         break;
     case 0x05:
+        // Forward-Left
+        c1.execute_move(true, spd_percent);
+        c4.execute_move(true, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Forward-Left");
         break;
     case 0x06:
+        // Backward-Right
+        c1.execute_move(false, spd_percent);
+        c4.execute_move(false, spd_percent);
+        
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Backward-Right");
         break;
+
     case 0x07:
+        // Backward-Left
+        c2.execute_move(false, spd_percent);
+        c3.execute_move(false, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Backward-Left");
         break;
+
     case 0x08:
+        // Turning-Right
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(false, spd_percent);
+        c3.execute_move(true, spd_percent);
+        c4.execute_move(false, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Turning-Right");
         break;
+
     case 0x09:
+        // Turning-Left
+        c1.execute_move(false, spd_percent);
+        c2.execute_move(true, spd_percent);
+        c3.execute_move(false, spd_percent);
+        c4.execute_move(true, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Turning-Left");
         break;
+
     case 0x0A:
+        // Curved-Trajectory-Right
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Right");
         break;
+
     case 0x0B:
+        // Curved-Trajectory-Left
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Left");
         break;
+
+    case 0x0C:
+        // Lateral-Arc-Right
+
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Right");
+        break;
+
+    case 0x0D:
+        // Lateral-Arc-Left
+
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Left");
+        break;
+
     default:
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Unknown movement command");
         break;
     }
 }

@@ -33,6 +33,10 @@ public class DataStore {
     double robotX;
     double robotY;
     
+    // Bilens bakaxel
+    double axleX; 
+    double axleY;
+    
     //AGV rotation
     public int startRotation = 0;
     public int currentRotation;
@@ -48,6 +52,11 @@ public class DataStore {
     int rows;
     int columns;
     public List<Vertex> currentPath;
+    
+    // VARIABLER FÖR KINEMATIK 
+    public java.util.List<Point2D> robotTrajectory; // AGV:ns exakta fysiska rutt
+    public double agvOffset = 9.0; // Byt till exakt längd bakaxel till AGv (ange i antal rutor)
+    // -----------------------------------
     
     public Queue<AgvInstruction> instructionQueue;
     double robotAngle;
@@ -75,6 +84,8 @@ public class DataStore {
         currentPath = null;
         
         instructionQueue = new LinkedList<>();
+        
+        robotTrajectory = new java.util.ArrayList<>();
 
     }
 
@@ -105,20 +116,17 @@ public class DataStore {
             // Read all points as, x, y
             for (int i = 0; i < locations; i++) {
                 line = scanner.nextLine();
-                //split space separated data on line
                 sline = line.split(", ");
                 LocationX[i] = Double.parseDouble(sline[0].trim());
                 LocationY[i] = Double.parseDouble(sline[1].trim());
             }
 
-            line = scanner.nextLine(); // Behövs tydligen en för varje lol
+            line = scanner.nextLine(); 
             Hspaces = Integer.parseInt(line.trim());
             System.out.println("No parkingspaces to be read: " + Hspaces);
 
-            // Read all points as, x, y
             for (int i = 0; i < Hspaces; i++) {
                 line = scanner.nextLine();
-                //split space separated data on line
                 sline = line.split(", ");
                 HLocationX[i] = Double.parseDouble(sline[0].trim());
                 HLocationY[i] = Double.parseDouble(sline[1].trim());
@@ -128,28 +136,27 @@ public class DataStore {
             Vspaces = Integer.parseInt(line.trim());
             System.out.println("No parkingspaces to be read: " + Vspaces);
 
-            // Read all points as, x, y
             for (int i = 0; i < Vspaces; i++) {
                 line = scanner.nextLine();
-                //split space separated data on line
                 sline = line.split(", ");
                 VLocationX[i] = Double.parseDouble(sline[0].trim());
                 VLocationY[i] = Double.parseDouble(sline[1].trim());
             }
 
             DataAvail = true;
-            // Debug printout
             System.out.println("Location A: " + LocationX[0] + " " + LocationY[0]);
-            System.out.println("Location B: " + LocationX[1] + " " + LocationY[1]);
 
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
+        
+        // --- ÄNDRING: AGV:ns mittpunkt placeras direkt på Hemstationen ---
         robotX = LocationX[0];
         robotY = LocationY[0];
+        
     }
-
+    
+    
 public void markAreaAsVisited(double xCoord, double yCoord) {
         int bestType = -1; // 0 = Horisontell, 1 = Vertikal
         int bestIndex = -1;
