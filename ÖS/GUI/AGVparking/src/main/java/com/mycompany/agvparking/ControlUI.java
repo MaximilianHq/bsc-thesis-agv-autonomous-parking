@@ -498,6 +498,10 @@ public class ControlUI extends javax.swing.JFrame {
         // 1. Pausa tråden!
         ds.isPaused = true;
         appendStatus("AGVn är pausad...\n");
+        
+        if (btTransceiver != null) {
+            btTransceiver.skickaStoppKommando();
+        }
 
         // Knappar till popup-ruta
         Object[] options = {"Ja", "Nej"};
@@ -574,9 +578,8 @@ public class ControlUI extends javax.swing.JFrame {
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         appendStatus("AGV får nu köra. Startar... \n");
 
-        // Starta Bluetooth
-        BluetoothTransceiver bt = new BluetoothTransceiver(ds, this); // this är evt
-        Thread btThread = new Thread(bt);
+        btTransceiver = new BluetoothTransceiver(ds, this); 
+        Thread btThread = new Thread(btTransceiver);
         btThread.start();
 
         if (unvisitedMissions.isEmpty()) {
@@ -793,4 +796,6 @@ public class ControlUI extends javax.swing.JFrame {
     private javax.swing.JTextArea txtSent;
     // End of variables declaration//GEN-END:variables
 
+    // Egendefinierade variabler
+    private BluetoothTransceiver btTransceiver;
 }

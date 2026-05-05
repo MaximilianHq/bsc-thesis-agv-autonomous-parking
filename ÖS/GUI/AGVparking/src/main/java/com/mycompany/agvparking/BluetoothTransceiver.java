@@ -10,7 +10,7 @@ public class BluetoothTransceiver implements Runnable {
     private OutputStream bluetooth_ut;
     private InputStream bluetooth_in;
     
-    private int nuvarandeSekvens = 0; // Sekvensnummer enligt protokoll [cite: 19, 88]
+    private int nuvarandeSekvens = 0; // Sekvensnummer enligt protokoll
 
     public BluetoothTransceiver(DataStore ds, ControlUI cui) {
         this.ds = ds;
@@ -39,40 +39,74 @@ public class BluetoothTransceiver implements Runnable {
                     continue;
                 }
 
-                // Finns det en ny instruktion i brevlådan?
+                // Hämta nästa instruktion som RouteOptimizer (eller UI) lagt i kön
                 if (ds.instructionQueue != null && !ds.instructionQueue.isEmpty()) {
                     AgvInstruction instruktion = ds.instructionQueue.poll();
                     
-                    // Skapa Körkommando enligt protokoll: $ D M V S C \n [cite: 19]
-                    // Checksumman beräknas på Typ + Data (D + M + V) [cite: 94]
-                    byte[] dataForCrc = new byte[] { 'D', (byte) instruktion.maneuver, (byte) instruktion.velocity };
-                    byte checksum = beraknaChecksumma(dataForCrc);
+                    byte typ = (byte) instruktion.type;
                     byte seq = (byte) nuvarandeSekvens;
+                    
+                    byte[] dataBytes;
+                    byte[] paket;
+                    String loggText = "";
 
-                    byte[] paket = new byte[] { '$', 'D', (byte) instruktion.maneuver, (byte) instruktion.velocity, seq, checksum, '\n' };
+                    // --- BYGG PAKET DYNAMISKT BEROENDE PÅ TYP ---
+                    if (typ == 'D') { // Körkommando
+                        byte maneuver = (byte) instruktion.maneuver;
+                        byte velocity = (byte) instruktion.velocity;
+                        dataBytes = new byte[] { maneuver, velocity };
+                        byte checksum = beraknaChecksumma(typ, dataBytes, seq);
+                        paket = new byte[] { '$', typ, maneuver, velocity, seq, checksum, '\n' };
+                        
+                        loggText = "KÖR: " + InstructionsStore.getInstructionText(instruktion.maneuver) + 
+                                   " [Mål: " + instruktion.targetX + "," + instruktion.targetY + "]";
+                                   
+                    } else if (typ == 'K') { // Enskilt kommando
+                        byte instrByte = (byte) instruktion.instructionByte;
+                        dataBytes = new byte[] { instrByte };
+                        byte checksum = beraknaChecksumma(typ, dataBytes, seq);
+                        paket = new byte[] { '$', typ, instrByte, seq, checksum, '\n' };
+                        
+                        loggText = "ENSKILT KMD: Inst (" + instrByte + ")";
+                        
+                    } else if (typ == 'X') { // Stanna
+                        dataBytes = new byte[] {}; // Ingen data för Stanna
+                        byte checksum = beraknaChecksumma(typ, dataBytes, seq);
+                        paket = new byte[] { '$', typ, seq, checksum, '\n' };
+                        
+                        loggText = "STANNA (X-Kommando)";
+                        
+                    } else {
+                        // Säkerhet om okänd typ skulle skickas från kön
+                        cui.appendStatus("Varning: Okänd meddelandetyp '" + (char)typ + "' ignorerades.\n");
+                        continue;
+                    }
 
                     // Skicka till AGV
                     bluetooth_ut.write(paket);
                     bluetooth_ut.flush();
                     
-                    cui.logSent("M:" + instruktion.maneuver + " (Mål: " + instruktion.targetX + "," + instruktion.targetY + ") Seq:" + nuvarandeSekvens);
+                    cui.logSent(loggText + " Seq:" + nuvarandeSekvens);
                     nuvarandeSekvens = (nuvarandeSekvens + 1) % 256;
 
-                    // --- POSITIONS-LÅS (Stop and Wait för koordinater) ---
-                    // Vi pausar här och väntar på att AGV:n skickar en position som matchar målet
-                    boolean framme = false;
-                    while (!framme && !ds.isStopped && !ds.isPaused) {
-                        
-                        // Räkna ut AGV:ns nuvarande position i rutnätet (baserat på inkommande P-meddelanden)
-                        int currentGridX = (int) (ds.robotX / ds.gridsize);
-                        int currentGridY = (int) (ds.robotY / ds.gridsize);
-                        
-                        if (currentGridX == instruktion.targetX && currentGridY == instruktion.targetY) {
-                            framme = true;
-                            cui.logSent("Mål nått! Plockar nästa instruktion...");
-                        } else {
-                            Thread.sleep(100); // Vänta 100ms innan vi kollar koordinaten igen
+                    // --- STOP-AND-WAIT LOGIK ---
+                    if (typ == 'D') {
+                        // Vi pausar här och väntar på att AGV:n skickar en position som matchar målet
+                        boolean framme = false;
+                        while (!framme && !ds.isStopped && !ds.isPaused) {
+                            
+                            int currentGridX = (int) (ds.robotX / ds.gridsize);
+                            int currentGridY = (int) (ds.robotY / ds.gridsize);
+                            
+                            if (currentGridX == instruktion.targetX && currentGridY == instruktion.targetY) {
+                                framme = true;
+                            } else {
+                                Thread.sleep(100); 
+                            }
                         }
+                    } else if (typ == 'K') {
+                        // Om vi skickar ett K-kommando (t.ex. släpp bil), vänta lite innan vi skickar nästa
+                        Thread.sleep(500); 
                     }
                 } else {
                     Thread.sleep(200); // Ingen instruktion i kön, vila lite
@@ -114,37 +148,82 @@ public class BluetoothTransceiver implements Runnable {
         
         byte typ = data[1];
         
-        // Enligt protokoll (sid 7): Positionsuppdatering börjar med 'P' [cite: 71]
-        if (typ == 'P' && data.length == 8) {
-            int x = data[2] & 0xFF;
-            int y = data[3] & 0xFF;
-            int seq = data[5] & 0xFF;
+        // Positionsuppdatering börjar med 'P' [cite: 67]
+        if (typ == 'P' && data.length >= 8) {
+            int x = data[3] & 0xFF; // X-koordinat är på index 3 [cite: 67]
+            int y = data[4] & 0xFF; // Y-koordinat är på index 4 [cite: 67]
+            int seq = data[6] & 0xFF; // Sekvensnummer ligger på index 6 [cite: 67]
 
-            // VIKTIGT: Uppdatera DataStore så att sändar-loopen ser att vi rör oss!
+            // Uppdatera DataStore så att sändar-loopen ser att vi rör oss
             ds.robotX = x * ds.gridsize + (ds.gridsize / 2.0);
             ds.robotY = y * ds.gridsize + (ds.gridsize / 2.0);
             ds.updateUiflag = true;
             
-            cui.logReceived("AGV Position: (" + x + "," + y + ")");
-            cui.repaint(); // Uppdatera gula pricken på kartan direkt
+            cui.repaint(); // Uppdatera GUI direkt
             
-            skickaACK((byte) 1, seq); // Bekräfta mottagning [cite: 19, 82]
+            skickaACK((byte) 1, seq); // Bekräfta mottagning
         }
+        // Lägg in hantering av 'H' (Hinder) eller 'A' (ACK) här i framtiden om nödvändigt [cite: 67]
     }
 
     private void skickaACK(byte status, int seq) {
         try {
-            byte[] dataForCrc = new byte[] { 'A', status };
-            byte crc = beraknaChecksumma(dataForCrc);
-            byte[] paket = new byte[] { '$', 'A', status, (byte)seq, crc, '\n' };
+            byte typ = 'A';
+            byte[] data = { status };
+            byte crc = beraknaChecksumma(typ, data, (byte)seq);
+            byte[] paket = new byte[] { '$', typ, status, (byte)seq, crc, '\n' };
             bluetooth_ut.write(paket);
             bluetooth_ut.flush();
         } catch (Exception e) {}
     }
 
-    private byte beraknaChecksumma(byte[] data) {
+    /**
+     * Beräknar checksumma enligt kommunikationsprotokollet.
+     * Checksumman beräknas genom en XOR av meddelandetyp, all data, och sekvensnummer. [cite: 91, 101]
+     */
+    private byte beraknaChecksumma(byte typ, byte[] data, byte seq) {
         byte crc = 0;
-        for (byte b : data) { crc ^= b; } // XOR-checksumma enligt protokoll [cite: 94]
+        crc ^= typ;
+        for (byte b : data) { 
+            crc ^= b; 
+        }
+        crc ^= seq; 
         return crc;
     }
-}
+    
+    /* Metod för nödstopp!
+    Denna metod ska ta sig förbi alla andra väntande Bluetooth-strömmar. Om det till exempel
+    finns meddelanden kvar i en rutt som behöver skickas kommer denna ta sig förbi dessa.
+    */
+    
+    public void skickaStoppKommando() {
+        try {
+            if (bluetooth_ut != null) {
+                byte typ = 'X';
+                byte seq = (byte) nuvarandeSekvens;
+                byte[] dataBytes = new byte[] {}; // 'X' har noll databytes 
+                
+                byte checksum = beraknaChecksumma(typ, dataBytes, seq);
+                byte[] paket = new byte[] { '$', typ, seq, checksum, '\n' };
+                
+                // synchronized blockerar andra trådar (t.ex. sändarloopen) från att 
+                // skriva till bluetooth_ut exakt samtidigt, vilket förhindrar korrupta paket.
+                synchronized(bluetooth_ut) {
+                    bluetooth_ut.write(paket);
+                    bluetooth_ut.flush();
+                }
+                
+                cui.logSent("EXPRESS: STANNA (X-Kommando) Seq:" + nuvarandeSekvens);
+                nuvarandeSekvens = (nuvarandeSekvens + 1) % 256;
+                
+                // Töm även kön i Java så att den gamla, nu ogiltiga rutten försvinner!
+                if (ds.instructionQueue != null) {
+                    ds.instructionQueue.clear();
+                }
+            }
+        } catch (Exception e) {
+            cui.appendStatus("OBS! Kunde inte skicka nödstopp: " + e.getMessage() + "\n");
+        }
+    }
+    
+}   
