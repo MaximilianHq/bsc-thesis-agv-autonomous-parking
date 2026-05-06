@@ -1,51 +1,101 @@
 #include "imu.h"
+
 #include <Wire.h>
 #include <math.h>
+#include <MPU9250_asukiaaa.h>
 
 IMU::IMU(uint8_t pin_sda, uint8_t pin_scl)
-    : _pin_sda(pin_sda), _pin_scl(pin_scl) {}
+    : _pin_sda(pin_sda),
+      _pin_scl(pin_scl)
+{
+}
 
 void IMU::setup()
 {
     Wire.begin(_pin_sda, _pin_scl);
 
-    _mpu.initialize();
+    _imu.setWire(&Wire);
 
-    if (!_mpu.testConnection())
-        Serial.println("MPU6050 connection failed");
+    // Starta accelerometer + gyro
+    _imu.beginAccel();
+    _imu.beginGyro();
 
-    // Valfri config (default är oftast ok)
-    _mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
-    _mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
+    delay(100);
+
+    calibrate();
 
     last_sample = millis();
 }
 
+void IMU::calibrate()
+{
+    Serial.println("Calibrating IMU... keep still");
+
+    float sx = 0;
+    float sy = 0;
+    float sz = 0;
+
+    float sgz = 0;
+
+    const int n = 200;
+
+    for (int i = 0; i < n; i++)
+    {
+        _imu.accelUpdate();
+        _imu.gyroUpdate();
+
+        sx += _imu.accelX();
+        sy += _imu.accelY();
+        sz += _imu.accelZ();
+
+        sgz += _imu.gyroZ();
+
+        delay(5);
+    }
+
+    _offset_ax = sx / n;
+    _offset_ay = sy / n;
+
+    // Ta bort gravitationen
+    _offset_az = (sz / n) - 1.0f;
+
+    _offset_gz = sgz / n;
+
+    Serial.println("Calibration done");
+}
+
 bool IMU::read(ImuState &state)
 {
-    int16_t ax_raw, ay_raw, az_raw;
-    int16_t gx_raw, gy_raw, gz_raw;
-
-    _mpu.getMotion6(&ax_raw, &ay_raw, &az_raw, &gx_raw, &gy_raw, &gz_raw);
+    _imu.accelUpdate();
+    _imu.gyroUpdate();
 
     unsigned long now = millis();
-    float dt = (now - last_sample);
+
+    // sekunder istället för millisekunder
+    float dt = (now - last_sample) / 1000.0f;
+
     last_sample = now;
 
-    // === KONVERTERA TILL RIKTIGA ENHETER ===
-    float ax = (ax_raw / _ACC_SCALE) * _G_TO_MS2;
-    float ay = (ay_raw / _ACC_SCALE) * _G_TO_MS2;
-    float wz = (gz_raw / _GYRO_SCALE) * DEG_TO_RAD;
+    // === ACCELERATION ===
+    // MPU9250_asukiaaa returnerar redan i g
+    float ax = (_imu.accelX() - _offset_ax) * 9.81f;
+    float ay = (_imu.accelY() - _offset_ay) * 9.81f;
+
+    // === GYRO ===
+    // returneras i deg/s
+    float wz = (_imu.gyroZ() - _offset_gz) * DEG_TO_RAD;
 
     // === DEADZONE ===
     if (fabs(ax) < 0.05f)
         ax = 0.0f;
+
     if (fabs(ay) < 0.05f)
         ay = 0.0f;
+
     if (fabs(wz) < 0.01f)
         wz = 0.0f;
 
-    // === KOORDINATSYSTEM (justera vid behov) ===
+    // === OUTPUT ===
     state.ax = ax;
     state.ay = ay;
     state.wz = wz;
