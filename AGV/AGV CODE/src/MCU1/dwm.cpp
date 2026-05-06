@@ -212,16 +212,6 @@ bool DWM::read(DwmState &out)
 
                     _response_has_position = true;
                     packet_delivered = true;
-
-                    if (g_debug.dwm)
-                    {
-                        Serial.print("[DWM] X: ");
-                        Serial.print(out.pos.x / 1000.0f, 3);
-                        Serial.print("  Y: ");
-                        Serial.print(out.pos.y / 1000.0f, 3);
-                        Serial.print("  Z: ");
-                        Serial.println(out.pos.z / 1000.0f, 3);
-                    }
                 }
                 else if (type == 0x48 && length >= 1)
                 {

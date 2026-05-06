@@ -12,11 +12,7 @@ void IMU::setup()
     _mpu.initialize();
 
     if (!_mpu.testConnection())
-    {
         Serial.println("MPU6050 connection failed");
-        while (1)
-            delay(10);
-    }
 
     // Valfri config (default är oftast ok)
     _mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
@@ -33,7 +29,7 @@ bool IMU::read(ImuState &state)
     _mpu.getMotion6(&ax_raw, &ay_raw, &az_raw, &gx_raw, &gy_raw, &gz_raw);
 
     unsigned long now = millis();
-    float dt = (now - last_sample) / 1000.0f;
+    float dt = (now - last_sample);
     last_sample = now;
 
     // === KONVERTERA TILL RIKTIGA ENHETER ===

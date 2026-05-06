@@ -156,6 +156,26 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
 
 void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
 {
+    if (true)
+    {
+        Serial.println("[SYSCTRL] Recieved values");
+        Serial.print("[DWM] X: ");
+        Serial.print(dwm.pos.x / 1000.0f, 3);
+        Serial.print("  Y: ");
+        Serial.print(dwm.pos.y / 1000.0f, 3);
+        Serial.print("  Z: ");
+        Serial.println(dwm.pos.z / 1000.0f, 3);
+
+        Serial.print("[IMU] AX: ");
+        Serial.print(imu.ax);
+        Serial.print("  AY: ");
+        Serial.print(imu.ay);
+        Serial.print("  DT: ");
+        Serial.print(imu.dt);
+        Serial.print("  WZ: ");
+        Serial.println(imu.wz);
+    }
+
     if (_state.size() == 0)
     {
         AgvState init_state;
@@ -201,6 +221,21 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
         float theta_meas = atan2f(dy, dx);
         float theta_err = _norm_ang(theta_meas - upd.theta);
         upd.theta = _norm_ang(upd.theta + _err_co_imu * theta_err);
+    }
+
+    if (true)
+    {
+        Serial.println("[SYSCTRL] Calculated values values");
+        Serial.print("[DWM] X: ");
+        Serial.print(upd.pos.x / 1000.0f, 3);
+        Serial.print("  Y: ");
+        Serial.print(upd.pos.y / 1000.0f, 3);
+        Serial.print("  Z: ");
+        Serial.print(upd.pos.z / 1000.0f, 3);
+        Serial.print("  ANG: ");
+        Serial.print(upd.theta);
+        Serial.print("  TIME_NOW: ");
+        Serial.println(upd.t_ms);
     }
 
     _state.push_front(upd);

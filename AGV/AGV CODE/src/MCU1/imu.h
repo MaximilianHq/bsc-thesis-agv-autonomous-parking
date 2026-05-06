@@ -18,5 +18,5 @@ private:
     // Skalningskonstanter
     const float _ACC_SCALE = 16384.0f; // LSB/g (±2g default)
     const float _G_TO_MS2 = 9.81f;
-    const float _GYRO_SCALE = 131.0f; // LSB/(deg/s)
+    const float _GYRO_SCALE = 65.5f; // LSB/(deg/s) 131.0f
 };

@@ -166,6 +166,12 @@ void loop()
     if (dwm.read(d))
         if (imu.read(i))
             sysctrl.on_new_position_data(d, i);
+        else
+            Serial.println("[IMU] no read");
+    else
+        Serial.println("[DWM] no read");
+
+    delay(20);
 }
 
 void blt_status_routine()

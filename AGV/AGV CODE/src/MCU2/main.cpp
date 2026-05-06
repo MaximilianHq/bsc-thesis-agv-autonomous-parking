@@ -70,15 +70,6 @@ void setup()
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
-
-    md.move(0x01, 50, 5000);
-    delay(3000);
-    md.move(0x02, 50, 5000);
-    delay(3000);
-    md.move(0x03, 50, 5000);
-    delay(3000);
-    md.move(0x04, 50, 5000);
-    delay(3000);
 }
 
 void loop()
