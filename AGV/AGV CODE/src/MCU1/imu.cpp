@@ -27,6 +27,7 @@ void IMU::setup()
     last_sample = millis();
 }
 
+//kalibrering
 void IMU::calibrate()
 {
     Serial.println("Calibrating IMU... keep still");
@@ -56,7 +57,7 @@ void IMU::calibrate()
     _offset_ax = sx / n;
     _offset_ay = sy / n;
 
-    // Ta bort gravitationen
+    //ta bort gravitationen
     _offset_az = (sz / n) - 1.0f;
 
     _offset_gz = sgz / n;
@@ -71,21 +72,19 @@ bool IMU::read(ImuState &state)
 
     unsigned long now = millis();
 
-    // sekunder istället för millisekunder
+    //sekunder istället för millisekunder
     float dt = (now - last_sample) / 1000.0f;
 
     last_sample = now;
 
-    // === ACCELERATION ===
-    // MPU9250_asukiaaa returnerar redan i g
-    float ax = (_imu.accelX() - _offset_ax) * 9.81f;
-    float ay = (_imu.accelY() - _offset_ay) * 9.81f;
+    //acceleration (mm/s^2)
+    float ax = (_imu.accelX() - _offset_ax) * 9810.0f;
+    float ay = (_imu.accelY() - _offset_ay) * 9810.0f;
 
-    // === GYRO ===
-    // returneras i deg/s
+    //gyro (deg/s)
     float wz = (_imu.gyroZ() - _offset_gz) * DEG_TO_RAD;
 
-    // === DEADZONE ===
+    //deadzone, ignorera supersmå signaler som kan vara brus
     if (fabs(ax) < 0.05f)
         ax = 0.0f;
 
@@ -95,7 +94,7 @@ bool IMU::read(ImuState &state)
     if (fabs(wz) < 0.01f)
         wz = 0.0f;
 
-    // === OUTPUT ===
+    //output
     state.ax = ax;
     state.ay = ay;
     state.wz = wz;

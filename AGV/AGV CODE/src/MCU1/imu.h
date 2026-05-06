@@ -1,6 +1,6 @@
 #pragma once
 #include <types.h>
-#include <MPU6050.h>
+#include <MPU9250_asukiaaa.h>
 
 class IMU
 {
@@ -9,9 +9,10 @@ public:
 
     void setup();
     bool read(ImuState &state);
+    void calibrate();
 
 private:
-    MPU6050 _mpu;
+    MPU9250_asukiaaa _imu;
     uint8_t _pin_sda, _pin_scl;
     unsigned long last_sample = 0;
 
@@ -19,4 +20,10 @@ private:
     const float _ACC_SCALE = 16384.0f; // LSB/g (±2g default)
     const float _G_TO_MS2 = 9.81f;
     const float _GYRO_SCALE = 65.5f; // LSB/(deg/s) 131.0f
+
+    //offset för kalibrering
+    float _offset_ax = 0;
+    float _offset_ay = 0;
+    float _offset_az = 0;
+    float _offset_gz = 0;      
 };
