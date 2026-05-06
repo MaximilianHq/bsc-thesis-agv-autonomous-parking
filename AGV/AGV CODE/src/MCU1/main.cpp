@@ -163,7 +163,7 @@ void loop()
     // ---------- DWM ----------
     DwmState d;
     ImuState i;
-    if (dwm.read(d))
+    if (dwm.read(d) || true)
         if (imu.read(i))
             sysctrl.on_new_position_data(d, i);
         else

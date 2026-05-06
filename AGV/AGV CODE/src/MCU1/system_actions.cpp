@@ -194,8 +194,8 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
     // x_{agv} = \cos θ * v_x + \cos(θ-90\deg) * v_y = \cos θ * v_x - \sin θ * v_y
     // y_{agv} = \sin θ * v_y + \sin(θ-90\deg) * v_y = \sin θ * v_x + \cos θ * v_y
 
-    pred_state.pos.x = prev_state.pos.x + prev_state.vx * cosf(prev_state.theta) - prev_state.vy * sinf(prev_state.theta);
-    pred_state.pos.y = prev_state.pos.y + prev_state.vx * sinf(prev_state.theta) + prev_state.vy * cosf(prev_state.theta);
+    pred_state.pos.x = prev_state.pos.x + (prev_state.vx * cosf(prev_state.theta) - prev_state.vy * sinf(prev_state.theta)) * imu.dt;
+    pred_state.pos.y = prev_state.pos.y + (prev_state.vx * sinf(prev_state.theta) + prev_state.vy * cosf(prev_state.theta)) * imu.dt;
     pred_state.theta = _norm_ang(prev_state.theta + imu.wz * imu.dt);
 
     pred_state.vx += imu.ax * imu.dt;
@@ -216,7 +216,7 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
 
     float dist = sqrtf(dx * dx + dy * dy);
 
-    if (dist > 0.05f)
+    if (dist > 10.0f)
     {
         float theta_meas = atan2f(dy, dx);
         float theta_err = _norm_ang(theta_meas - upd.theta);
