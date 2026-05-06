@@ -236,7 +236,7 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
         Serial.print("  Z: ");
         Serial.print(upd.pos.z / 1000.0f, 3);
         Serial.print("  ANG: ");
-        Serial.print(upd.theta);
+        Serial.print(upd.theta * 180.0f / PI);
         Serial.print("  TIME_NOW: ");
         Serial.println(upd.t_ms);
     }
