@@ -10,7 +10,7 @@ public class RouteOptimizer {
         this.ds = ds;
     }
 
-    public void compressPath(List<Vertex> path) {
+    public void compressPath(List<Vertex> path, boolean isLoaded) {
         if (path == null || path.size() < 2) {
             System.out.println("Ingen giltig rutt att optimera.");
             return;
@@ -60,13 +60,22 @@ public class RouteOptimizer {
                     int crossProduct = currentDx * dy - currentDy * dx;
                     
                     if (crossProduct > 0) { // HÖGERSVÄNG
-                        System.out.println("Körinstruktion: Kurvad bana Höger (90 grader)");
-                        ds.instructionQueue.add(new AgvInstruction(InstructionsStore.CURVED_TRAJECTORY_RIGHT, 100, 0, currentX, currentY, false));
-                    } else if (crossProduct < 0) { // VÄNSTERSVNG
-                        System.out.println("Körinstruktion: Kurvad bana Vänster (90 grader)");
-                        ds.instructionQueue.add(new AgvInstruction(InstructionsStore.CURVED_TRAJECTORY_LEFT, 100, 0, currentX, currentY, false));
+                        if (isLoaded) {
+                            System.out.println("Körinstruktion: Kurvad bana Höger (90 grader)");
+                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.CURVED_TRAJECTORY_RIGHT, 100, 0, currentX, currentY, false));
+                        } else {
+                            System.out.println("Körinstruktion: Rotera Höger på stället");
+                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_RIGHT, 100, 0, currentX, currentY, false));
+                        }
+                    } else if (crossProduct < 0) { // VÄNSTERSVÄNG
+                        if (isLoaded) {
+                            System.out.println("Körinstruktion: Kurvad bana Vänster (90 grader)");
+                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.CURVED_TRAJECTORY_LEFT, 100, 0, currentX, currentY, false));
+                        } else {
+                            System.out.println("Körinstruktion: Rotera Vänster på stället");
+                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_LEFT, 100, 0, currentX, currentY, false));
+                        }
                     }
-                    // ---------------------------------------------------------------
 
                     // ... och börja räkna på den nya riktningen
                     currentDx = dx;

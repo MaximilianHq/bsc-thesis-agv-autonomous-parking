@@ -77,99 +77,6 @@ public class ControlUI extends javax.swing.JFrame {
         System.out.println("Start at: " + ds.LocationX[0] + ", " + ds.LocationY[0]);
     }
     
-//private boolean planNextMission() {
-//        if (unvisitedMissions.isEmpty()) {
-//            appendStatus("Alla uppdrag klara! Alla bilar är parkerade.\n");
-//            return false; 
-//        }
-//
-//        OptPlan op = new OptPlan(ds);
-//        int startX = (int) (ds.LocationX[0] / ds.gridsize);
-//        int startY = (int) (ds.LocationY[0] / ds.gridsize);
-//        int startNodeId = (startY * ds.columns) + startX;
-//
-//        int bestIndex = -1;
-//        int shortestPathSize = Integer.MAX_VALUE;
-//        java.util.List<Vertex> outPath = null;
-//
-//        // 1. HITTA NÄRMASTE MÅLNOD
-//        for (int candidateIndex : unvisitedMissions) {
-//            int dX = (int) (ds.LocationX[candidateIndex] / ds.gridsize);
-//            int dY = (int) (ds.LocationY[candidateIndex] / ds.gridsize);
-//            
-//            op.createPlan(startNodeId, (dY * ds.columns) + dX);
-//            
-//            if (ds.currentPath != null && ds.currentPath.size() < shortestPathSize) {
-//                shortestPathSize = ds.currentPath.size();
-//                bestIndex = candidateIndex;
-//                outPath = new java.util.ArrayList<>(ds.currentPath);
-//            }
-//        }
-//
-//        if (bestIndex != -1 && outPath != null) { 
-//            appendStatus("Valde målnod Nr: " + bestIndex + " (Avstånd: " + shortestPathSize + " steg)\n");
-//            unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
-//            
-////            // Markera målnoden som besökt (Röd färg)
-//            int destX = (int) (ds.LocationX[bestIndex] / ds.gridsize);
-//            int destY = (int) (ds.LocationY[bestIndex] / ds.gridsize);
-////            ds.ObstacleMatrix[destX][destY] = 2; 
-//            // if (destY < (ds.rows / 2) && destX < ds.columns / 3.3) {
-//            switch (bestIndex) {
-//                case 1 -> appendStatus("Utför parkering: Vänster cirkelbåge \n");
-//                // Kalla på parkeringsmanöver (från ny class) ex. 12 - Det som Hanna håller på med
-//                case 2, 3, 4 -> appendStatus("Utför parkering: Höger cirkelbåge \n");
-//                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med
-//                case 5, 6, 7, 8, 9 -> appendStatus("Utför parkering: Vrid vänster och backa \n");
-//                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med
-//                case 10 -> appendStatus("Utför parkering: Vertikal parkering vid vägg \n");
-//                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med
-//                default -> {
-//                }
-//            }
-//            
-//            // 2. BERÄKNA HEMRESA
-//            op.createReturnPlan((destY * ds.columns) + destX, startNodeId);
-//            java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
-//            if (!returnPath.isEmpty()) returnPath.remove(0);
-//
-//            // 3. GENERERA HÖGUPPLÖST TIDSLINJE (KINEMATIK)
-//            KinematicsTransformer transformer = new KinematicsTransformer(ds);
-//            
-//            int offset = masterDemoPath.size(); 
-//            if (masterDemoPath.isEmpty()) masterDemoStops.add(0);
-//
-//            // Förvandla utresan (Lastad = true)
-//            java.util.List<RobotState> detailedOut = transformer.transformPath(outPath, true);
-//            
-//            // --- ÅTERSTÄLL DEN BLÅ LINJEN ---
-//            if (ds.robotTrajectory != null) {
-//                ds.robotTrajectory.clear();
-//                // Plocka ut x/y från vår nya tidslinje och lägg i trajectory-listan
-//                for (RobotState state : detailedOut) {
-//                    ds.robotTrajectory.add(new Point2D(state.agvX, state.agvY)); 
-//                }
-//            }
-//            // --------------------------------
-//
-//            masterDemoPath.addAll(detailedOut);
-//            masterDemoStops.add(masterDemoPath.size() - 1); 
-//
-//            // Förvandla hemresan (Lastad = false)
-//            java.util.List<RobotState> detailedReturn = transformer.transformPath(returnPath, false);
-//            masterDemoPath.addAll(detailedReturn);
-//            masterDemoStops.add(masterDemoPath.size() - 1); 
-//
-//            if (offset == 0) ds.demoStep = 0; 
-//            
-//            updateRobotPosition();
-//            return true; 
-//        }
-//        
-//        appendStatus("Kunde inte hitta någon väg till resterande mål.\n");
-//        unvisitedMissions.clear(); 
-//        return false;
-//    } 
     
     private boolean planNextMission() {
         if (unvisitedMissions.isEmpty()) {
@@ -206,7 +113,9 @@ public class ControlUI extends javax.swing.JFrame {
 
         if (bestIndex != -1 && outPath != null) {
             appendStatus("Valde målnod Nr: " + bestIndex + " (Avstånd: " + shortestPathSize + " steg)\n");
-            unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
+             
+            this.currentMissionIndex = bestIndex;
+            unvisitedMissions.remove(Integer.valueOf(bestIndex));
             
             int destX = (int) (ds.LocationX[bestIndex] / ds.gridsize);
             int destY = (int) (ds.LocationY[bestIndex] / ds.gridsize);
@@ -310,6 +219,37 @@ public class ControlUI extends javax.swing.JFrame {
         appendStatus("Kunde inte hitta någon väg till resterande mål.\n");
         unvisitedMissions.clear();
         return false;
+    }
+    
+    public void recalculateCurrentMission() {
+        if (currentMissionIndex == -1) return;
+        appendStatus("Räknar om rutten från nuvarande position...\n");
+
+        // Var är AGV:n just exakt nu?
+        int currentX = (int) (ds.robotX / ds.gridsize);
+        int currentY = (int) (ds.robotY / ds.gridsize);
+        int startNodeId = (currentY * ds.columns) + currentX;
+
+        // Vart skulle vi?
+        int destX = (int) (ds.LocationX[currentMissionIndex] / ds.gridsize);
+        int destY = (int) (ds.LocationY[currentMissionIndex] / ds.gridsize);
+        int endNodeId = (destY * ds.columns) + destX;
+
+        // Skapa en ny rutt i grafen
+        OptPlan op = new OptPlan(ds);
+        op.createPlan(startNodeId, endNodeId);
+        
+        if (ds.currentPath != null && !ds.currentPath.isEmpty()) {
+            // Här måste vi berätta för Bluetooth-tråden att det finns en ny rutt!
+            // Eftersom vi tömde kön när vi tryckte på Stopp, måste vi komprimera den igen.
+            RouteOptimizer optimizer = new RouteOptimizer(ds);
+            optimizer.compressPath(ds.currentPath, ds.isLoaded);
+            
+            ds.isPaused = false; // Släpp på spärren så Bluetooth rullar vidare
+            repaint();
+        } else {
+            appendStatus("FEL: Kunde inte hitta någon ny väg till målet!\n");
+        }
     }
 
 
@@ -655,7 +595,21 @@ public class ControlUI extends javax.swing.JFrame {
                 ds.robotTrajectory = currentOutboundLine; // Visa bara vägen till målet
             } else {
                 ds.robotTrajectory = currentReturnLine;   // Visa bara vägen hem
-            }            
+            }    
+            
+            if (!isDemoMode && ds.currentPath != null) {
+                boolean isLegStart = (ds.demoStep == 0);
+                for (int stop : masterDemoStops) {
+                    if (ds.demoStep == stop + 1) {
+                        isLegStart = true;
+                    }
+                }
+                if (isLegStart) {
+                    RouteOptimizer optimizer = new RouteOptimizer(ds);
+                    optimizer.compressPath(ds.currentPath, ds.isLoaded); 
+                }
+            }
+            
             repaint();
             return String.format("(%.1f, %.1f)", ds.robotX, ds.robotY); 
         }
@@ -828,4 +782,5 @@ public void appendStatus(String text) {
 
     // Egendefinierade variabler
     private BluetoothTransceiver btTransceiver;
+    private int currentMissionIndex = -1;
 }

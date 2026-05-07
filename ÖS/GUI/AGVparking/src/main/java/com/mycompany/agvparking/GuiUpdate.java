@@ -59,7 +59,7 @@ public class GuiUpdate implements Runnable {
 
                     // --- KÖR OPTIMERAREN HÄR ---
                     RouteOptimizer optimizer = new RouteOptimizer(ds);
-                    optimizer.compressPath(ds.currentPath);
+                    optimizer.compressPath(ds.currentPath, ds.isLoaded);
                     // -----------------------------
 
                     moveRobotAlongPath(ds.currentPath);

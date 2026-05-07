@@ -148,24 +148,79 @@ public class BluetoothTransceiver implements Runnable {
         
         byte typ = data[1];
         
-        // Positionsuppdatering börjar med 'P' [cite: 67]
-        if (typ == 'P' && data.length >= 8) {
-            int x = data[3] & 0xFF; // X-koordinat är på index 3 [cite: 67]
-            int y = data[4] & 0xFF; // Y-koordinat är på index 4 [cite: 67]
-            int seq = data[6] & 0xFF; // Sekvensnummer ligger på index 6 [cite: 67]
+        // --- POSITIONSDATA ($P) ---
+        // Format antaget: $ P X Y Angle Seq CRC \n (Minst 9 bytes)
+        if (typ == 'P' && data.length >= 9) { 
+            int x = data[3] & 0xFF; // X-koordinat (grid)
+            int y = data[4] & 0xFF; // Y-koordinat (grid)
+            int vinkelRå = data[5] & 0xFF; // Vinkel (0-255 från hårdvaran)
+            int seq = data[7] & 0xFF; // Sekvensnummer
 
-            // Uppdatera DataStore så att sändar-loopen ser att vi rör oss
+            // Uppdatera robotens position i DataStore
             ds.robotX = x * ds.gridsize + (ds.gridsize / 2.0);
             ds.robotY = y * ds.gridsize + (ds.gridsize / 2.0);
-            ds.updateUiflag = true;
             
+            // Konvertera rå-vinkel (t.ex. 0-255) till radianer för GUI:t (-PI till PI)
+            // OBS: Denna beräkning kan behöva justeras när ni spikat exakt hur hårdvaran skickar vinkeln!
+            ds.robotAngle = ((vinkelRå / 255.0) * 2 * Math.PI) - Math.PI;
+            
+            ds.updateUiflag = true;
             cui.repaint(); // Uppdatera GUI direkt
             
             skickaACK((byte) 1, seq); // Bekräfta mottagning
+        } 
+        
+        // --- HINDERDETEKTERING ($H) ---
+        // Format antaget: $ H X Y Seq CRC \n (Minst 8 bytes)
+        else if (typ == 'H' && data.length >= 8) {
+            int hinderX = data[3] & 0xFF; 
+            int hinderY = data[4] & 0xFF;
+            int seq = data[6] & 0xFF;
+            
+            cui.appendStatus("LARM: AGV upptäckte ett hinder på (" + hinderX + ", " + hinderY + ")!\n");
+            
+            // 1. Skicka ACK tillbaka direkt så AGV vet att vi mottagit varningen
+            skickaACK((byte) 1, seq);
+            
+            // 2. Tvinga AGV att stanna omedelbart och rensa gamla rutten från kön
+            skickaStoppKommando();
+            
+            // 3. Lägg in hindret i vår karta så Dijkstra kan se det
+            if (hinderX >= 0 && hinderX < ds.columns && hinderY >= 0 && hinderY < ds.rows) {
+                // Addera till listan av hinder
+                ds.ObstacleMatrix[hinderX][hinderY] = 1; 
+            }
+            
+            // 4. Be ControlUI att räkna om rutten runt hindret.
+            // (SwingUtilities används för att inte krascha GUI:t från en bakgrundstråd)
+            javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    cui.recalculateCurrentMission();
+                }
+            });
         }
-        // Lägg in hantering av 'H' (Hinder) eller 'A' (ACK) här i framtiden om nödvändigt [cite: 67]
+        // --- FELMEDDELANDE FRÅN AGV ($E) ---
+        else if (typ == 'E' && data.length >= 6) { 
+            int seq_ref = data[2] & 0xFF; // Vilket kommando från oss som misslyckades
+            int seq = data[3] & 0xFF;     // AGV:ns sekvensnummer för felmeddelandet
+            
+            cui.appendStatus("KRITISKT LARM: AGV rapporterar fel! Refererar till vår sekvens: " + seq_ref + ".\n");
+            
+            // 1. Skicka ACK för att bekräfta att vi sett felet
+            skickaACK((byte) 1, seq);
+            
+            // 2. Tvinga systemet att stanna
+            skickaStoppKommando();
+            
+            // 3. Spärra vidare körning i Java-programmet
+            ds.isStopped = true; 
+            ds.isPaused = false; 
+            
+            cui.appendStatus("Systemet är fryst. Målbufferten i AGV:n kan vara tom. Starta om körningen.\n");
+        }
     }
-
+    
+    
     private void skickaACK(byte status, int seq) {
         try {
             byte typ = 'A';
