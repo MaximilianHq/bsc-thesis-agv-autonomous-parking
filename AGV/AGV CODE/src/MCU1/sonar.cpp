@@ -15,9 +15,7 @@ Sonar::Sonar(const SonarConfig &cfg, SysCtrl &actions)
       _sonar_range(cfg.sonar_range),
       _sonar_speed(cfg.sonar_speed),
       _sonar_angle(cfg.sonar_angle),
-      _actions(actions)
-{
-}
+      _actions(actions) {}
 
 bool Sonar::setup()
 {
@@ -43,26 +41,37 @@ bool Sonar::update()
     if (!_scan)
         return false;
 
+    _servo.pause();
+    Serial.println("paused");
+    delay(1000);
+    if (_servo.mServoIsPaused)
+        Serial.println("pause command true");
+    _servo.resumeWithoutInterrupts();
+
     digitalWrite(_pin_trig, LOW);
     delayMicroseconds(2);
     digitalWrite(_pin_trig, HIGH);
     delayMicroseconds(10);
     digitalWrite(_pin_trig, LOW);
 
-    uint32_t timeout = static_cast<uint32_t>((2.0 * 1.3 * _sonar_range) / 0.343);
+    uint32_t timeout = static_cast<uint32_t>((10 * 2.0 * 2.0 * _sonar_range) / 0.343);
     _duration = pulseIn(_pin_echo, HIGH, timeout);
-    if (_duration == 0)
-        return false;
-    _distance = _duration * .343 / 2; // mm
-
-    if (_distance <= _sonar_range)
+    Serial.print("dur = ");
+    Serial.println(_duration);
+    if (_duration != 0)
     {
-        // stopAllServos();
-        //_scan = false; // toggle for stop behaviour
-        _actions.on_obstacle_detected(get_obstacle_position());
         if (g_debug.sonar)
             Serial.println("[SONAR] Obstacle detected");
-        return true;
+        _distance = _duration * .343 / 2; // mm
+
+        if (_distance > _sonar_range) // non critical behaviour
+            _actions.on_obstacle_detected(get_obstacle_position());
+        else // critical behaviour
+        {
+            stopAllServos();
+            _scan = false; // toggle for stop behaviour
+            return true;
+        }
     }
 
     if (_servo.isMoving())

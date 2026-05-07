@@ -119,7 +119,7 @@ void setup()
     // uint16_t cfg;
     // if (dwm.dwm_cfg_get(cfg))
     //     Serial.println("cfg_get ok");
-    imu.setup();
+    // imu.setup();
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
@@ -161,15 +161,15 @@ void loop()
         sysctrl.on_mcu_pkt_recieved(mcu_pkt);
 
     // ---------- DWM ----------
-    DwmState d;
-    ImuState i;
-    if (dwm.read(d))
-        if (imu.read(i))
-            sysctrl.on_new_position_data(d, i);
-        else
-            Serial.println("[IMU] no read");
-    else
-        Serial.println("[DWM] no read");
+    // DwmState d;
+    // ImuState i;
+    // if (dwm.read(d))
+    //     if (imu.read(i))
+    //         sysctrl.on_new_position_data(d, i);
+    //     else
+    //         Serial.println("[IMU] no read");
+    // else
+    //     Serial.println("[DWM] no read");
 
     delay(20);
 }
