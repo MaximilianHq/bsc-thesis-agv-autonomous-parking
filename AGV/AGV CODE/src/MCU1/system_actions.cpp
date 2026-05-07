@@ -1,5 +1,6 @@
 #include "system_actions.h"
 #include <status_led.h>
+#include "dwm.h"
 
 SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd)
     : _comm_bt(comm_bt),
@@ -73,6 +74,39 @@ void SysCtrl::on_obstacle_detected(const Position &pos)
 
     _led_cmd.set_status(StatusLED::State::STATUS_OBSTACLE);
 }
+
+bool SysCtrl::on_startup(DWM &dwm){
+    
+    DwmState d1, d2;
+
+    //Ta första mätvärdet
+
+    if (!dwm.read(d1))
+        return false;
+
+    //Kör fram på MCU2 
+    Comm::Packet p = {'D', _proto_handler_mcu.get_sequence(), {0x00, 0x32}, 2, 0, true};
+    p.crc = Comm::csum(p);
+    if (!_forward_to_mcu(p))
+        if (g_debug.IAction)
+            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: test to [MCU2]");
+    delay(1000);
+    on_stop();
+
+    //Ta andra mätvärdet
+    if (!dwm.read(d2))
+        return false;
+
+    AgvState s;
+    s.pos = d2.pos;
+
+    //Implementera kod för att jämföra mätvärdena och beräkna vinkeln på AGV:n
+    s.theta = atan2f((d2.pos.x - d1.pos.x), (d2.pos.y - d1.pos.y));
+    _state.push_back(s);
+    return true;
+}
+
+
 
 void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
 {
@@ -180,7 +214,7 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
     {
         AgvState init_state;
         init_state.pos = dwm.pos;
-        init_state.theta = 0.0f;
+        init_state.theta = 0;
         init_state.t_ms = millis();
         _state.push_front(init_state);
         return;
