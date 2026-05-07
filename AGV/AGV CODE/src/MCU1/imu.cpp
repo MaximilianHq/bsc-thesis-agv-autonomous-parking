@@ -85,10 +85,10 @@ bool IMU::read(ImuState &state)
     float wz = (_imu.gyroZ() - _offset_gz) * DEG_TO_RAD;
 
     //deadzone, ignorera supersmå signaler som kan vara brus
-    if (fabs(ax) < 0.05f)
+    if (fabs(ax) < 50.0f)
         ax = 0.0f;
 
-    if (fabs(ay) < 0.05f)
+    if (fabs(ay) < 50.0f)
         ay = 0.0f;
 
     if (fabs(wz) < 0.01f)

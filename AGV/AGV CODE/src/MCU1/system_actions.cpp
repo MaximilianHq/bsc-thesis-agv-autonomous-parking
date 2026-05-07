@@ -159,7 +159,7 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
 
 void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
 {
-    if (false)
+    if (true)
     {
         Serial.println("[SYSCTRL] Recieved values");
         Serial.print("[DWM] X: ");
@@ -174,7 +174,7 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
         Serial.print("  AY: ");
         Serial.print(imu.ay);
         Serial.print("  DT: ");
-        Serial.print(imu.dt);
+        Serial.print(imu.dt * 1000.0f);
         Serial.print("  WZ: ");
         Serial.println(imu.wz);
     }
@@ -226,7 +226,7 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
         upd.theta = _norm_ang(upd.theta + _err_co_imu * theta_err);
     }
 
-    if (false)
+    if (true)
     {
         Serial.println("[SYSCTRL] Calculated values values");
         Serial.print("[DWM] X: ");
