@@ -41,12 +41,12 @@ bool Sonar::update()
     if (!_scan)
         return false;
 
-    _servo.pause();
-    Serial.println("paused");
-    delay(1000);
-    if (_servo.mServoIsPaused)
-        Serial.println("pause command true");
-    _servo.resumeWithoutInterrupts();
+    // _servo.pause();
+    // Serial.println("paused");
+    // delay(1000);
+    // if (_servo.mServoIsPaused)
+    //     Serial.println("pause command true");
+    // _servo.resumeWithoutInterrupts();
 
     digitalWrite(_pin_trig, LOW);
     delayMicroseconds(2);
@@ -54,24 +54,32 @@ bool Sonar::update()
     delayMicroseconds(10);
     digitalWrite(_pin_trig, LOW);
 
-    uint32_t timeout = static_cast<uint32_t>((10 * 2.0 * 2.0 * _sonar_range) / 0.343);
+    // non critical distance multiplier
+    float ncdm = 2.0f;
+    unsigned long timeout = static_cast<unsigned long>((ncdm * 2.0 * _sonar_range) / 0.343 + 2500);
     _duration = pulseIn(_pin_echo, HIGH, timeout);
     Serial.print("dur = ");
     Serial.println(_duration);
     if (_duration != 0)
     {
-        if (g_debug.sonar)
-            Serial.println("[SONAR] Obstacle detected");
-        _distance = _duration * .343 / 2; // mm
 
-        if (_distance > _sonar_range) // non critical behaviour
-            _actions.on_obstacle_detected(get_obstacle_position());
-        else // critical behaviour
+        _distance = _duration * .343 / 2; // mm
+        Serial.print("dis = ");
+        Serial.println(_distance);
+
+        if (_distance <= _sonar_range) // critical behaviour
         {
-            stopAllServos();
-            _scan = false; // toggle for stop behaviour
-            return true;
+            // stopAllServos();
+            _actions.on_stop();
+            if (g_debug.sonar)
+                Serial.println("[SONAR] Critical obstacle detected");
+            // _scan = false; // toggle for stop behaviour
         }
+        else if (g_debug.sonar)
+            Serial.println("[SONAR] Obstacle detected");
+
+        // Non-critical behaviour, implicitly <= 2 * _sonar_range because of timeout.
+        _actions.on_obstacle_detected(get_obstacle_position());
     }
 
     if (_servo.isMoving())

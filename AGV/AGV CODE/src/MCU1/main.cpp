@@ -1,5 +1,3 @@
-#define SUPPRESS_HPP_WARNING
-
 #include <Arduino.h>
 #include <BluetoothSerial.h>
 #include <ServoEasing.hpp>
@@ -38,9 +36,9 @@
 #define UART_BAUD 115200
 #define WATCHDOG 500 // ms
 
-constexpr int SONAR_RANGE = 200; // mm
-constexpr int SONAR_SPEED = 100; // mm
-constexpr int SONAR_ANGLE = 70;  // ∓ deg
+constexpr int SONAR_RANGE = 150; // mm
+constexpr int SONAR_SPEED = 150; // mm
+constexpr int SONAR_ANGLE = 75;  // ∓ deg
 
 // ---------- COMM ----------
 BluetoothSerial SerialBT;
