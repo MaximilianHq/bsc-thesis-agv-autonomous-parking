@@ -126,6 +126,8 @@ void setup()
     led_sys.set_status(StatusLED::State::STATUS_READY);
 
     // ========== CALIBRATION ==========
+    delay(3000);
+    Serial.println("CALLING STARTUP");
     if(!sysctrl.on_startup(dwm))
         Serial.println("[SYSCTRL] \033[31mWARNING\033[0m - Calibration Failed");
 

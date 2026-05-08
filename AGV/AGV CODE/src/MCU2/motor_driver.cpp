@@ -227,7 +227,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
         // Backward-Right
         c1.execute_move(false, spd_percent);
         c4.execute_move(false, spd_percent);
-        
+
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Backward-Right");
         break;
@@ -278,7 +278,6 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
     case 0x0C:
         // Lateral-Arc-Right
 
-
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Right");
         break;
@@ -286,11 +285,59 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
     case 0x0D:
         // Lateral-Arc-Left
 
-
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Left");
         break;
 
+    case 0xF0: // Back parkeringsmanöver nedre rutorna
+
+        // Lateral-Arc-Left
+        c1.execute_move(false, 25);
+        c2.execute_move(false, 25);
+        c3.execute_move(true, 50);
+        c4.execute_move(true, 50);
+
+        delay(3000);
+
+        // Backward
+        c1.execute_move(false, 50);
+        c2.execute_move(false, 50);
+        c3.execute_move(false, 50);
+        c4.execute_move(false, 50);
+
+        delay(3000);
+
+        channels_stop_all();
+        break;
+
+    case 0xF1: // Back parkeringsmanöver övre rutorna
+
+        // Lateral-Arc-Right
+        c1.execute_move(true, 50);
+        c2.execute_move(true, 50);
+        c3.execute_move(false, 25);
+        c4.execute_move(false, 25);
+
+        delay(3000);
+
+        // Backward
+        c1.execute_move(false, 50);
+        c2.execute_move(false, 50);
+        c3.execute_move(false, 50);
+        c4.execute_move(false, 50);
+
+        delay(3000);
+
+        // Lateral-Arc-Left
+        c1.execute_move(false, 25);
+        c2.execute_move(false, 25);
+        c3.execute_move(true, 50);
+        c4.execute_move(true, 50);
+
+        delay(3000);
+
+        channels_stop_all();
+        break;
     default:
         if (g_debug.driver)
             Serial.println("[DRIVER] Unknown movement command");

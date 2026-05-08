@@ -78,7 +78,6 @@ void SysCtrl::on_obstacle_detected(const Position &pos)
 bool SysCtrl::on_startup(DWM &dwm){
     
     DwmState d1, d2;
-
     //Ta första mätvärdet
 
     if (!dwm.read(d1))
@@ -92,11 +91,9 @@ bool SysCtrl::on_startup(DWM &dwm){
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: test to [MCU2]");
     delay(1000);
     on_stop();
-
     //Ta andra mätvärdet
     if (!dwm.read(d2))
         return false;
-
     AgvState s;
     s.pos = d2.pos;
 
@@ -105,9 +102,6 @@ bool SysCtrl::on_startup(DWM &dwm){
     _state.push_back(s);
     return true;
 }
-
-
-
 void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
 {
     switch (pkt.type)
@@ -186,6 +180,49 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
         else if (g_debug.IAction)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send no movement error to [ÖS]");
     }
+}
+
+bool SysCtrl::on_startup(DWM &dwm)
+{
+
+    Serial.print("on_startup starting");
+    DwmState d1, d2;
+
+    // Ta första mätvärdet
+    for (int i = 0; i < 10; i++)
+    {
+        if (dwm.read(d1))
+            break;
+        else if (i == 9)
+            return false;
+        delay(50);
+    }
+
+    // Kör fram på MCU2
+    Comm::Packet p = {'D', _proto_handler_mcu.get_sequence(), {0x00, 0x32}, 2, 0, true};
+    p.crc = Comm::csum(p);
+    if (!_forward_to_mcu(p))
+        if (g_debug.IAction)
+            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: Drive to [MCU2]");
+    delay(2000);
+    on_stop();
+
+    for (int i = 0; i < 10; i++)
+    {
+        if (dwm.read(d1))
+            break;
+        else if (i == 9)
+            return false;
+        delay(50);
+    }
+
+    AgvState s;
+    s.pos = d2.pos;
+
+    // Implementera kod för att jämföra mätvärdena och beräkna vinkeln på AGV:n
+    s.theta = atan2f((d2.pos.x - d1.pos.x), (d2.pos.y - d1.pos.y));
+    _state.push_back(s);
+    return true;
 }
 
 void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
