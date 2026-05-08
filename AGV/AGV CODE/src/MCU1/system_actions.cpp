@@ -37,7 +37,10 @@ void SysCtrl::on_mcu_pkt_recieved(Comm::Packet &pkt)
     _process_mcu_packet(pkt);
 }
 
-void SysCtrl::on_new_motion(Comm::Packet &pkt) { _motion_buffert.push_back(pkt); }
+void SysCtrl::on_new_motion(Comm::Packet &pkt) { 
+    _forward_to_mcu(pkt);
+    _motion_buffert.push_back(pkt);
+}
 
 void SysCtrl::on_stop()
 {
@@ -190,7 +193,7 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
 
 void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
 {
-    if (true)
+    if (false)
     {
         Serial.println("[SYSCTRL] Recieved values");
         Serial.print("[DWM] X: ");
@@ -257,7 +260,7 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
         upd.theta = _norm_ang(upd.theta + _err_co_imu * theta_err);
     }
 
-    if (true)
+    if (false)
     {
         Serial.println("[SYSCTRL] Calculated values values");
         Serial.print("[DWM] X: ");
@@ -267,7 +270,7 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
         Serial.print("  Z: ");
         Serial.print(upd.pos.z / 1000.0f, 3);
         Serial.print("  ANG: ");
-        Serial.print(upd.theta);
+        Serial.print(upd.theta * 180.0f / PI);
         Serial.print("  TIME_NOW: ");
         Serial.println(upd.t_ms);
     }
@@ -277,14 +280,14 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
     auto x = _state[0].pos.x;
     auto y = _state[0].pos.y;
 
-    Comm::Packet p = {'P', _proto_handler_bt.get_sequence(), {static_cast<uint8_t>((x >> 8) & 0xFF), static_cast<uint8_t>(x & 0xFF), static_cast<uint8_t>((y >> 8) & 0xFF), static_cast<uint8_t>(y & 0xFF)}, 4, 0, true};
-    p.crc = Comm::csum(p);
+    // Comm::Packet p = {'P', _proto_handler_bt.get_sequence(), {static_cast<uint8_t>((x >> 8) & 0xFF), static_cast<uint8_t>(x & 0xFF), static_cast<uint8_t>((y >> 8) & 0xFF), static_cast<uint8_t>(y & 0xFF)}, 4, 0, true};
+    // p.crc = Comm::csum(p);
 
-    if (_comm_mcu.write(p))
-    {
-        _proto_handler_bt.itterate_sequence();
-        _proto_handler_bt.add_buffer_sent(p);
-    }
-    else if (g_debug.IAction)
-        Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send position update to [ÖS]");
+    // if (_comm_mcu.write(p))
+    // {
+    //     _proto_handler_bt.itterate_sequence();
+    //     _proto_handler_bt.add_buffer_sent(p);
+    // }
+    // else if (g_debug.IAction)
+    //     Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send position update to [ÖS]");
 };
