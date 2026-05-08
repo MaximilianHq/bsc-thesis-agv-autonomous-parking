@@ -65,9 +65,22 @@ void setup()
     md.outputs_enable();
     md.drivers_enable();
 
-    // delay(2000);
-    //  md.move(0x00, 50, 1000000000);
+    md.move(0x00, 60, 0);
+    delay(2000);
+    md.move(0x01, 60, 0);
+    delay(2000);
 
+    md.move(0x00, 80, 0);
+    delay(2000);
+    md.move(0x01, 80, 0);
+    delay(2000);
+
+    md.move(0x00, 100, 0);
+    delay(2000);
+    md.move(0x01, 100, 0);
+    delay(2000);
+
+    md.channels_stop_all();
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
 }

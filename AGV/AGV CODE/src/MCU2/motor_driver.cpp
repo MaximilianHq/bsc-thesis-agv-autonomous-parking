@@ -163,6 +163,12 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
         _timed_move_active = false;
     }
 
+    //CALIBRATION VARIABLES
+    uint8_t spd_diff = spd_percent / 2; // For curved trajectories, slows down one of the sides
+    double comp_move_right = 0;
+    double comp_move_left = 0;
+    
+
     switch (cmd)
     {
     case 0x00:
@@ -265,19 +271,30 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
 
     case 0x0A:
         // Curved-Trajectory-Right
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(true, spd_percent - spd_diff);
+        c3.execute_move(true, spd_percent);
+        c4.execute_move(true, spd_percent - spd_diff);
+
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Right");
         break;
 
     case 0x0B:
         // Curved-Trajectory-Left
+        c1.execute_move(true, spd_percent - spd_diff);
+        c2.execute_move(true, spd_percent);
+        c3.execute_move(true, spd_percent - spd_diff);
+        c4.execute_move(true, spd_percent);
+
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Left");
         break;
 
     case 0x0C:
         // Lateral-Arc-Right
-
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(false, spd_percent);
 
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Right");
@@ -285,7 +302,8 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
 
     case 0x0D:
         // Lateral-Arc-Left
-
+        c1.execute_move(false, spd_percent);
+        c2.execute_move(true, spd_percent);
 
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Left");
