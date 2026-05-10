@@ -8,7 +8,7 @@ MotorChannel::MotorChannel(MotorChannelConfig &cfg)
 
 void MotorChannel::execute_move(bool dir, uint8_t percent)
 {
-    digitalWrite(_pin_dir, (dir ^ _invert_dir) ? HIGH : LOW);
+    digitalWrite(_pin_dir, (dir ^ _invert_dir) ? LOW : HIGH);
     ledcWrite(_chnl, percentage_to_bits(percent));
 }
 
@@ -149,6 +149,8 @@ void MotorDriver::temperature_error_reset_all()
 
 void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_ms)
 {
+    uint8_t spd_diff = spd_percent / 2;
+    
     if (duration_ms > 0)
     {
         channels_stop_all();
