@@ -6,24 +6,32 @@ package com.mycompany.agvparking;
 
 /**
  *
- * @author hanna
+ * @author kts
+ * 
  */
 public class InstructionsStore {
-    // Befintliga rörelseinstruktioner
-    public static final int MOVE_UP = 1;
-    public static final int MOVE_DOWN = 2;
-    public static final int MOVE_RIGHT = 3;
-    public static final int MOVE_LEFT = 4;
-    public static final int MOVE_DIAG_UP_RIGHT = 5;
-    public static final int MOVE_DIAG_UP_LEFT = 6;
-    public static final int MOVE_DIAG_DOWN_RIGHT = 7;
-    public static final int MOVE_DIAG_DOWN_LEFT = 8;
+    // Instruktioner 1-4
+    public static final int MOVE_UP = 0x00;
+    public static final int MOVE_DOWN = 0x01;
+    public static final int MOVE_RIGHT = 0x02;
+    public static final int MOVE_LEFT = 0x03;
     
-    // Nya instruktioner 
-    public static final int ROTATE_LEFT = 9;
-    public static final int ROTATE_RIGHT = 10;
-    public static final int CURVED_TRAJECTORY_LEFT = 11;
-    public static final int CURVED_TRAJECTORY_RIGHT = 12;
+    // Instruktioner 5-8. Dessa ska endast kunna användas då AGV ej är lastad
+    public static final int MOVE_DIAG_UP_RIGHT = 0x04;
+    public static final int MOVE_DIAG_UP_LEFT = 0x05;
+    public static final int MOVE_DIAG_DOWN_RIGHT = 0x06;
+    public static final int MOVE_DIAG_DOWN_LEFT = 0x07;
+    
+    // Instruktioner 9-12 med höger / vänster
+    public static final int TURNING_RIGHT = 0x08;
+    public static final int TURNING_LEFT = 0x09;
+    public static final int CURVED_TRAJECTORY_RIGHT = 0x0A;
+    public static final int CURVED_TRAJECTORY_LEFT = 0x0B;
+    public static final int LATERAL_ARC_RIGHT = 0x0C;
+    public static final int LATERAL_ARC_LEFT = 0x0D;
+    
+    
+    // Ytterligare instruktioner (FYLL PÅ VID BEHOV!)
     public static final int START_PARKING = 13;
     public static final int STOP = 14;
 
@@ -55,8 +63,8 @@ public class InstructionsStore {
             case MOVE_DIAG_UP_LEFT: return "Diagonalt Upp-Vänster";
             case MOVE_DIAG_DOWN_RIGHT: return "Diagonalt Ner-Höger";
             case MOVE_DIAG_DOWN_LEFT: return "Diagonalt Ner-Vänster";
-            case ROTATE_LEFT: return "Rotera Vänster";
-            case ROTATE_RIGHT: return "Rotera Höger";
+            case TURNING_LEFT: return "Rotera Vänster";
+            case TURNING_RIGHT: return "Rotera Höger";
             case CURVED_TRAJECTORY_LEFT: return "Kurvad bana Vänster";
             case CURVED_TRAJECTORY_RIGHT: return "Kurvad bana Höger";
             default: return "Okänd instruktion";

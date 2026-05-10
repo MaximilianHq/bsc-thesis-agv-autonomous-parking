@@ -91,6 +91,7 @@ public class MapPanel extends JPanel {
                         else if (ds.ObstacleMatrix[i][j] == 4) g.setColor(LRED_COLOR);
                         else if (ds.ObstacleMatrix[i][j] == 3) g.setColor(BLACK_COLOR);
 
+                        // +1 pixel i bredd och höjd för att ta bort "glipor" mellan hindren
                         g.fillRect((int) (i * scale * ds.gridsize), (int) (j * scale * ds.gridsize),
                                 (int) (ds.gridsize * scale) + 1, (int) (ds.gridsize * scale) + 1);
                     } else {
