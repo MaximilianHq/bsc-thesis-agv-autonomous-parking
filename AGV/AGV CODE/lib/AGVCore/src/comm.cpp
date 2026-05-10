@@ -62,10 +62,16 @@ bool Comm::read(Packet &out)
                     // === NY DEBUG: skriv hela paketet ===
                     if (g_debug.comm)
                     {
-                        Serial.print("[COMM " + _dbg_name + "] Recieving message: $");
+                        Serial.print("[COMM " + _dbg_name + "] Recieving message: $ ");
                         Serial.write(_pkt.type);
-                        for (size_t j = 0; j < _pkt.data_len; j++)
-                            Serial.print(static_cast<uint8_t>(_pkt.data[j]));
+
+                        for (size_t i = 0; i < _pkt.data_len; i++)
+                        {
+                            Serial.print(_pkt.data[i], HEX);
+                            Serial.print(" ");
+                        }
+
+                        Serial.println();
 
                         Serial.println();
                         Serial.print("Received crc: ");
@@ -114,10 +120,16 @@ bool Comm::write(const Packet &pkt)
 
     if (g_debug.comm)
     {
-        Serial.print("[COMM " + _dbg_name + "] Sending message: $");
+        Serial.println("[COMM " + _dbg_name + "] Sending message: $ ");
         Serial.write(pkt.type);
-        for (size_t j = 0; j < pkt.data_len; j++)
-            Serial.print(static_cast<uint8_t>(pkt.data[j]));
+
+        for (size_t i = 0; i < pkt.data_len; i++)
+        {
+            Serial.print(pkt.data[i], HEX);
+            Serial.print(" ");
+        }
+
+        Serial.println();
 
         Serial.print("Calculated crc: ");
         Serial.print("CHAR = ");

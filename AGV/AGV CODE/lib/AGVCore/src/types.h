@@ -16,8 +16,10 @@ struct DwmState
 
 struct ImuState
 {
-    int wz = 0; // tmp
-    int dt = 0; // tmp
+    float ax; // acceleration x (m/s^2)
+    float ay; // acceleration y (m/s^2)
+    float wz; // yaw rate (rad/s)
+    float dt;   // tidssteg (ms)
 };
 
 struct AgvState
@@ -37,7 +39,7 @@ struct AgvMotion
 struct Debug
 {
     const bool IAction = true;
-    const bool dwm = true;
+    const bool dwm = false;
     const bool imu = true;
     const bool comm = true;
     const bool mcu1 = true;
@@ -47,3 +49,20 @@ struct Debug
 };
 
 extern Debug g_debug;
+
+static void pds(uint8_t *arr, int base = HEX, size_t len = 0, String msg = "")
+{
+    Serial.print(msg);
+    Serial.print(len);
+    Serial.print("/");
+    Serial.print(sizeof(len));
+    Serial.print(": ");
+
+    for (size_t i = 0; i < (len != 0) ? len : sizeof(arr); i++)
+    {
+        if (arr[i] < 0x10)
+            Serial.print("0");
+        Serial.print(arr[i], base);
+        Serial.print(" ");
+    }
+}
