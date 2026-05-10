@@ -3,14 +3,13 @@
 #include "sreg_handler.h"
 
 const StatusLED::LEDConfig StatusLED::_led_states[] = {
-    {{255, 0, 0}, false, 500}, // STATUS_BOOT
-    {{0, 255, 0}, false, 500}, // STATUS_READY
-    {{0, 0, 255}, true, 500},  // STATUS_BLE_SEARCHING
-    {{0, 0, 255}, false, 500}, // STATUS_BLE_CONNECTED
-    {{255, 0, 0}, false, 500}, // STATUS_ERROR
+    {{255, 0, 0}, false, 500},   // STATUS_BOOT
+    {{0, 255, 0}, false, 500},   // STATUS_READY
+    {{0, 0, 255}, true, 500},    // STATUS_BLE_SEARCHING
+    {{0, 0, 255}, true, 500},    // STATUS_BLE_CONNECTED
+    {{0, 255, 255}, false, 500}, // STATUS_CMD_RECEIVING
+    {{255, 0, 0}, false, 500},   // STATUS_ERROR
 
-    {{0, 255, 0}, false, 500},  // STATUS_CMD_RECEIVING
-    {{0, 255, 0}, true, 500},   // STATUS_CMD_EXECUTING
     {{255, 0, 0}, false, 500},  // STATUS_CMD_STOPPING
     {{255, 0, 0}, true, 500},   // STATUS_OBSTACLE
     {{0, 255, 255}, true, 500}, // STATUS_PARKING
@@ -108,8 +107,8 @@ void StatusLED::_set_color(Color c) { _set_color(c.r, c.g, c.b); }
 void StatusLED::_write_sreg_color(Color c)
 {
     // Här är _pin_r/_pin_g/_pin_b ID i shiftregistret, inte GPIO-pins
-    _sreg.set_pin((uint8_t)_pin_r, c.r > 0, false);
-    _sreg.set_pin((uint8_t)_pin_g, c.g > 0, false);
-    _sreg.set_pin((uint8_t)_pin_b, c.b > 0, false);
+    _sreg.set_pin(static_cast<uint8_t>(_pin_r), c.r > 0, false);
+    _sreg.set_pin(static_cast<uint8_t>(_pin_g), c.g > 0, false);
+    _sreg.set_pin(static_cast<uint8_t>(_pin_b), c.b > 0, false);
     _sreg.apply();
 }

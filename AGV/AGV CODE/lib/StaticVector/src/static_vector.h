@@ -15,17 +15,48 @@ public:
             _v[i] = v._v[i];
     }
 
+    T &operator[](size_t i)
+    {
+        if (i >= _count)
+            _raise_error("[FATAL ERROR] Index out of bounds");
+        return _v[i];
+    }
+
+    const T &operator[](size_t i) const
+    {
+        if (i >= _count)
+            _raise_error("[FATAL ERROR] Index out of bounds");
+        return _v[i];
+    }
+
     void push_back(const T &data)
     {
         if (_count >= N)
-            _raise_error("[FATAL ERROR] Array out of bounds");
-        _v[_count++] = data;
+            pop(); // ta bort första/äldsta
+
+        _v[_count++] = data; // lägg ny längst bak
     }
 
     void pop()
     {
+        pop_front_discard();
+    }
+
+    void pop_back()
+    {
         if (_count > 0)
             _count--;
+    }
+
+    void pop_front_discard()
+    {
+        if (_count == 0)
+            return;
+
+        for (size_t i = 0; i < _count - 1; i++)
+            _v[i] = _v[i + 1];
+
+        _count--;
     }
 
     void pop(size_t i)
@@ -44,19 +75,23 @@ public:
     T pop_front()
     {
         if (_count == 0)
-            _raise_error("[FATAL ERROR] Array out of bounds");
+            _raise_error("[FATAL ERROR] Array empty");
 
-        T tmp = _v[_count - 1];
-        pop(0);
+        T tmp = _v[0];
+        pop_front_discard();
         return tmp;
     }
 
     template <typename Predicate>
     void pop_if(Predicate pred)
     {
-        for (size_t i = 0; i < _count; i++)
+        for (size_t i = 0; i < _count;)
+        {
             if (pred(_v[i]))
                 pop(i);
+            else
+                i++;
+        }
     }
 
     void clear() { _count = 0; }

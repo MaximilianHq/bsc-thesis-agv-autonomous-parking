@@ -3,14 +3,16 @@
 #include "motor_driver.h"
 
 MotorChannel::MotorChannel(MotorChannelConfig &cfg)
-    : _pin_dir(cfg.pin_dir), _pin_pwm(cfg.pin_pwm) {}
+    : _pin_dir(cfg.pin_dir), _pin_pwm(cfg.pin_pwm),
+      _chnl(cfg.channel), _invert_dir(cfg.invert_dir) {}
 
 void MotorChannel::execute_move(bool dir, uint8_t percent)
 {
-    digitalWrite(_pin_dir, (dir == true) ? HIGH : LOW);
-    ledcWrite(_pin_pwm, percentage_to_bits(percent));
+    digitalWrite(_pin_dir, (dir ^ _invert_dir) ? LOW : HIGH);
+    ledcWrite(_chnl, percentage_to_bits(percent));
 }
-void MotorChannel::stop() { ledcWrite(_pin_pwm, 0); }
+
+void MotorChannel::stop() { ledcWrite(_chnl, 0); }
 
 uint32_t MotorChannel::percentage_to_bits(uint8_t percent)
 {
@@ -25,7 +27,8 @@ uint32_t MotorChannel::percentage_to_bits(uint8_t percent)
 void MotorChannel::_setup()
 {
     pinMode(_pin_dir, OUTPUT);
-    ledcAttach(_pin_pwm, PWM_FREQ, PWM_RES);
+    ledcSetup(_chnl, PWM_FREQ, PWM_RES);
+    ledcAttachPin(_pin_pwm, _chnl);
     stop();
 }
 
@@ -80,8 +83,8 @@ void MotorDriver::drivers_restart()
     drivers_enable();
 }
 
-void MotorDriver::outputs_enable() { digitalWrite(_pin_drv, HIGH); }
-void MotorDriver::outputs_disable() { digitalWrite(_pin_drv, LOW); }
+void MotorDriver::outputs_enable() { digitalWrite(_pin_drv, LOW); }
+void MotorDriver::outputs_disable() { digitalWrite(_pin_drv, HIGH); }
 void MotorDriver::outputs_restart()
 {
     if (g_debug.driver)
@@ -103,7 +106,7 @@ void MotorDriver::channels_stop_all()
 
 bool MotorDriver::has_error()
 {
-    return (!digitalRead(_pin_err) && // IF SPAM CHANGE TO HIGH
+    return (digitalRead(_pin_err) && // IF SPAM CHANGE TO HIGH
             digitalRead(_pin_en) &&
             digitalRead(_pin_drv))
                ? true
@@ -146,6 +149,8 @@ void MotorDriver::temperature_error_reset_all()
 
 void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_ms)
 {
+    uint8_t spd_diff = spd_percent / 2;
+    
     if (duration_ms > 0)
     {
         channels_stop_all();
@@ -174,28 +179,135 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
         break;
 
     case 0x01:
+        // Backward
+        c1.execute_move(false, spd_percent);
+        c2.execute_move(false, spd_percent);
+        c3.execute_move(false, spd_percent);
+        c4.execute_move(false, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Backward");
         break;
+
     case 0x02:
+        // Right
+        c1.execute_move(false, spd_percent);
+        c2.execute_move(true, spd_percent);
+        c3.execute_move(true, spd_percent);
+        c4.execute_move(false, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Right");
         break;
     case 0x03:
+        // Left
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(false, spd_percent);
+        c3.execute_move(false, spd_percent);
+        c4.execute_move(true, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Left");
         break;
     case 0x04:
+        // Forward-Right
+        c2.execute_move(true, spd_percent);
+        c3.execute_move(true, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Forward-Right");
         break;
     case 0x05:
+        // Forward-Left
+        c1.execute_move(true, spd_percent);
+        c4.execute_move(true, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Forward-Left");
         break;
     case 0x06:
+        // Backward-Right
+        c1.execute_move(false, spd_percent);
+        c4.execute_move(false, spd_percent);
+        
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Backward-Right");
         break;
+
     case 0x07:
+        // Backward-Left
+        c2.execute_move(false, spd_percent);
+        c3.execute_move(false, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Backward-Left");
         break;
+
     case 0x08:
+        // Turning-Right
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(false, spd_percent);
+        c3.execute_move(true, spd_percent);
+        c4.execute_move(false, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Turning-Right");
         break;
+
     case 0x09:
+        // Turning-Left
+        c1.execute_move(false, spd_percent);
+        c2.execute_move(true, spd_percent);
+        c3.execute_move(false, spd_percent);
+        c4.execute_move(true, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Turning-Left");
         break;
+
     case 0x0A:
+        // Curved-Trajectory-Right
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(true, spd_percent - spd_diff);
+        c3.execute_move(true, spd_percent);
+        c4.execute_move(true, spd_percent - spd_diff);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Right");
         break;
+
     case 0x0B:
+        // Curved-Trajectory-Left
+        c1.execute_move(true, spd_percent - spd_diff);
+        c2.execute_move(true, spd_percent);
+        c3.execute_move(true, spd_percent - spd_diff);
+        c4.execute_move(true, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Left");
         break;
+
+    case 0x0C:
+        // Lateral-Arc-Right
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(false, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Right");
+        break;
+
+    case 0x0D:
+        // Lateral-Arc-Left
+        c1.execute_move(false, spd_percent);
+        c2.execute_move(true, spd_percent);
+
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Left");
+        break;
+
     default:
+        if (g_debug.driver)
+            Serial.println("[DRIVER] Unknown movement command");
         break;
     }
 }

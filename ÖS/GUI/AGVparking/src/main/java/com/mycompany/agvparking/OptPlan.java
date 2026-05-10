@@ -1,6 +1,3 @@
-/*
- * OptPlan.java
- */
 package com.mycompany.agvparking;
 
 import java.util.ArrayList;
@@ -17,13 +14,15 @@ public class OptPlan {
         this.ds = ds;
     }
     
+    // Vi behåller denna så att ControlUI inte klagar, men den gör ingenting!
+    public void setTarget(int x, int y) {
+        // Borttaget: Det var denna som orsakade den gigantiska omvägen!
+    }
 
-    // ÄNDRAD METOD: Tar nu startNode och endNode som parametrar
-    public void createPlan(int startNodeId, int endNodeId) {
+    private void buildGraph(boolean isLoaded) {
         nodes = new ArrayList<Vertex>();
         edges = new ArrayList<Edge>();
 
-        // --- 1. Skapa Noder ---
         for (int i = 0; i < ds.rows; i++) {
             for (int j = 0; j < ds.columns; j++) {
                 Vertex location = new Vertex("" + (i * ds.columns + j), "Nod #" + (i * ds.columns + j));
@@ -31,84 +30,116 @@ public class OptPlan {
             }
         }
 
-        double cost = 1;
+        int mainRow = (int) (ds.LocationY[0] / ds.gridsize);
+        double diagCost = isLoaded ? 2.1 : 1.4;
 
-// --- 2. Skapa Kanter (Edges)  ---
         for (int i = 0; i < ds.rows; i++) {
-            for (int j = 0; j < ds.columns - 1; j++) {
-                
-                // Horisontella
-                cost = 1;
-                // Använder != 0 för att täcka in alla typer av hinder
-                if (ds.ObstacleMatrix[j + 1][i] != 0) cost = 1000; 
-                edges.add(new Edge("r", nodes.get(i * ds.columns + j), nodes.get(i * ds.columns + j + 1), cost));
-                edges.add(new Edge("l", nodes.get(i * ds.columns + j + 1), nodes.get(i * ds.columns + j), cost));
-
-                // Diagonala (Ner-Höger & Upp-Vänster)
-                if (i < ds.rows - 1) {
-                    cost = 1.4;
-                    // LÖSNING CORNER CLIPPING: Kolla målnoden OCH de två intilliggande rutorna!
-                    if (ds.ObstacleMatrix[j + 1][i + 1] != 0 || 
-                        ds.ObstacleMatrix[j + 1][i] != 0 || 
-                        ds.ObstacleMatrix[j][i + 1] != 0) {
-                        cost = 1000;
-                    }
-                    edges.add(new Edge("dr", nodes.get(i * ds.columns + j), nodes.get((i + 1) * ds.columns + j + 1), cost));
-                    edges.add(new Edge("ul", nodes.get((i + 1) * ds.columns + j + 1), nodes.get(i * ds.columns + j), cost));
-                }
-                
-                // Diagonala (Upp-Höger & Ner-Vänster)
-                if (i > 0) {
-                    cost = 1.4;
-                    // LÖSNING CORNER CLIPPING: Kolla målnoden OCH de två intilliggande rutorna!
-                    if (ds.ObstacleMatrix[j + 1][i - 1] != 0 || 
-                        ds.ObstacleMatrix[j + 1][i] != 0 || 
-                        ds.ObstacleMatrix[j][i - 1] != 0) {
-                        cost = 1000;
-                    }
-                    edges.add(new Edge("ur", nodes.get(i * ds.columns + j), nodes.get((i - 1) * ds.columns + j + 1), cost));
-                    edges.add(new Edge("dl", nodes.get((i - 1) * ds.columns + j + 1), nodes.get(i * ds.columns + j), cost));
-                }
-            }
-        }
-        
-        
-        // --- 3. Skapa Vertikala Kanter ---
-        for (int i = 0; i < ds.rows - 1; i++) {
             for (int j = 0; j < ds.columns; j++) {
-                cost = 1;
-                if (ds.ObstacleMatrix[j][i + 1] == 1 || ds.ObstacleMatrix[j][i + 1] == 2) cost = 1000;
+                int currentNode = i * ds.columns + j;
+
+                // --- HÖGER ---
+                if (j < ds.columns - 1) {
+                    int nx = j + 1; int ny = i;
+                    double costR = (ny == mainRow) ? 0.5 : 1.0;
+                    int val = ds.ObstacleMatrix[nx][ny];
+                    if (val >= 2) costR = 100000.0; else if (val == 1) costR = 1000.0;
+                    edges.add(new Edge("r", nodes.get(currentNode), nodes.get(ny * ds.columns + nx), costR));
+                }
                 
-                edges.add(new Edge("d", nodes.get(i * ds.columns + j), nodes.get((i + 1) * ds.columns + j), cost));
-                edges.add(new Edge("u", nodes.get((i + 1) * ds.columns + j), nodes.get(i * ds.columns + j), cost));
+                // --- VÄNSTER ---
+                if (j > 0) {
+                    int nx = j - 1; int ny = i;
+                    double costL = (ny == mainRow) ? 0.5 : 1.0;
+                    int val = ds.ObstacleMatrix[nx][ny];
+                    if (val >= 2) costL = 100000.0; else if (val == 1) costL = 1000.0;
+                    edges.add(new Edge("l", nodes.get(currentNode), nodes.get(ny * ds.columns + nx), costL));
+                }
+
+                // --- NER ---
+                if (i < ds.rows - 1) {
+                    int nx = j; int ny = i + 1;
+                    double costD = 1.0;
+                    int val = ds.ObstacleMatrix[nx][ny];
+                    if (val >= 2) costD = 100000.0; else if (val == 1) costD = 1000.0;
+                    edges.add(new Edge("d", nodes.get(currentNode), nodes.get(ny * ds.columns + nx), costD));
+                }
+
+                // --- UPP ---
+                if (i > 0) {
+                    int nx = j; int ny = i - 1;
+                    double costU = 1.0;
+                    int val = ds.ObstacleMatrix[nx][ny];
+                    if (val >= 2) costU = 100000.0; else if (val == 1) costU = 1000.0;
+                    edges.add(new Edge("u", nodes.get(currentNode), nodes.get(ny * ds.columns + nx), costU));
+                }
             }
         }
+    }
 
-        // --- 4. Kör Dijkstra ---
+    public void createPlan(int startNodeId, int endNodeId) {
+        buildGraph(true);
         Graph graph = new Graph(nodes, edges);
         DijkstraAlgorithm dijkstra = new DijkstraAlgorithm(graph);
-        
         LinkedList<Vertex> path = null;
-
         if (startNodeId >= 0 && startNodeId < nodes.size() && endNodeId >= 0 && endNodeId < nodes.size()) {
             dijkstra.execute(nodes.get(startNodeId));
             path = dijkstra.getPath(nodes.get(endNodeId));
-            
-            ds.currentPath = path; // Spara till DataStore
-
-            if (path != null) {
-                System.out.println("Rutt hittad: " + path.size() + " steg.");
-                // Rita ut vägen i matrisen
-                for (Vertex v : path) {
-                    int id = Integer.parseInt(v.getId());
-                    int ipos = id / ds.columns; // Rad (Y)
-                    int jpos = id - (ipos * ds.columns); // Kolumn (X)
-                    // Markera som väg (3) om det inte är start/mål (för snyggare grafik)
-                    //ds.ObstacleMatrix[jpos][ipos] = 3;
-                }
-            } else {
-                System.out.println("Ingen väg kunde hittas.");
-            }
+            ds.currentPath = path;
         }
+    }
+
+    public void createReturnPlan(int currentNodeId, int targetStartNodeId) {
+        buildGraph(false);
+        Graph graph = new Graph(nodes, edges);
+        DijkstraAlgorithm dijkstra = new DijkstraAlgorithm(graph);
+        LinkedList<Vertex> path = null;
+        dijkstra.execute(nodes.get(currentNodeId));
+          path = dijkstra.getPath(nodes.get(targetStartNodeId));
+        ds.currentPath = path;
+      
+        
+
+
+        if (path != null) {
+            ds.currentPath = path;
+
+           // Skapa körinstruktionerna för resan hem ---
+            RouteOptimizer optimizer = new RouteOptimizer(ds);
+            optimizer.compressPath(path, false);
+            
+            //LÄgger till rotation på slutnoden
+            //Räkna ut differensen mellan nuvarande rotation och önskad
+            int diff = ds.currentRotation - ds.startRotation;
+
+           // Normalisera vinkeln till spannet -180 till 180 grader
+        while (diff > 180) diff -= 360;
+        while (diff <= -180) diff += 360;
+
+        // 3. Lägg till rotationsinstruktioner i kön
+        if (Math.abs(diff) > 2) { // En liten tolerans på 2 grader för att slippa mikro-justeringar
+            
+            // --- NYTT: Hämta ut X och Y för mål-noden så att Stop-and-wait fungerar ---
+                int targetX = targetStartNodeId % ds.columns;
+                int targetY = targetStartNodeId / ds.columns;
+                // --------------------------------------------------------------------------
+                
+                if (diff > 0) {
+                    // Positiv diff betyder att vi roterar höger
+                    // Använder fullständig konstruktor: maneuver, velocity, steps, targetX, targetY, monitorPosition
+                    // OBS! Här kan vi behöva ändra hastigheten från 100 till något annat
+                    ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_RIGHT, 100, Math.abs(diff), targetX, targetY, false));
+                    System.out.println("Avslutar med högerrotation: " + Math.abs(diff) + " grader.");
+                } else {
+                    // Negativ diff betyder att vi roterar vänster
+                    ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_LEFT, 100, Math.abs(diff), targetX, targetY, false));
+                    System.out.println("Avslutar med vänsterrotation: " + Math.abs(diff) + " grader.");
+                }
+        } else {
+            System.out.println("Ingen avslutande rotation krävs (redan vänd mot " + ds.startRotation + "°).");
+        }
+
+    } else {
+        System.out.println("Ingen väg kunde hittas tillbaka till startnoden.");
+    }
     }
 }

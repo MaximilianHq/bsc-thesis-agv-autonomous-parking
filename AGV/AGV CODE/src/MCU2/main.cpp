@@ -1,48 +1,171 @@
 #include <Arduino.h>
 #include <types.h>
+#include <comm.h>
+#include <ota.h>
 #include "motor_driver.h"
+#include "system_actions.h"
 
+// UART
+#define PIN_MTM_TXD 23
+#define PIN_MTM_RXD 22
+// DRIVER
 #define PIN_ERR 34
 #define PIN_EN 21
 #define PIN_DRV 32
-#define PIN_DIR1 33
-#define PIN_DIR2 25
-#define PIN_DIR3 26
-#define PIN_DIR4 27
-#define PIN_PWM1 19
-#define PIN_PWM2 18
-#define PIN_PWM3 17
-#define PIN_PWM4 16
+// DIR [ 25, 26, 27, 33 ]
+#define PIN_DIR1 25 // real 3
+#define PIN_DIR2 33 // real 4
+#define PIN_DIR3 26 // real 2
+#define PIN_DIR4 27 // real 1
+// PWM [ 16, 17, 18, 19 ]
+#define PIN_PWM1 18 // real 3
+#define PIN_PWM2 19 // real 4
+#define PIN_PWM3 17 // real 2
+#define PIN_PWM4 16 // real 1
 
+// ========== DEFINITIONS ==========
 #define UART_BAUD 115200
 
 MotorDriver::MotorDriverConfig cfg = {
-    {PIN_DIR1, PIN_PWM1},
-    {PIN_DIR2, PIN_PWM2},
-    {PIN_DIR3, PIN_PWM3},
-    {PIN_DIR4, PIN_PWM4},
+    {PIN_DIR1, PIN_PWM1, 0, false},
+    {PIN_DIR2, PIN_PWM2, 1, true},
+    {PIN_DIR3, PIN_PWM3, 2, false},
+    {PIN_DIR4, PIN_PWM4, 3, true},
     PIN_DRV,
     PIN_EN,
     PIN_ERR};
 
 MotorDriver md(cfg);
 
+Comm comm_mcu(Serial1, "MCU");
+SysCtrl sysctrl(comm_mcu, md);
+
+// ========== GLOBALS ==========
 Debug g_debug;
-AgvState g_state;
-AgvState g_state_prev;
-AgvMotion g_motion;
+
+// ========== PROTOTYPES ==========
 
 void setup()
 {
-    Serial.begin(UART_BAUD); // PC
+    // ========== UART ==========
+    Serial.begin(UART_BAUD, SERIAL_8N1); // PC
+    Serial1.begin(UART_BAUD, SERIAL_8N1,
+                  PIN_MTM_RXD, PIN_MTM_TXD); // MCU1
+    Serial.setTimeout(30);                   // PC
+    Serial1.setTimeout(30);                  // MCU1
+
+    Serial.println("[MAIN] Running setup...");
+
+    // ========== NETWORK ==========
+    // ota_begin("QBit", "internet");
+
+    // ========== MOTOR DRIVER ==========
     md.setup();
     // md.temperature_error_reset_all();
     md.outputs_enable();
     md.drivers_enable();
-    md.move(0x00, 20, 5000000);
+
+    // delay(2000);
+    //  md.move(0x00, 50, 1000000000);
+
+    // ========== END ==========
+    Serial.println("[MAIN] Setup finished");
+
+    md.c1.execute_move(true, 50);
+    delay(1000);
+    md.c2.execute_move(true, 50);
+    delay(1000);
+    md.c3.execute_move(true, 50);
+    delay(1000);
+    md.c4.execute_move(true, 50);
+    delay(1000);
+
+    md.move(0x00, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x01, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x02, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+    
+    md.move(0x03, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x04, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x05, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x06, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x07, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x08, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x09, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x0A, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x0B, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x0C, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
+
+    md.move(0x0D, 50, 0);
+    delay(5000);
+    md.channels_stop_all();
+    delay(2000);
 }
 
 void loop()
 {
+    // ========== UPDATES ==========
     md.update();
+
+    // ========== ROUTINES ==========
+
+    // ========== CODE ==========
+
+    // Read from MCU1 and process packet
+    Comm::Packet mcu_pkt;
+    if (comm_mcu.read(mcu_pkt))
+    {
+        Serial.println("HELP");
+        sysctrl.on_mcu_pkt_recieved(mcu_pkt);
+    }
+    delay(200);
 }

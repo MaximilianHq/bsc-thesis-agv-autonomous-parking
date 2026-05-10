@@ -10,7 +10,7 @@ public class RouteOptimizer {
         this.ds = ds;
     }
 
-    public void compressPath(List<Vertex> path) {
+    public void compressPath(List<Vertex> path, boolean isLoaded) {
         if (path == null || path.size() < 2) {
             System.out.println("Ingen giltig rutt att optimera.");
             return;
@@ -52,65 +52,71 @@ public class RouteOptimizer {
                 stepCount = 1;
                 firstMove = false;
             } else {
-                // Om vi fortsätter i exakt samma riktning
-                if (dx == currentDx && dy == currentDy) {
-                    stepCount++;
-                } else {
-                    // Riktningen ändrades! Skriv ut den gamla instruktionen...
-                    printInstruction(currentDx, currentDy, stepCount);
+                    // Skriv ut instruktion för raksträckan vi precis kört
+                    printInstruction(currentDx, currentDy, stepCount, currentX, currentY);
+
+                    // --- NYTT: IDENTIFIERA SVÄNG OCH LÄGG TILL CURVED TRAJECTORY ---
+                    // Kryssprodukten avslöjar om vi svänger höger eller vänster
+                    int crossProduct = currentDx * dy - currentDy * dx;
+                    
+                    if (crossProduct > 0) { // HÖGERSVÄNG
+                        if (isLoaded) {
+                            System.out.println("Körinstruktion: Kurvad bana Höger (90 grader)");
+                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.CURVED_TRAJECTORY_RIGHT, 100, 0, currentX, currentY, false));
+                        } else {
+                            System.out.println("Körinstruktion: Rotera Höger på stället");
+                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_RIGHT, 100, 0, currentX, currentY, false));
+                        }
+                    } else if (crossProduct < 0) { // VÄNSTERSVÄNG
+                        if (isLoaded) {
+                            System.out.println("Körinstruktion: Kurvad bana Vänster (90 grader)");
+                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.CURVED_TRAJECTORY_LEFT, 100, 0, currentX, currentY, false));
+                        } else {
+                            System.out.println("Körinstruktion: Rotera Vänster på stället");
+                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_LEFT, 100, 0, currentX, currentY, false));
+                        }
+                    }
 
                     // ... och börja räkna på den nya riktningen
                     currentDx = dx;
                     currentDy = dy;
                     stepCount = 1;
                 }
-            }
         }
 
         // När loopen är klar måste vi skriva ut den sista rörelsen som vi räknat på
         if (!firstMove) {
-            printInstruction(currentDx, currentDy, stepCount);
+            // Räkna ut slutmålet för den allra sista sträckan ---
+            Vertex lastNode = path.get(path.size() - 1);
+            int lastId = Integer.parseInt(lastNode.getId());
+            int finalX = lastId % ds.columns;
+            int finalY = lastId / ds.columns;
+            // Skriv ut instruktion
+            printInstruction(currentDx, currentDy, stepCount, finalX, finalY);
         }
 
         System.out.println("--- Optimering klar ---\n");
     }
 
     // Hjälpmetod för att tolka dx och dy till de 8 möjliga manövrarna
-    private void printInstruction(int dx, int dy, int steps) {
-        String directionText = "";
-        int direction = 0;
-
-        // OBS: Y ökar nedåt på skärmen, så dy = -1 betyder Uppåt.
-        if (dx == 0 && dy == -1) {
-            directionText = "Uppåt (Rakt fram)";
-            direction = 1;
-        } else if (dx == 0 && dy == 1) {
-            directionText = "Nedåt (Bakåt)";
-            direction = 2;
-        } else if (dx == 1 && dy == 0) {
-            directionText = "Höger (Sidled)";
-            direction = 3;
-        } else if (dx == -1 && dy == 0) {
-            directionText = "Vänster (Sidled)";
-            direction = 4;
-        } else if (dx == 1 && dy == -1) {
-            directionText = "Diagonalt Upp-Höger";
-            direction = 5;
-        } else if (dx == -1 && dy == -1) {
-            directionText = "Diagonalt Upp-Vänster";
-            direction = 6;
-        } else if (dx == 1 && dy == 1) {
-            directionText = "Diagonalt Ner-Höger";
-            direction = 7;
-        } else if (dx == -1 && dy == 1) {
-            directionText = "Diagonalt Ner-Vänster";
-            direction = 8;
-        } else {
-            directionText = "Okänd riktning (" + dx + "," + dy + ")";
-        }
+    private void printInstruction(int dx, int dy, int steps, int targetX, int targetY) {
+       int direction = InstructionsStore.getDirectionFromDelta(dx,dy);
+        String directionText = InstructionsStore.getInstructionText(direction);
 
         // Här skriver vi ut det i konsolen. Längre fram är det kanske här 
-        // du skapar ett meddelande och skickar det via nätverk/Bluetooth!
+        // vi skapar ett meddelande och skickar det via Bluetooth
         System.out.println("Körinstruktion: Åk " + directionText + " i " + steps + " steg.");
-    }
+
+        // Lägg till instruktionen i brevlådan för Bluetooth
+        
+        boolean shouldMonitor = true; 
+        if (direction >= 5) { 
+            shouldMonitor = false; 
+        ds.instructionQueue.add(new AgvInstruction(direction, 100, steps, targetX, targetY, shouldMonitor)); 
+        } 
+        if (direction > 0 && direction <= 4) { 
+            ds.instructionQueue.add(new AgvInstruction(direction, 100, steps, targetX, targetY, shouldMonitor)); 
+        } 
+        
+            }
 }
