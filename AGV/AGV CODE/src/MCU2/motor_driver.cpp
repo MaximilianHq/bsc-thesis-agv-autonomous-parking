@@ -149,8 +149,6 @@ void MotorDriver::temperature_error_reset_all()
 
 void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_ms)
 {
-    uint8_t spd_diff = spd_percent / 2;
-    
     if (duration_ms > 0)
     {
         channels_stop_all();
