@@ -7,9 +7,9 @@
 #include <comm.h>
 #include <sreg_handler.h>
 #include <status_led.h>
+#include <imu.h>
+#include <dwm.h>
 #include "system_actions.h"
-#include "imu.h"
-#include "dwm.h"
 #include "sonar.h"
 
 // ========== PINS ==========
@@ -35,6 +35,8 @@
 // ========== DEFINITIONS ==========
 #define UART_BAUD 115200
 #define WATCHDOG 500 // ms
+
+constexpr float DWM_OFFSET = 75.0f; // mm
 
 constexpr int SONAR_RANGE = 150; // mm
 constexpr int SONAR_SPEED = 150; // mm
@@ -88,7 +90,6 @@ void watchdog_routine();
 void setup()
 {
     // ========== STATE ==========
-    // Updated by led_x.update, do not set manually!
     sreg.setup();
     led_sys.setup();
     led_cmd.setup();
@@ -114,23 +115,23 @@ void setup()
     sonar.setup();
 
     // ========== POS ==========
-    // uint16_t cfg;
-    // if (dwm.dwm_cfg_get(cfg))
-    //     Serial.println("cfg_get ok");
-    // imu.setup();
+    uint16_t cfg;
+    if (dwm.dwm_cfg_get(cfg))
+        Serial.println("[DWM] cfg_get ok");
+    imu.setup();
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
     led_sys.set_status(StatusLED::State::STATUS_READY);
 
     // ========== CALIBRATION ==========
-    delay(3000);
-    Serial.println("CALLING STARTUP");
-    if(!sysctrl.on_startup(dwm))
+    if (!sysctrl.on_startup(dwm, DWM_OFFSET))
         Serial.println("[SYSCTRL] \033[31mWARNING\033[0m - Calibration Failed");
 
     // watchdog start
     last_packet_time = millis();
+
+    // sysctrl.test_move();
 }
 
 void loop()
@@ -165,15 +166,15 @@ void loop()
         sysctrl.on_mcu_pkt_recieved(mcu_pkt);
 
     // ---------- DWM ----------
-    // DwmState d;
-    // ImuState i;
-    // if (dwm.read(d))
-    //     if (imu.read(i))
-    //         sysctrl.on_new_position_data(d, i);
-    //     else
-    //         Serial.println("[IMU] no read");
-    // else
-    //     Serial.println("[DWM] no read");
+    DwmState d;
+    ImuState i;
+    if (dwm.read(d))
+        if (imu.read(i))
+            sysctrl.on_new_position_data(d, i, DWM_OFFSET);
+        else
+            Serial.println("[IMU] no read");
+    else
+        Serial.println("[DWM] no read");
 
     delay(20);
 }

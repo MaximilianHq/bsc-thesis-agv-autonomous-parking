@@ -8,7 +8,7 @@ MotorChannel::MotorChannel(MotorChannelConfig &cfg)
 
 void MotorChannel::execute_move(bool dir, uint8_t percent)
 {
-    digitalWrite(_pin_dir, (dir ^ _invert_dir) ? LOW : HIGH);
+    digitalWrite(_pin_dir, (dir ^ _invert_dir) ? HIGH : LOW);
     ledcWrite(_chnl, percentage_to_bits(percent));
 }
 
@@ -159,9 +159,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
         _timed_move_active = true;
     }
     else
-    {
         _timed_move_active = false;
-    }
 
     // CALIBRATION VARIABLES
     uint8_t spd_diff = spd_percent / 2; // For curved trajectories, slows down one of the sides
@@ -326,55 +324,55 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
     } // <-- DO NOT REMOVE
     break;
 
-    case 0xF0: // Back parkeringsmanöver nedre rutorna
+    // case 0xF0: // Back parkeringsmanöver nedre rutorna
 
-        // Lateral-Arc-Left
-        c1.execute_move(false, 25);
-        c2.execute_move(false, 25);
-        c3.execute_move(true, 50);
-        c4.execute_move(true, 50);
+    //     // Lateral-Arc-Left
+    //     c1.execute_move(false, 25);
+    //     c2.execute_move(false, 25);
+    //     c3.execute_move(true, 50);
+    //     c4.execute_move(true, 50);
 
-        delay(3000);
+    //     delay(3000);
 
-        // Backward
-        c1.execute_move(false, 50);
-        c2.execute_move(false, 50);
-        c3.execute_move(false, 50);
-        c4.execute_move(false, 50);
+    //     // Backward
+    //     c1.execute_move(false, 50);
+    //     c2.execute_move(false, 50);
+    //     c3.execute_move(false, 50);
+    //     c4.execute_move(false, 50);
 
-        delay(3000);
+    //     delay(3000);
 
-        channels_stop_all();
-        break;
+    //     channels_stop_all();
+    //     break;
 
-    case 0xF1: // Back parkeringsmanöver övre rutorna
+    // case 0xF1: // Back parkeringsmanöver övre rutorna
 
-        // Lateral-Arc-Right
-        c1.execute_move(true, 50);
-        c2.execute_move(true, 50);
-        c3.execute_move(false, 25);
-        c4.execute_move(false, 25);
+    //     // Lateral-Arc-Right
+    //     c1.execute_move(true, 50);
+    //     c2.execute_move(true, 50);
+    //     c3.execute_move(false, 25);
+    //     c4.execute_move(false, 25);
 
-        delay(3000);
+    //     delay(3000);
 
-        // Backward
-        c1.execute_move(false, 50);
-        c2.execute_move(false, 50);
-        c3.execute_move(false, 50);
-        c4.execute_move(false, 50);
+    //     // Backward
+    //     c1.execute_move(false, 50);
+    //     c2.execute_move(false, 50);
+    //     c3.execute_move(false, 50);
+    //     c4.execute_move(false, 50);
 
-        delay(3000);
+    //     delay(3000);
 
-        // Lateral-Arc-Left
-        c1.execute_move(false, 25);
-        c2.execute_move(false, 25);
-        c3.execute_move(true, 50);
-        c4.execute_move(true, 50);
+    //     // Lateral-Arc-Left
+    //     c1.execute_move(false, 25);
+    //     c2.execute_move(false, 25);
+    //     c3.execute_move(true, 50);
+    //     c4.execute_move(true, 50);
 
-        delay(3000);
+    //     delay(3000);
 
-        channels_stop_all();
-        break;
+    //     channels_stop_all();
+    //     break;
     default:
         if (g_debug.driver)
             Serial.println("[DRIVER] Unknown movement command");
