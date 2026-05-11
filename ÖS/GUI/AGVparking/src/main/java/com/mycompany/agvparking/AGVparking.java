@@ -7,6 +7,7 @@ package com.mycompany.agvparking;
 /**
  *
  * @author fredr
+ * @author KTS - G2 
  */
 
 
@@ -68,7 +69,14 @@ public class AGVparking {
     }
 
     public static void main(String[] args) {
+    public static void main(String[] args) { 
+    try { 
+            // Ladda det mörka temat som bas 
+            com.formdev.flatlaf.FlatDarkLaf.setup(); 
 
+    } catch (Exception ex) {
+            System.err.println("Kunde inte starta FlatLaf. " + ex.getMessage());
+        } 
         /* This is the "main" method what gets called when the application starts
          * All that is done here is to make an instance of the RobotControl class,
          * and thereby, call the RobotControl constructor.
