@@ -72,26 +72,36 @@ bool IMU::read(ImuState &state)
 
     unsigned long now = millis();
 
-    //sekunder istället för millisekunder
+    // Sekunder för att matcha integrationen i positioneringskoden.
     float dt = (now - last_sample) / 1000.0f;
 
     last_sample = now;
 
-    //acceleration (mm/s^2)
-    float ax = (_imu.accelX() - _offset_ax) * 9810.0f;
-    float ay = (_imu.accelY() - _offset_ay) * 9810.0f;
+    // MPU9250_asukiaaa returnerar acceleration i g, konvertera till mm/s^2.
+    float ax = (_imu.accelX() - _offset_ax) * _G_TO_MM_S2;
+    float ay = (_imu.accelY() - _offset_ay) * _G_TO_MM_S2;
 
-    //gyro (deg/s)
+    // Biblioteket returnerar gyro i deg/s, konvertera till rad/s.
     float wz = (_imu.gyroZ() - _offset_gz) * DEG_TO_RAD;
 
-    //deadzone, ignorera supersmå signaler som kan vara brus
-    if (fabs(ax) < 50.0f)
+    // Efter langa pauser, t.ex. startup eller blockerande delay, vill vi inte
+    // integrera hela luckan som om den vore riktig rorelse.
+    if (dt > _MAX_VALID_DT_S)
+    {
+        dt = 0.0f;
+        ax = 0.0f;
+        ay = 0.0f;
+        wz = 0.0f;
+    }
+
+    // Ignorera supersma signaler som sannolikt bara ar brus.
+    if (fabs(ax) < _ACC_DEADZONE_MM_S2)
         ax = 0.0f;
 
-    if (fabs(ay) < 50.0f)
+    if (fabs(ay) < _ACC_DEADZONE_MM_S2)
         ay = 0.0f;
 
-    if (fabs(wz) < 0.01f)
+    if (fabs(wz) < _GYRO_DEADZONE_RAD_S)
         wz = 0.0f;
 
     //output

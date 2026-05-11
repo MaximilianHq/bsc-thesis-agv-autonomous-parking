@@ -16,14 +16,14 @@ private:
     uint8_t _pin_sda, _pin_scl;
     unsigned long last_sample = 0;
 
-    // Skalningskonstanter
-    const float _ACC_SCALE = 16384.0f; // LSB/g (±2g default)
-    const float _G_TO_MS2 = 9.81f;
-    const float _GYRO_SCALE = 65.5f; // LSB/(deg/s) 131.0f
+    static constexpr float _G_TO_MM_S2 = 9810.0f;
+    static constexpr float _ACC_DEADZONE_MM_S2 = 50.0f;
+    static constexpr float _GYRO_DEADZONE_RAD_S = 0.01f;
+    static constexpr float _MAX_VALID_DT_S = 0.25f;
 
-    //offset för kalibrering
+    // Offsets fran stillastaende kalibrering.
     float _offset_ax = 0;
     float _offset_ay = 0;
     float _offset_az = 0;
-    float _offset_gz = 0;      
+    float _offset_gz = 0;
 };
