@@ -23,6 +23,19 @@ public:
     void on_new_position_data(const DwmState &dwm, const ImuState &imu);
     bool on_startup(DWM &dwm);
 
+    void test_move(){
+        Comm::Packet p = {'D', _proto_handler_bt.get_sequence(), {0x00, 0x32}, 2, 0, true};
+        p.crc = Comm::csum(p);
+
+        if (_comm_mcu.write(p))
+        {
+            _proto_handler_bt.itterate_sequence();
+            _proto_handler_bt.add_buffer_sent(p);
+        }
+        else if (g_debug.IAction)
+            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send test move command to [ÖS]");
+    };
+
 private:
     Comm &_comm_bt;
     Comm &_comm_mcu;
