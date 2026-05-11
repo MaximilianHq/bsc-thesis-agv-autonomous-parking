@@ -19,7 +19,7 @@ struct ImuState
     float ax; // acceleration x (m/s^2)
     float ay; // acceleration y (m/s^2)
     float wz; // yaw rate (rad/s)
-    float dt;   // tidssteg (ms)
+    float dt; // tidssteg (ms)
 };
 
 struct AgvState
@@ -38,7 +38,7 @@ struct AgvMotion
 
 struct Debug
 {
-    const bool IAction = true;
+    const bool sysctrl = true;
     const bool dwm = false;
     const bool imu = true;
     const bool comm = true;

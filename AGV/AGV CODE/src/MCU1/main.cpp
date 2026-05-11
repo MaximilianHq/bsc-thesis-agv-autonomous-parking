@@ -1,5 +1,3 @@
-#define SUPPRESS_HPP_WARNING
-
 #include <Arduino.h>
 #include <BluetoothSerial.h>
 #include <ServoEasing.hpp>
@@ -38,9 +36,9 @@
 #define UART_BAUD 115200
 #define WATCHDOG 500 // ms
 
-constexpr int SONAR_RANGE = 200; // mm
-constexpr int SONAR_SPEED = 100; // mm
-constexpr int SONAR_ANGLE = 70;  // ∓ deg
+constexpr int SONAR_RANGE = 150; // mm
+constexpr int SONAR_SPEED = 150; // mm
+constexpr int SONAR_ANGLE = 75;  // ∓ deg
 
 // ---------- COMM ----------
 BluetoothSerial SerialBT;
@@ -119,11 +117,17 @@ void setup()
     // uint16_t cfg;
     // if (dwm.dwm_cfg_get(cfg))
     //     Serial.println("cfg_get ok");
-    imu.setup();
+    // imu.setup();
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
     led_sys.set_status(StatusLED::State::STATUS_READY);
+
+    // ========== CALIBRATION ==========
+    delay(3000);
+    Serial.println("CALLING STARTUP");
+    if (!sysctrl.on_startup(dwm))
+        Serial.println("[SYSCTRL] \033[31mWARNING\033[0m - Calibration Failed");
 
     // watchdog start
     last_packet_time = millis();

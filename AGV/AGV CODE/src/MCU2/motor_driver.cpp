@@ -8,7 +8,7 @@ MotorChannel::MotorChannel(MotorChannelConfig &cfg)
 
 void MotorChannel::execute_move(bool dir, uint8_t percent)
 {
-    digitalWrite(_pin_dir, (dir ^ _invert_dir) ? HIGH : LOW);
+    digitalWrite(_pin_dir, (dir ^ _invert_dir) ? LOW : HIGH);
     ledcWrite(_chnl, percentage_to_bits(percent));
 }
 
@@ -163,6 +163,11 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
         _timed_move_active = false;
     }
 
+    // CALIBRATION VARIABLES
+    uint8_t spd_diff = spd_percent / 2; // For curved trajectories, slows down one of the sides
+    double comp_move_right = 0;
+    double comp_move_left = 0;
+
     switch (cmd)
     {
     case 0x00:
@@ -189,53 +194,61 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
 
     case 0x02:
         // Right
-        c1.execute_move(false, spd_percent);
-        c2.execute_move(true, spd_percent);
-        c3.execute_move(true, spd_percent);
-        c4.execute_move(false, spd_percent);
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(false, spd_percent);
+        c3.execute_move(false, spd_percent);
+        c4.execute_move(true, spd_percent);
 
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Right");
         break;
     case 0x03:
         // Left
-        c1.execute_move(true, spd_percent);
-        c2.execute_move(false, spd_percent);
-        c3.execute_move(false, spd_percent);
-        c4.execute_move(true, spd_percent);
+        c1.execute_move(false, spd_percent);
+        c2.execute_move(true, spd_percent);
+        c3.execute_move(true, spd_percent);
+        c4.execute_move(false, spd_percent);
 
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Left");
         break;
     case 0x04:
         // Forward-Right
-        c2.execute_move(true, spd_percent);
-        c3.execute_move(true, spd_percent);
+        c1.execute_move(true, spd_percent);
+        c2.stop();
+        c3.stop();
+        c4.execute_move(true, spd_percent);
 
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Forward-Right");
         break;
     case 0x05:
         // Forward-Left
-        c1.execute_move(true, spd_percent);
-        c4.execute_move(true, spd_percent);
+        c1.stop();
+        c2.execute_move(true, spd_percent);
+        c3.execute_move(true, spd_percent);
+        c4.stop();
 
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Forward-Left");
         break;
     case 0x06:
         // Backward-Right
-        c1.execute_move(false, spd_percent);
-        c4.execute_move(false, spd_percent);
-        
+        c1.stop();
+        c2.execute_move(false, spd_percent);
+        c3.execute_move(false, spd_percent);
+        c4.stop();
+
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Backward-Right");
         break;
 
     case 0x07:
         // Backward-Left
-        c2.execute_move(false, spd_percent);
-        c3.execute_move(false, spd_percent);
+        c1.execute_move(false, spd_percent);
+        c2.stop();
+        c3.stop();
+        c4.execute_move(false, spd_percent);
 
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Backward-Left");
@@ -265,35 +278,124 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
 
     case 0x0A:
         // Curved-Trajectory-Right
+        c1.execute_move(true, spd_percent);
+        c2.execute_move(true, spd_percent - spd_diff);
+        c3.execute_move(true, spd_percent);
+        c4.execute_move(true, spd_percent - spd_diff);
+
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Right");
         break;
 
     case 0x0B:
         // Curved-Trajectory-Left
+        c1.execute_move(true, spd_percent - spd_diff);
+        c2.execute_move(true, spd_percent);
+        c3.execute_move(true, spd_percent - spd_diff);
+        c4.execute_move(true, spd_percent);
+
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Left");
         break;
 
     case 0x0C:
+    { // <-- DO NOT REMOVE
         // Lateral-Arc-Right
-
+        MotorDriver::SpeedPair lateral_arc = ratio_speed_pair(spd_percent, 0.75f);
+        c1.execute_move(true, lateral_arc.fast);
+        c2.execute_move(false, lateral_arc.fast);
+        c3.execute_move(false, lateral_arc.slow);
+        c4.execute_move(true, lateral_arc.slow);
 
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Right");
-        break;
+    } // <-- DO NOT REMOVE
+    break;
 
     case 0x0D:
+    { // <-- DO NOT REMOVE
         // Lateral-Arc-Left
-
+        MotorDriver::SpeedPair lateral_arc = ratio_speed_pair(spd_percent, 0.75f);
+        c1.execute_move(false, lateral_arc.fast);
+        c2.execute_move(true, lateral_arc.fast);
+        c3.execute_move(true, lateral_arc.slow);
+        c4.execute_move(false, lateral_arc.slow);
 
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Lateral-Arc-Left");
+    } // <-- DO NOT REMOVE
+    break;
+
+    case 0xF0: // Back parkeringsmanöver nedre rutorna
+
+        // Lateral-Arc-Left
+        c1.execute_move(false, 25);
+        c2.execute_move(false, 25);
+        c3.execute_move(true, 50);
+        c4.execute_move(true, 50);
+
+        delay(3000);
+
+        // Backward
+        c1.execute_move(false, 50);
+        c2.execute_move(false, 50);
+        c3.execute_move(false, 50);
+        c4.execute_move(false, 50);
+
+        delay(3000);
+
+        channels_stop_all();
         break;
 
+    case 0xF1: // Back parkeringsmanöver övre rutorna
+
+        // Lateral-Arc-Right
+        c1.execute_move(true, 50);
+        c2.execute_move(true, 50);
+        c3.execute_move(false, 25);
+        c4.execute_move(false, 25);
+
+        delay(3000);
+
+        // Backward
+        c1.execute_move(false, 50);
+        c2.execute_move(false, 50);
+        c3.execute_move(false, 50);
+        c4.execute_move(false, 50);
+
+        delay(3000);
+
+        // Lateral-Arc-Left
+        c1.execute_move(false, 25);
+        c2.execute_move(false, 25);
+        c3.execute_move(true, 50);
+        c4.execute_move(true, 50);
+
+        delay(3000);
+
+        channels_stop_all();
+        break;
     default:
         if (g_debug.driver)
             Serial.println("[DRIVER] Unknown movement command");
         break;
     }
+}
+
+MotorDriver::SpeedPair MotorDriver::ratio_speed_pair(uint8_t target_percent, float slow_ratio)
+{
+    if (slow_ratio < 0.0f)
+        slow_ratio = 0.0f;
+    else if (slow_ratio > 1.0f)
+        slow_ratio = 1.0f;
+
+    // Keep the requested speed as the average of the fast/slow pair when possible.
+    float fast = (2.0f * target_percent) / (1.0f + slow_ratio);
+    if (fast > 100.0f)
+        fast = 100.0f;
+
+    float slow = fast * slow_ratio;
+
+    return {static_cast<uint8_t>(fast + 0.5f),
+            static_cast<uint8_t>(slow + 0.5f)};
 }

@@ -153,7 +153,7 @@ bool Comm::write(const Packet &pkt)
 ProtocolHandler::ProtocolHandler(Comm &comm, SysCtrl &actions) : _comm(comm), _actions(actions) {}
 
 uint8_t ProtocolHandler::get_sequence() const { return _seq; }
-void ProtocolHandler::itterate_sequence()
+void ProtocolHandler::iterate_sequence()
 {
     uint8_t prev = _seq;
     _seq++;
