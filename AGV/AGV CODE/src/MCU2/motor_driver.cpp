@@ -326,6 +326,55 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
     } // <-- DO NOT REMOVE
     break;
 
+    case 0xF0: // Back parkeringsmanöver nedre rutorna
+
+        // Lateral-Arc-Left
+        c1.execute_move(false, 25);
+        c2.execute_move(false, 25);
+        c3.execute_move(true, 50);
+        c4.execute_move(true, 50);
+
+        delay(3000);
+
+        // Backward
+        c1.execute_move(false, 50);
+        c2.execute_move(false, 50);
+        c3.execute_move(false, 50);
+        c4.execute_move(false, 50);
+
+        delay(3000);
+
+        channels_stop_all();
+        break;
+
+    case 0xF1: // Back parkeringsmanöver övre rutorna
+
+        // Lateral-Arc-Right
+        c1.execute_move(true, 50);
+        c2.execute_move(true, 50);
+        c3.execute_move(false, 25);
+        c4.execute_move(false, 25);
+
+        delay(3000);
+
+        // Backward
+        c1.execute_move(false, 50);
+        c2.execute_move(false, 50);
+        c3.execute_move(false, 50);
+        c4.execute_move(false, 50);
+
+        delay(3000);
+
+        // Lateral-Arc-Left
+        c1.execute_move(false, 25);
+        c2.execute_move(false, 25);
+        c3.execute_move(true, 50);
+        c4.execute_move(true, 50);
+
+        delay(3000);
+
+        channels_stop_all();
+        break;
     default:
         if (g_debug.driver)
             Serial.println("[DRIVER] Unknown movement command");

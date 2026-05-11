@@ -1,5 +1,6 @@
 #include "system_actions.h"
 #include <status_led.h>
+#include "dwm.h"
 
 SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd)
     : _comm_bt(comm_bt),
@@ -75,6 +76,158 @@ void SysCtrl::on_obstacle_detected(const Position &pos)
         Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send obstacle position to [ÖS]");
 
     _led_cmd.set_status(StatusLED::State::STATUS_OBSTACLE);
+}
+
+void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
+{
+    if (false)
+    {
+        Serial.println("[SYSCTRL] Recieved values");
+        Serial.print("[DWM] X: ");
+        Serial.print(dwm.pos.x / 1000.0f, 3);
+        Serial.print("  Y: ");
+        Serial.print(dwm.pos.y / 1000.0f, 3);
+        Serial.print("  Z: ");
+        Serial.println(dwm.pos.z / 1000.0f, 3);
+
+        Serial.print("[IMU] AX: ");
+        Serial.print(imu.ax);
+        Serial.print("  AY: ");
+        Serial.print(imu.ay);
+        Serial.print("  DT: ");
+        Serial.print(imu.dt);
+        Serial.print("  WZ: ");
+        Serial.println(imu.wz);
+    }
+
+    if (_state.size() == 0)
+    {
+        AgvState init_state;
+        init_state.pos = dwm.pos;
+        init_state.theta = 0;
+        init_state.t_ms = millis();
+        _state.push_front(init_state);
+        return;
+    }
+
+    const AgvState prev_state = _state[0];
+    AgvState pred_state = prev_state;
+
+    // predicted state
+    // x = \cos θ, y = \sin θ
+    // x_{agv} = \cos θ * v_x + \cos(θ-90\deg) * v_y = \cos θ * v_x - \sin θ * v_y
+    // y_{agv} = \sin θ * v_y + \sin(θ-90\deg) * v_y = \sin θ * v_x + \cos θ * v_y
+
+    pred_state.pos.x = prev_state.pos.x + prev_state.vx * cosf(prev_state.theta) - prev_state.vy * sinf(prev_state.theta);
+    pred_state.pos.y = prev_state.pos.y + prev_state.vx * sinf(prev_state.theta) + prev_state.vy * cosf(prev_state.theta);
+    pred_state.theta = _norm_ang(prev_state.theta + imu.wz * imu.dt);
+
+    pred_state.vx += imu.ax * imu.dt;
+    pred_state.vy += imu.ay * imu.dt;
+
+    // position error
+    float err_x = dwm.pos.x - pred_state.pos.x;
+    float err_y = dwm.pos.y - pred_state.pos.y;
+
+    // position correction
+    AgvState upd = pred_state;
+    upd.pos.x += _err_co_dwm * err_x;
+    upd.pos.y += _err_co_dwm * err_y;
+    upd.t_ms = millis();
+
+    float dx = static_cast<float>(upd.pos.x - prev_state.pos.x);
+    float dy = static_cast<float>(upd.pos.y - prev_state.pos.y);
+
+    float dist = sqrtf(dx * dx + dy * dy);
+
+    if (dist > 0.05f)
+    {
+        float theta_meas = atan2f(dy, dx);
+        float theta_err = _norm_ang(theta_meas - upd.theta);
+        upd.theta = _norm_ang(upd.theta + _err_co_imu * theta_err);
+    }
+
+    if (false)
+    {
+        Serial.println("[SYSCTRL] Calculated values values");
+        Serial.print("[DWM] X: ");
+        Serial.print(upd.pos.x / 1000.0f, 3);
+        Serial.print("  Y: ");
+        Serial.print(upd.pos.y / 1000.0f, 3);
+        Serial.print("  Z: ");
+        Serial.print(upd.pos.z / 1000.0f, 3);
+        Serial.print("  ANG: ");
+        Serial.print(upd.theta * 180.0f / PI);
+        Serial.print("  TIME_NOW: ");
+        Serial.println(upd.t_ms);
+    }
+
+    _state.push_front(upd);
+
+    auto x = _state[0].pos.x;
+    auto y = _state[0].pos.y;
+
+    // Comm::Packet p = {'P', _proto_handler_bt.get_sequence(), {static_cast<uint8_t>((x >> 8) & 0xFF), static_cast<uint8_t>(x & 0xFF), static_cast<uint8_t>((y >> 8) & 0xFF), static_cast<uint8_t>(y & 0xFF)}, 4, 0, true};
+    // p.crc = Comm::csum(p);
+
+    // if (_comm_mcu.write(p))
+    // {
+    //     _proto_handler_bt.itterate_sequence();
+    //     _proto_handler_bt.add_buffer_sent(p);
+    // }
+    // else if (g_debug.IAction)
+    //     Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send position update to [ÖS]");
+};
+
+bool SysCtrl::on_startup(DWM &dwm)
+{
+    if (g_debug.IAction)
+        Serial.print("[SYSCTRL] Calibrating position...");
+
+    DwmState d1, d2;
+
+    // Ta första mätvärdet
+    for (int i = 0; i < 10; i++)
+    {
+        if (dwm.read(d1))
+            break;
+        else if (i == 9)
+            return false;
+        delay(50);
+    }
+
+    // Kör fram på MCU2
+    Comm::Packet p = {'D', _proto_handler_mcu.get_sequence(), {0x00, 0x32}, 2, 0, true};
+    p.crc = Comm::csum(p);
+    if (!_forward_to_mcu(p))
+    {
+        if (g_debug.IAction)
+            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: Drive to [MCU2]");
+        return false;
+    }
+    delay(2000);
+    on_stop();
+
+    for (int i = 0; i < 10; i++)
+    {
+        if (dwm.read(d1))
+            break;
+        else if (i == 9)
+            return false;
+        delay(50);
+    }
+
+    AgvState s;
+    s.pos = d2.pos;
+
+    // Implementera kod för att jämföra mätvärdena och beräkna vinkeln på AGV:n
+    s.theta = atan2f((d2.pos.x - d1.pos.x), (d2.pos.y - d1.pos.y));
+    _state.push_back(s);
+
+    if (g_debug.IAction)
+        Serial.print("[SYSCTRL] Calibration Complete");
+
+    return true;
 }
 
 void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
@@ -156,104 +309,3 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send no movement error to [ÖS]");
     }
 }
-
-void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
-{
-    if (false)
-    {
-        Serial.println("[SYSCTRL] Recieved values");
-        Serial.print("[DWM] X: ");
-        Serial.print(dwm.pos.x / 1000.0f, 3);
-        Serial.print("  Y: ");
-        Serial.print(dwm.pos.y / 1000.0f, 3);
-        Serial.print("  Z: ");
-        Serial.println(dwm.pos.z / 1000.0f, 3);
-
-        Serial.print("[IMU] AX: ");
-        Serial.print(imu.ax);
-        Serial.print("  AY: ");
-        Serial.print(imu.ay);
-        Serial.print("  DT: ");
-        Serial.print(imu.dt);
-        Serial.print("  WZ: ");
-        Serial.println(imu.wz);
-    }
-
-    if (_state.size() == 0)
-    {
-        AgvState init_state;
-        init_state.pos = dwm.pos;
-        init_state.theta = 0.0f;
-        init_state.t_ms = millis();
-        _state.push_front(init_state);
-        return;
-    }
-
-    const AgvState prev_state = _state[0];
-    AgvState pred_state = prev_state;
-
-    // predicted state
-    // x = \cos θ, y = \sin θ
-    // x_{agv} = \cos θ * v_x + \cos(θ-90\deg) * v_y = \cos θ * v_x - \sin θ * v_y
-    // y_{agv} = \sin θ * v_y + \sin(θ-90\deg) * v_y = \sin θ * v_x + \cos θ * v_y
-
-    pred_state.pos.x = prev_state.pos.x + prev_state.vx * cosf(prev_state.theta) - prev_state.vy * sinf(prev_state.theta);
-    pred_state.pos.y = prev_state.pos.y + prev_state.vx * sinf(prev_state.theta) + prev_state.vy * cosf(prev_state.theta);
-    pred_state.theta = _norm_ang(prev_state.theta + imu.wz * imu.dt);
-
-    pred_state.vx += imu.ax * imu.dt;
-    pred_state.vy += imu.ay * imu.dt;
-
-    // position error
-    float err_x = dwm.pos.x - pred_state.pos.x;
-    float err_y = dwm.pos.y - pred_state.pos.y;
-
-    // position correction
-    AgvState upd = pred_state;
-    upd.pos.x += _err_co_dwm * err_x;
-    upd.pos.y += _err_co_dwm * err_y;
-    upd.t_ms = millis();
-
-    float dx = static_cast<float>(upd.pos.x - prev_state.pos.x);
-    float dy = static_cast<float>(upd.pos.y - prev_state.pos.y);
-
-    float dist = sqrtf(dx * dx + dy * dy);
-
-    if (dist > 0.05f)
-    {
-        float theta_meas = atan2f(dy, dx);
-        float theta_err = _norm_ang(theta_meas - upd.theta);
-        upd.theta = _norm_ang(upd.theta + _err_co_imu * theta_err);
-    }
-
-    if (false)
-    {
-        Serial.println("[SYSCTRL] Calculated values values");
-        Serial.print("[DWM] X: ");
-        Serial.print(upd.pos.x / 1000.0f, 3);
-        Serial.print("  Y: ");
-        Serial.print(upd.pos.y / 1000.0f, 3);
-        Serial.print("  Z: ");
-        Serial.print(upd.pos.z / 1000.0f, 3);
-        Serial.print("  ANG: ");
-        Serial.print(upd.theta * 180.0f / PI);
-        Serial.print("  TIME_NOW: ");
-        Serial.println(upd.t_ms);
-    }
-
-    _state.push_front(upd);
-
-    auto x = _state[0].pos.x;
-    auto y = _state[0].pos.y;
-
-    // Comm::Packet p = {'P', _proto_handler_bt.get_sequence(), {static_cast<uint8_t>((x >> 8) & 0xFF), static_cast<uint8_t>(x & 0xFF), static_cast<uint8_t>((y >> 8) & 0xFF), static_cast<uint8_t>(y & 0xFF)}, 4, 0, true};
-    // p.crc = Comm::csum(p);
-
-    // if (_comm_mcu.write(p))
-    // {
-    //     _proto_handler_bt.itterate_sequence();
-    //     _proto_handler_bt.add_buffer_sent(p);
-    // }
-    // else if (g_debug.IAction)
-    //     Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send position update to [ÖS]");
-};

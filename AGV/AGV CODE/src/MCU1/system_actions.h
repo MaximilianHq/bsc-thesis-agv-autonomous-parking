@@ -5,6 +5,7 @@
 #include <static_vector.h>
 
 class StatusLED;
+class DWM;
 
 class SysCtrl
 {
@@ -20,6 +21,7 @@ public:
     void on_stop(Comm::Packet &pkt);
     void on_obstacle_detected(const Position &pos);
     void on_new_position_data(const DwmState &dwm, const ImuState &imu);
+    bool on_startup(DWM &dwm);
 
     void test_move(){
         Comm::Packet p = {'D', _proto_handler_bt.get_sequence(), {0x00, 0x32}, 2, 0, true};
