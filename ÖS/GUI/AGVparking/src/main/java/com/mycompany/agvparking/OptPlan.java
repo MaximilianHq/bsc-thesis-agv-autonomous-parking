@@ -105,7 +105,7 @@ public class OptPlan {
 
            // Skapa körinstruktionerna för resan hem ---
             RouteOptimizer optimizer = new RouteOptimizer(ds);
-            optimizer.compressPath(path);
+            optimizer.compressPath(path, false);
             
             //LÄgger till rotation på slutnoden
             //Räkna ut differensen mellan nuvarande rotation och önskad
@@ -117,16 +117,23 @@ public class OptPlan {
 
         // 3. Lägg till rotationsinstruktioner i kön
         if (Math.abs(diff) > 2) { // En liten tolerans på 2 grader för att slippa mikro-justeringar
-            if (diff > 0) {
-                // Positiv diff betyder att vi står för långt åt "vänster/ner" 
-                // i ett standardsystem, så vi roterar höger för att nå 0.
-                // OBS: Dubbelkolla om ROTATE_RIGHT minskar eller ökar grader i din AGV.
-                ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_RIGHT, Math.abs(diff)));
-                System.out.println("Avslutar med högerrotation: " + Math.abs(diff) + " grader.");
-            } else {
-                ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_LEFT, Math.abs(diff)));
-                System.out.println("Avslutar med vänsterrotation: " + Math.abs(diff) + " grader.");
-            }
+            
+            // --- NYTT: Hämta ut X och Y för mål-noden så att Stop-and-wait fungerar ---
+                int targetX = targetStartNodeId % ds.columns;
+                int targetY = targetStartNodeId / ds.columns;
+                // --------------------------------------------------------------------------
+                
+                if (diff > 0) {
+                    // Positiv diff betyder att vi roterar höger
+                    // Använder fullständig konstruktor: maneuver, velocity, steps, targetX, targetY, monitorPosition
+                    // OBS! Här kan vi behöva ändra hastigheten från 100 till något annat
+                    ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_RIGHT, 100, Math.abs(diff), targetX, targetY, false));
+                    System.out.println("Avslutar med högerrotation: " + Math.abs(diff) + " grader.");
+                } else {
+                    // Negativ diff betyder att vi roterar vänster
+                    ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_LEFT, 100, Math.abs(diff), targetX, targetY, false));
+                    System.out.println("Avslutar med vänsterrotation: " + Math.abs(diff) + " grader.");
+                }
         } else {
             System.out.println("Ingen avslutande rotation krävs (redan vänd mot " + ds.startRotation + "°).");
         }

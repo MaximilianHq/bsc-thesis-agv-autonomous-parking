@@ -8,21 +8,19 @@ package com.mycompany.agvparking;
  *
  * @author kts
  * 
- * NOTE!
- * VI BEHÖVER SE ÖVER värden för instruktioner 1-8 alt. 1-12 då 9=0x09 -> error! För nu: 99
  */
 public class InstructionsStore {
     // Instruktioner 1-4
-    public static final int MOVE_UP = 1;
-    public static final int MOVE_DOWN = 2;
-    public static final int MOVE_RIGHT = 3;
-    public static final int MOVE_LEFT = 4;
+    public static final int MOVE_UP = 0x00;
+    public static final int MOVE_DOWN = 0x01;
+    public static final int MOVE_RIGHT = 0x02;
+    public static final int MOVE_LEFT = 0x03;
     
     // Instruktioner 5-8. Dessa ska endast kunna användas då AGV ej är lastad
-    public static final int MOVE_DIAG_UP_RIGHT = 5;
-    public static final int MOVE_DIAG_UP_LEFT = 6;
-    public static final int MOVE_DIAG_DOWN_RIGHT = 7;
-    public static final int MOVE_DIAG_DOWN_LEFT = 99;
+    public static final int MOVE_DIAG_UP_RIGHT = 0x04;
+    public static final int MOVE_DIAG_UP_LEFT = 0x05;
+    public static final int MOVE_DIAG_DOWN_RIGHT = 0x06;
+    public static final int MOVE_DIAG_DOWN_LEFT = 0x07;
     
     // Instruktioner 9-12 med höger / vänster
     public static final int TURNING_RIGHT = 0x08;

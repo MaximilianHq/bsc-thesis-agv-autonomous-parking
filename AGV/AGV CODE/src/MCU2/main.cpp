@@ -27,10 +27,10 @@
 #define UART_BAUD 115200
 
 MotorDriver::MotorDriverConfig cfg = {
-    {PIN_DIR1, PIN_PWM1, 0, false},
-    {PIN_DIR2, PIN_PWM2, 1, true},
-    {PIN_DIR3, PIN_PWM3, 2, false},
-    {PIN_DIR4, PIN_PWM4, 3, true},
+    {PIN_DIR1, PIN_PWM1, 0, true},
+    {PIN_DIR2, PIN_PWM2, 1, false},
+    {PIN_DIR3, PIN_PWM3, 2, true},
+    {PIN_DIR4, PIN_PWM4, 3, false},
     PIN_DRV,
     PIN_EN,
     PIN_ERR};
@@ -65,20 +65,10 @@ void setup()
     md.outputs_enable();
     md.drivers_enable();
 
-    // delay(2000);
-    //  md.move(0x00, 50, 1000000000);
+    md.move(0x0C, 50);
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
-
-    md.move(0x01, 50, 5000);
-    delay(3000);
-    md.move(0x02, 50, 5000);
-    delay(3000);
-    md.move(0x03, 50, 5000);
-    delay(3000);
-    md.move(0x04, 50, 5000);
-    delay(3000);
 }
 
 void loop()
