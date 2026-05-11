@@ -191,20 +191,6 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
     }
     else if (g_debug.sysctrl)
         Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send AGV position to [ÖS]");
-
-    auto x = _state[0].pos.x;
-    auto y = _state[0].pos.y;
-
-    // Comm::Packet p = {'P', _proto_handler_bt.get_sequence(), {static_cast<uint8_t>((x >> 8) & 0xFF), static_cast<uint8_t>(x & 0xFF), static_cast<uint8_t>((y >> 8) & 0xFF), static_cast<uint8_t>(y & 0xFF)}, 4, 0, true};
-    // p.crc = Comm::csum(p);
-
-    // if (_comm_mcu.write(p))
-    // {
-    //     _proto_handler_bt.itterate_sequence();
-    //     _proto_handler_bt.add_buffer_sent(p);
-    // }
-    // else if (g_debug.IAction)
-    //     Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send position update to [ÖS]");
 };
 
 bool SysCtrl::on_startup(DWM &dwm)
