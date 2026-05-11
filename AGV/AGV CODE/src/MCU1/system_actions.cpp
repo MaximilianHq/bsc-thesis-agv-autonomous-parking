@@ -37,7 +37,8 @@ void SysCtrl::on_mcu_pkt_recieved(Comm::Packet &pkt)
     _process_mcu_packet(pkt);
 }
 
-void SysCtrl::on_new_motion(Comm::Packet &pkt) { 
+void SysCtrl::on_new_motion(Comm::Packet &pkt)
+{
     _forward_to_mcu(pkt);
     _motion_buffert.push_back(pkt);
 }
@@ -53,7 +54,7 @@ void SysCtrl::on_stop()
 void SysCtrl::on_stop(Comm::Packet &pkt)
 {
     if (!_forward_to_mcu(pkt))
-        if (g_debug.IAction)
+        if (g_debug.sysctrl)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: 'stop' to [MCU2]");
     _led_cmd.set_status(StatusLED::State::STATUS_CMD_STOPPING);
 }
@@ -69,10 +70,10 @@ void SysCtrl::on_obstacle_detected(const Position &pos)
 
     if (_comm_mcu.write(p))
     {
-        _proto_handler_bt.itterate_sequence();
+        _proto_handler_bt.iterate_sequence();
         _proto_handler_bt.add_buffer_sent(p);
     }
-    else if (g_debug.IAction)
+    else if (g_debug.sysctrl)
         Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send obstacle position to [ÖS]");
 
     _led_cmd.set_status(StatusLED::State::STATUS_OBSTACLE);
@@ -164,6 +165,33 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
 
     _state.push_front(upd);
 
+    Comm::Packet p = {'P', _proto_handler_bt.get_sequence(), {}, 7, 0, true};
+
+    const int16_t x = static_cast<int16_t>(upd.pos.x);
+    const int16_t y = static_cast<int16_t>(upd.pos.y);
+    const int16_t theta = static_cast<int16_t>(upd.theta * 100); // 2 decimaler
+
+    p.data[0] = static_cast<uint8_t>((x >> 8) & 0xFF);
+    p.data[1] = static_cast<uint8_t>(x & 0xFF);
+
+    p.data[2] = static_cast<uint8_t>((y >> 8) & 0xFF);
+    p.data[3] = static_cast<uint8_t>(y & 0xFF);
+
+    p.data[4] = static_cast<uint8_t>((theta >> 8) & 0xFF);
+    p.data[5] = static_cast<uint8_t>(theta & 0xFF);
+
+    p.data[6] = 0x00;
+
+    p.crc = Comm::csum(p);
+
+    if (_comm_mcu.write(p))
+    {
+        _proto_handler_bt.iterate_sequence();
+        _proto_handler_bt.add_buffer_sent(p);
+    }
+    else if (g_debug.sysctrl)
+        Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send AGV position to [ÖS]");
+
     auto x = _state[0].pos.x;
     auto y = _state[0].pos.y;
 
@@ -181,7 +209,7 @@ void SysCtrl::on_new_position_data(const DwmState &dwm, const ImuState &imu)
 
 bool SysCtrl::on_startup(DWM &dwm)
 {
-    if (g_debug.IAction)
+    if (g_debug.sysctrl)
         Serial.print("[SYSCTRL] Calibrating position...");
 
     DwmState d1, d2;
@@ -201,7 +229,7 @@ bool SysCtrl::on_startup(DWM &dwm)
     p.crc = Comm::csum(p);
     if (!_forward_to_mcu(p))
     {
-        if (g_debug.IAction)
+        if (g_debug.sysctrl)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: Drive to [MCU2]");
         return false;
     }
@@ -224,7 +252,7 @@ bool SysCtrl::on_startup(DWM &dwm)
     s.theta = atan2f((d2.pos.x - d1.pos.x), (d2.pos.y - d1.pos.y));
     _state.push_back(s);
 
-    if (g_debug.IAction)
+    if (g_debug.sysctrl)
         Serial.print("[SYSCTRL] Calibration Complete");
 
     return true;
@@ -279,7 +307,7 @@ bool SysCtrl::_forward_to_mcu(Comm::Packet &pkt)
     if (!_comm_mcu.write(pkt))
         return false;
 
-    _proto_handler_mcu.itterate_sequence();
+    _proto_handler_mcu.iterate_sequence();
     _proto_handler_mcu.add_buffer_sent(pkt);
     return true;
 }
@@ -292,7 +320,7 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
         else
         {
             on_stop();
-            if (g_debug.IAction)
+            if (g_debug.sysctrl)
                 Serial.println("[SYSCTRL] \033[31mWARNING\033[0m - Failed to send command: 'next movement' to [MCU2]");
         }
     else
@@ -302,10 +330,10 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
 
         if (_comm_mcu.write(p))
         {
-            _proto_handler_bt.itterate_sequence();
+            _proto_handler_bt.iterate_sequence();
             _proto_handler_bt.add_buffer_sent(p);
         }
-        else if (g_debug.IAction)
+        else if (g_debug.sysctrl)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send no movement error to [ÖS]");
     }
 }
