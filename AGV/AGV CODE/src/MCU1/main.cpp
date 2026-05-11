@@ -131,7 +131,7 @@ void setup()
     // watchdog start
     last_packet_time = millis();
 
-    sysctrl.test_move();
+    // sysctrl.test_move();
 }
 
 void loop()

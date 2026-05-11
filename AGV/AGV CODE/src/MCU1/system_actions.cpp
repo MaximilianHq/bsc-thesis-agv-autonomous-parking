@@ -141,18 +141,27 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm
     float dy = static_cast<float>(upd.pos.y - baseline_state.pos.y);
     float dist = sqrtf(dx * dx + dy * dy);
     float body_speed = sqrtf(pred_state.vx * pred_state.vx + pred_state.vy * pred_state.vy);
+    const bool meaningful_motion = dist > _heading_dist_threshold_mm && body_speed > _heading_speed_threshold_mm_s;
 
-    // compute movement in AGV body frame
-    float dx_body = dx * cosf(baseline_state.theta) + dy * sinf(baseline_state.theta);
-    float dy_body = -dx * sinf(baseline_state.theta) + dy * cosf(baseline_state.theta);
-    const float theta_body = atan2f(dy_body, dx_body);
-    const bool aligned_body = _heading_adjustment_allowed(theta_body);
+    // compute movement in AGV body frame only when the step is large enough
+    float theta_body = _last_body_move_ang;
+    bool aligned_body = false;
+    if (meaningful_motion)
+    {
+        float dx_body = dx * cosf(baseline_state.theta) + dy * sinf(baseline_state.theta);
+        float dy_body = -dx * sinf(baseline_state.theta) + dy * cosf(baseline_state.theta);
+        theta_body = atan2f(dy_body, dx_body);
+        _last_body_move_ang = theta_body;
+        aligned_body = _heading_adjustment_allowed(theta_body);
+    }
 
     // adjust heading only when motion is straight enough over a long enough step
-    if (dist > _heading_dist_threshold_mm && body_speed > _heading_speed_threshold_mm_s && aligned_body)
+    if (meaningful_motion && aligned_body)
     {
         float theta_meas = atan2f(dy, dx);
-        float theta_err = _norm_ang(theta_meas - upd.theta);
+        float theta_body_axis = _snap_body_motion_axis(theta_body);
+        float theta_from_motion = _norm_ang(theta_meas - theta_body_axis);
+        float theta_err = _norm_ang(theta_from_motion - upd.theta);
         upd.theta = _norm_ang(upd.theta + _err_co_imu * theta_err);
     }
 

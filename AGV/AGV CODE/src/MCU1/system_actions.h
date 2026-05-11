@@ -26,7 +26,7 @@ public:
 
     void test_move()
     {
-        Comm::Packet p = {'D', _proto_handler_bt.get_sequence(), {0x01, 0x32}, 2, 0, true};
+        Comm::Packet p = {'D', _proto_handler_bt.get_sequence(), {0x03, 0x32}, 2, 0, true};
         p.crc = Comm::csum(p);
 
         if (!_forward_to_mcu(p))
@@ -43,9 +43,11 @@ private:
     StaticVector<AgvState, 10> _state;
     float _err_co_dwm = 0.25f;
     float _err_co_imu = 0.05f;
+    float _last_body_move_ang = 0.0f;
     static constexpr float _heading_dist_threshold_mm = 50.0f;
     static constexpr float _heading_speed_threshold_mm_s = 100.0f;
     static constexpr float _heading_alignment_tolerance_rad = PI / 18.0f; // 10 degrees
+
     static float _norm_ang(float ang)
     {
         while (ang > PI)
@@ -54,14 +56,21 @@ private:
             ang += 2.0f * PI;
         return ang;
     };
+
     static bool _heading_adjustment_allowed(float ang)
     {
         ang = _norm_ang(ang);
-        const float forward_err = fabs(ang);
-        const float backward_err = fabs(_norm_ang(ang - PI));
-        return forward_err <= _heading_alignment_tolerance_rad ||
-               backward_err <= _heading_alignment_tolerance_rad;
+        const float nearest = roundf(ang / (PI / 2.0f)) * (PI / 2.0f);
+        const float err = fabs(_norm_ang(ang - nearest));
+        return err <= _heading_alignment_tolerance_rad;
     };
+
+    static float _snap_body_motion_axis(float ang)
+    {
+        ang = _norm_ang(ang);
+        return _norm_ang(roundf(ang / (PI / 2.0f)) * (PI / 2.0f));
+    };
+
     StaticVector<Comm::Packet, 20> _motion_buffert;
 
     ProtocolHandler _proto_handler_bt, _proto_handler_mcu;
