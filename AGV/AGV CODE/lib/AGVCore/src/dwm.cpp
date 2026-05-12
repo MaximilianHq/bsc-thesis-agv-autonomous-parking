@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <types.h>
 #include "dwm.h"
-#include "system_actions.h"
 
 DWM::DWM(Stream &str, unsigned long d_rate) : _str(str), _d_rate(d_rate) {}
 

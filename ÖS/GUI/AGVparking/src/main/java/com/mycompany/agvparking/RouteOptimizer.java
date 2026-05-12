@@ -62,7 +62,7 @@ public class RouteOptimizer {
                     if (crossProduct > 0) { // HÖGERSVÄNG
                         if (isLoaded) {
                             System.out.println("Körinstruktion: Kurvad bana Höger (90 grader)");
-                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.CURVED_TRAJECTORY_RIGHT, 100, 0, currentX, currentY, false));
+                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.MOVE_RIGHT, 100, 0, currentX, currentY, false));
                         } else {
                             System.out.println("Körinstruktion: Rotera Höger på stället");
                             ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_RIGHT, 100, 0, currentX, currentY, false));
@@ -70,7 +70,7 @@ public class RouteOptimizer {
                     } else if (crossProduct < 0) { // VÄNSTERSVÄNG
                         if (isLoaded) {
                             System.out.println("Körinstruktion: Kurvad bana Vänster (90 grader)");
-                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.CURVED_TRAJECTORY_LEFT, 100, 0, currentX, currentY, false));
+                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.MOVE_LEFT, 100, 0, currentX, currentY, false));
                         } else {
                             System.out.println("Körinstruktion: Rotera Vänster på stället");
                             ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_LEFT, 100, 0, currentX, currentY, false));

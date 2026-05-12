@@ -89,25 +89,36 @@ public class BluetoothTransceiver implements Runnable {
                     cui.logSent(loggText + " Seq:" + nuvarandeSekvens);
                     nuvarandeSekvens = (nuvarandeSekvens + 1) % 256;
 
-                    // --- STOP-AND-WAIT LOGIK ---
+                    // --- STOP-AND-WAIT LOGIK (Closed-Loop med Tolerans) ---
                     if (typ == 'D') {
-                        // Vi pausar här och väntar på att AGV:n skickar en position som matchar målet
+                        // 1. Definiera hur nära som är "framme" (Toleransradie)
+                        double toleranceDistance = ds.gridsize * 1.5; // STOR FELMARGINAL! Ändra efter tester
                         boolean framme = false;
+                        
                         while (!framme && !ds.isStopped && !ds.isPaused) {
                             
-                            int currentGridX = (int) (ds.robotX / ds.gridsize);
-                            int currentGridY = (int) (ds.robotY / ds.gridsize);
+                            // Räkna ut målkoordinaten (mitten på mål-rutan)
+                            double targetX_cm = (instruktion.targetX * ds.gridsize) + (ds.gridsize / 2.0);
+                            double targetY_cm = (instruktion.targetY * ds.gridsize) + (ds.gridsize / 2.0);
                             
-                            if (currentGridX == instruktion.targetX && currentGridY == instruktion.targetY) {
+                            // Använd Pythagoras sats för att kolla det exakta avståndet i cm
+                            double dx = targetX_cm - ds.robotX;
+                            double dy = targetY_cm - ds.robotY;
+                            double avståndTillMål = Math.sqrt((dx * dx) + (dy * dy));
+                            
+                            if (avståndTillMål <= toleranceDistance) {
+                                // Vi är tillräckligt nära! Släpp loopen och skicka nästa kommando.
                                 framme = true;
+                                cui.appendStatus("Delmål nått (Avvikelse: " + String.format("%.1f", avståndTillMål) + " enheter)\n");
                             } else {
+                                // Vi är inte framme än, vänta på nästa $P-uppdatering
                                 Thread.sleep(100); 
                             }
                         }
                     } else if (typ == 'K') {
-                        // Om vi skickar ett K-kommando (t.ex. släpp bil), vänta lite innan vi skickar nästa
                         Thread.sleep(500); 
                     }
+                    // --------------------------------------------------------
                 } else {
                     Thread.sleep(200); // Ingen instruktion i kön, vila lite
                 }
@@ -148,27 +159,60 @@ public class BluetoothTransceiver implements Runnable {
         
         byte typ = data[1];
         
-        // --- POSITIONSDATA ($P) ---
-        // Format antaget: $ P X Y Angle Seq CRC \n (Minst 9 bytes)
-        if (typ == 'P' && data.length >= 9) { 
-            int x = data[3] & 0xFF; // X-koordinat (grid)
-            int y = data[4] & 0xFF; // Y-koordinat (grid)
-            int vinkelRå = data[5] & 0xFF; // Vinkel (0-255 från hårdvaran)
-            int seq = data[7] & 0xFF; // Sekvensnummer
-
-            // Uppdatera robotens position i DataStore
-            ds.robotX = x * ds.gridsize + (ds.gridsize / 2.0);
-            ds.robotY = y * ds.gridsize + (ds.gridsize / 2.0);
+// --- POSITIONSDATA ($P) ---
+        if (typ == 'P' && data.length >= 11) { 
             
-            // Konvertera rå-vinkel (t.ex. 0-255) till radianer för GUI:t (-PI till PI)
-            // OBS: Denna beräkning kan behöva justeras när ni spikat exakt hur hårdvaran skickar vinkeln!
-            ds.robotAngle = ((vinkelRå / 255.0) * 2 * Math.PI) - Math.PI;
+            // 1. Läs in X (i millimeter)
+            int xHigh = data[2] & 0xFF;
+            int xLow = data[3] & 0xFF;
+            short x_mm = (short) ((xHigh << 8) | xLow); // cast till short fångar minustecken!
+            
+            // 2. Läs in Y (i millimeter)
+            int yHigh = data[4] & 0xFF;
+            int yLow = data[5] & 0xFF;
+            short y_mm = (short) ((yHigh << 8) | yLow);
+            
+            // 3. Läs in Vinkeln (Theta i grader * 100)
+            int thetaHigh = data[6] & 0xFF;
+            int thetaLow = data[7] & 0xFF;
+            short thetaRå = (short) ((thetaHigh << 8) | thetaLow);
+            
+            // 4. Läs in Status (data[8]) och Seq (data[9])
+            
+            
+            // ---------- HAR INGET FÖR DETTA ÄNNU! ----------
+            int statusByte = data[8] & 0xFF;
+            // -----------------------------------------------
+            int seq = data[9] & 0xFF; 
+
+            // --- VINKELKONVERTERING ---
+            // Återskapa decimalerna: 3141 blir 31.41 grader
+            double thetaGrader = thetaRå / 100.0;
+            
+            // Konvertera till radianer för Javas Math-funktioner
+            double thetaRadianer = thetaGrader * (Math.PI / 180.0);
+            
+            // AGV = Positivt motsols. Java GUI = Positivt medsols.
+            // Vi sätter ett minustecken för att översätta det rätt till skärmen!
+            ds.robotAngle = -thetaRadianer; 
+
+            // --- SKALNING OCH POSITIONERING ---
+            // Din karta är 3500 mm (350 cm) delat på antalet rader (ds.rows)
+            double cell_size_mm = 3500.0 / ds.rows; 
+            
+            ds.robotX = (x_mm / cell_size_mm) * ds.gridsize;
+            ds.robotY = (y_mm / cell_size_mm) * ds.gridsize;
+            
+            // --- RÄKNA UT BAKAXELN PÅ BILEN ---
+            double pixelOffset = ds.agvOffset * ds.gridsize;
+            ds.axleX = ds.robotX - pixelOffset * Math.cos(ds.robotAngle);
+            ds.axleY = ds.robotY - pixelOffset * Math.sin(ds.robotAngle);
             
             ds.updateUiflag = true;
-            cui.repaint(); // Uppdatera GUI direkt
+            cui.repaint(); 
             
             skickaACK((byte) 1, seq); // Bekräfta mottagning
-        } 
+        }
         
         // --- HINDERDETEKTERING ($H) ---
         // Format antaget: $ H X Y Seq CRC \n (Minst 8 bytes)

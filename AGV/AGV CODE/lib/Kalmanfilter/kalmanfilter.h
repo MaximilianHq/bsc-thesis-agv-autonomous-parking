@@ -3,8 +3,8 @@
 #include <Arduino.h>
 #include <math.h>
 
-#define state_dim 6
-#define meas_dim 4
+#define state_dim 5
+#define meas_dim 2
 
 class KalmanFilter
 {
@@ -20,20 +20,12 @@ public:
 
     KalmanFilter(float dt);
 
-    void update(float z[meas_dim]);
+    void update(float z[meas_dim], float accX, float accY, float gyroZ);
 
 protected:
-    void _init_matrices(float dt);
-    void _predict();
-    void _invert4x4(float A[4][4], float inv[4][4]);
+    float _dt;
+    void _init_matrices();
+    void _predict(float accX, float accY, float gyroZ);
+    void _invert2x2(float M[2][2], float inv[2][2]);
 };
 
-// Example use:
-// float kalman_position(const ImuState &imu, const DwmState &dwm, int x, int y, float hz = 0.01)
-// {
-//     KalmanFilter kf(hz);
-//     float z[4] = {imu.x, imu.y, dwm.x, dwm.y};
-//     kf._predict();
-//     kf.update(z);
-//     return {kf.x, kf.y};
-// }
