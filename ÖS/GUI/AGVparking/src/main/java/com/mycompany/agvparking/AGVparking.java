@@ -6,7 +6,6 @@ package com.mycompany.agvparking;
 
 /**
  *
- * @author fredr
  * @author KTS - G2 
  */
 
@@ -27,12 +26,14 @@ public class AGVparking {
         
         // ds.setFileName("C:\\Users\\fredr\\OneDrive - Linköpings universitet\\TNK132\\TNK132\\GUI\\Lab2\\Autopark-Lab2\\loc.txt");
         ds.setFileName("C:\\Users\\andre\\OneDrive - Linköpings universitet\\GitHub\\Kandidatprojekt\\Kanditatprojekt-2026\\ÖS\\loc_ny.txt");
+        ds.setFileName("C:\\Users\\andre\\OneDrive - Linköpings universitet\\GitHub\\Kandidatprojekt\\Kanditatprojekt-2026\\ÖS\\loc_ny.txt"); 
         ds.readCoords(); 
 
         Object[] options = {"Demo-läge", "Drift-läge"}; 
         int choice = javax.swing.JOptionPane.showOptionDialog( 
         null, 
         "Välj startläge för Autopark:", 
+        "Välj startläge för Autopark:",
         "Startinställningar", 
         javax.swing.JOptionPane.YES_NO_OPTION, 
         javax.swing.JOptionPane.QUESTION_MESSAGE, 
@@ -68,7 +69,6 @@ public class AGVparking {
 
     }
 
-    public static void main(String[] args) {
     public static void main(String[] args) { 
     try { 
             // Ladda det mörka temat som bas 

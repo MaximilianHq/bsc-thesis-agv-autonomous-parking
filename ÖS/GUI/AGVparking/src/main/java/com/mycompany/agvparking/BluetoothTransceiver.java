@@ -172,6 +172,8 @@ public class BluetoothTransceiver implements Runnable {
             int yLow = data[5] & 0xFF;
             short y_mm = (short) ((yHigh << 8) | yLow);
             
+            cui.updatePositionDisplay(); 
+            cui.repaint(); // Uppdatera GUI direkt
             // 3. Läs in Vinkeln (Theta i grader * 100)
             int thetaHigh = data[6] & 0xFF;
             int thetaLow = data[7] & 0xFF;
