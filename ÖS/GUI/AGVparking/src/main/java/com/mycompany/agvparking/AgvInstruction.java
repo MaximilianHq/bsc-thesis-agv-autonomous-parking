@@ -13,6 +13,7 @@ public class AgvInstruction {
     
     public char type = 'D'; // Standard, eftersom de flesta meddelanden är av typen D (körkommando)
     public int instructionByte; // Kommer användas för 'K' kommandon (enskilt kommando
+    public int instructionByte; // Kommer användas för 'K' kommandon (enskilt kommando) 
     
     public int maneuver;
     public int velocity; // Kanske ska ändras till angleAGV

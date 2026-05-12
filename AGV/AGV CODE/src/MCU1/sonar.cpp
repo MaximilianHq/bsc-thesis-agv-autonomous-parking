@@ -15,9 +15,7 @@ Sonar::Sonar(const SonarConfig &cfg, SysCtrl &actions)
       _sonar_range(cfg.sonar_range),
       _sonar_speed(cfg.sonar_speed),
       _sonar_angle(cfg.sonar_angle),
-      _actions(actions)
-{
-}
+      _actions(actions) {}
 
 bool Sonar::setup()
 {
@@ -43,26 +41,43 @@ bool Sonar::update()
     if (!_scan)
         return false;
 
+    // _servo.pause();
+    // Serial.println("paused");
+    // delay(1000);
+    // if (_servo.mServoIsPaused)
+    //     Serial.println("pause command true");
+    // _servo.resumeWithoutInterrupts();
+
     digitalWrite(_pin_trig, LOW);
     delayMicroseconds(2);
     digitalWrite(_pin_trig, HIGH);
     delayMicroseconds(10);
     digitalWrite(_pin_trig, LOW);
 
-    uint32_t timeout = static_cast<uint32_t>((2.0 * 1.3 * _sonar_range) / 0.343);
+    // non critical distance multiplier
+    float ncdm = 2.0f;
+    unsigned long timeout = static_cast<unsigned long>((ncdm * 2.0 * _sonar_range) / 0.343 + 2500);
     _duration = pulseIn(_pin_echo, HIGH, timeout);
-    if (_duration == 0)
-        return false;
-    _distance = _duration * .343 / 2; // mm
-
-    if (_distance <= _sonar_range)
+    if (_duration != 0)
     {
-        // stopAllServos();
-        //_scan = false; // toggle for stop behaviour
-        _actions.on_obstacle_detected(get_obstacle_position());
-        if (g_debug.sonar)
+
+        _distance = _duration * .343 / 2; // mm
+        Serial.print("dis = ");
+        Serial.println(_distance);
+
+        if (_distance <= _sonar_range) // critical behaviour
+        {
+            // stopAllServos();
+            _actions.on_stop();
+            if (g_debug.sonar)
+                Serial.println("[SONAR] Critical obstacle detected");
+            // _scan = false; // toggle for stop behaviour
+        }
+        else if (g_debug.sonar)
             Serial.println("[SONAR] Obstacle detected");
-        return true;
+
+        // Non-critical behaviour, implicitly <= 2 * _sonar_range because of timeout.
+        _actions.on_obstacle_detected(get_obstacle_position());
     }
 
     if (_servo.isMoving())

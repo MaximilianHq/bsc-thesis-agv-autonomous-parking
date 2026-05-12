@@ -48,7 +48,7 @@ public:
     ProtocolHandler(Comm &comm, SysCtrl &actions);
 
     uint8_t get_sequence() const;
-    void itterate_sequence();
+    void iterate_sequence();
     void add_buffer_sent(const Comm::Packet &pkt);
     void add_buffer_rcvd(const Comm::Packet &pkt);
     void handle(const Comm::Packet &pkt);

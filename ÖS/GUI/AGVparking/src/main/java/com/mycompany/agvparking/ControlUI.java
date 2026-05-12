@@ -27,7 +27,8 @@ public class ControlUI extends javax.swing.JFrame {
         this.op = op;
 
         initComponents();
-        setupModeUI();
+        setupModeUI(); 
+        setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH); 
         setTitle("Autopark - " + (isDemoMode ? "Demo-läge" : "Drift-läge"));
     }
 
@@ -35,16 +36,18 @@ public class ControlUI extends javax.swing.JFrame {
         if (isDemoMode) {
             jToggleButton1.setVisible(false);
             jButton2.setVisible(true);
+            jButton2.setVisible(false);
             jButton1.setVisible(true);
 
-            jScrollPane1.setVisible(false);   // Visa stora rutan 
-            jScrollPane5.setVisible(true);  // Göm "UT"-rutan 
-            jScrollPane6.setVisible(true);  // Göm "IN"-rutan 
+            jScrollPane1.setVisible(false); 
+            jScrollPane5.setVisible(true); 
+            jScrollPane6.setVisible(true); 
 
-            txtSent.setText("Utgående kommandon: \n");
-            txtReceived.setText("Inkommande kommandon: \n");
+            txtSent.setText("ÖS till AGV"); 
+            txtReceived.setText("AGV till ÖS"); 
 
             appendStatus("Demoläge aktiverat: Beräknar första rutten... \n");
+            // appendStatus("Demoläge aktiverat: Beräknar första rutten... \n"); // Kanske ta bort, det står ju "Autopark - Demo-läge" 
 
             unvisitedMissions.clear();
             for (int i = 1; i < ds.locations; i++) {
@@ -69,18 +72,133 @@ public class ControlUI extends javax.swing.JFrame {
 
     private void prepareRealModeLog() {
         jScrollPane1.setVisible(false);
+        jToggleButton1.setVisible(true);
+
         jScrollPane5.setVisible(true);
         jScrollPane6.setVisible(true);
 
         txtSent.setText("Utgående kommandon: \n"); // Lägg till körriktning osv. 
         txtReceived.setText("Inkommande data: \n"); // + position, status, hinder, 
     }
+        txtReceived.setText("Inkommande data: \n"); // + position, status, hinder 
+    } 
 
     public void showStatus() {
         System.out.println("Start at: " + ds.LocationX[0] + ", " + ds.LocationY[0]);
     }
+        System.out.println("Start at: " + ds.LocationX[0] + ", " + ds.LocationY[0]); 
+    } 
+    
+//private boolean planNextMission() {
+//        if (unvisitedMissions.isEmpty()) {
+//            appendStatus("Alla uppdrag klara! Alla bilar är parkerade.\n");
+//            return false; 
+//        }
+//
+//        OptPlan op = new OptPlan(ds);
+//        int startX = (int) (ds.LocationX[0] / ds.gridsize);
+//        int startY = (int) (ds.LocationY[0] / ds.gridsize);
+//        int startNodeId = (startY * ds.columns) + startX;
+//
+//        int bestIndex = -1;
+//        int shortestPathSize = Integer.MAX_VALUE;
+//        java.util.List<Vertex> outPath = null;
+//
+//        // 1. HITTA NÄRMASTE MÅLNOD
+//        for (int candidateIndex : unvisitedMissions) {
+//            int dX = (int) (ds.LocationX[candidateIndex] / ds.gridsize);
+//            int dY = (int) (ds.LocationY[candidateIndex] / ds.gridsize);
+//            
+//            op.createPlan(startNodeId, (dY * ds.columns) + dX);
+//            
+//            if (ds.currentPath != null && ds.currentPath.size() < shortestPathSize) {
+//                shortestPathSize = ds.currentPath.size();
+//                bestIndex = candidateIndex;
+//                outPath = new java.util.ArrayList<>(ds.currentPath);
+//            }
+//        }
+//
+//        if (bestIndex != -1 && outPath != null) { 
+//            appendStatus("Valde målnod Nr: " + bestIndex + " (Avstånd: " + shortestPathSize + " steg)\n");
+//            unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
+//            
+////            // Markera målnoden som besökt (Röd färg)
+//            int destX = (int) (ds.LocationX[bestIndex] / ds.gridsize);
+//            int destY = (int) (ds.LocationY[bestIndex] / ds.gridsize);
+////            ds.ObstacleMatrix[destX][destY] = 2; 
+//            // if (destY < (ds.rows / 2) && destX < ds.columns / 3.3) {
+//            switch (bestIndex) {
+//                case 1 -> appendStatus("Utför parkering: Vänster cirkelbåge \n");
+//                // Kalla på parkeringsmanöver (från ny class) ex. 12 - Det som Hanna håller på med
+//                case 2, 3, 4 -> appendStatus("Utför parkering: Höger cirkelbåge \n");
+//                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med
+//                case 5, 6, 7, 8, 9 -> appendStatus("Utför parkering: Vrid vänster och backa \n");
+//                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med
+//                case 10 -> appendStatus("Utför parkering: Vertikal parkering vid vägg \n");
+//                // Kalla på parkeringsmanöver ex. 12 - Det som Hanna håller på med
+//                default -> {
+//                }
+//            }
+//            
+//            // 2. BERÄKNA HEMRESA
+//            op.createReturnPlan((destY * ds.columns) + destX, startNodeId);
+//            java.util.List<Vertex> returnPath = new java.util.ArrayList<>(ds.currentPath);
+//            if (!returnPath.isEmpty()) returnPath.remove(0);
+//
+//            // 3. GENERERA HÖGUPPLÖST TIDSLINJE (KINEMATIK)
+//            KinematicsTransformer transformer = new KinematicsTransformer(ds);
+//            
+//            int offset = masterDemoPath.size(); 
+//            if (masterDemoPath.isEmpty()) masterDemoStops.add(0);
+//
+//            // Förvandla utresan (Lastad = true)
+//            java.util.List<RobotState> detailedOut = transformer.transformPath(outPath, true);
+//            
+//            // --- ÅTERSTÄLL DEN BLÅ LINJEN ---
+//            if (ds.robotTrajectory != null) {
+//                ds.robotTrajectory.clear();
+//                // Plocka ut x/y från vår nya tidslinje och lägg i trajectory-listan
+//                for (RobotState state : detailedOut) {
+//                    ds.robotTrajectory.add(new Point2D(state.agvX, state.agvY)); 
+//                }
+//            }
+//            // --------------------------------
+//
+//            masterDemoPath.addAll(detailedOut);
+//            masterDemoStops.add(masterDemoPath.size() - 1); 
+//
+//            // Förvandla hemresan (Lastad = false)
+//            java.util.List<RobotState> detailedReturn = transformer.transformPath(returnPath, false);
+//            masterDemoPath.addAll(detailedReturn);
+//            masterDemoStops.add(masterDemoPath.size() - 1); 
+//
+//            if (offset == 0) ds.demoStep = 0; 
+//            
+//            updateRobotPosition();
+//            return true; 
+//        }
+//        
+//        appendStatus("Kunde inte hitta någon väg till resterande mål.\n");
+//        unvisitedMissions.clear(); 
+//        return false;
+//    } 
+    public void updatePositionDisplay() {
+        // Gör om från pixlar till vanliga X/Y-rutor
+        int xpos = (int) (ds.robotX); 
+        int ypos = (int) (ds.robotY); 
+        
+        // Gör om vinkeln från radianer till grader (för enklare läsning)
+        int vinkel = (int) Math.toDegrees(ds.robotAngle); 
+        jTextAreaPosition.setEditable(false); 
 
+        // Skriv ut i din nya textruta
+        if (jTextAreaPosition != null) {
+            jTextAreaPosition.setText("X-pos: " + xpos + "\n" + "Y-pos: " + ypos + "\n" + "Vinkel: " + vinkel + "°"); 
+        }
+    } 
+    
     private boolean planNextMission() {
+    private boolean planNextMission() { 
         if (unvisitedMissions.isEmpty()) {
             appendStatus("Alla uppdrag klara!\n");
             return false;
@@ -126,6 +244,16 @@ public class ControlUI extends javax.swing.JFrame {
             unvisitedMissions.remove(Integer.valueOf(bestIndex));
             ds.currentPath = bestPath;
             currentMissionIndex = bestIndex; 
+        if (bestIndex != -1 && outPath != null) {
+            appendStatus("Valde målnod Nr: " + bestIndex + " (Avstånd: " + shortestPathSize + " steg)\n");
+            // Rensa textrutor men behåll rubrikerna 
+            txtSent.setText("ÖS till AGV:\n"); 
+            txtReceived.setText("AGV till ÖS:\n"); 
+            logSent("Valde målnod Nr: " + bestIndex + " (Avstånd: " + shortestPathSize + " steg)"); 
+            unvisitedMissions.remove(Integer.valueOf(bestIndex)); 
+            
+            int destX = (int) (ds.LocationX[bestIndex] / ds.gridsize);
+            int destY = (int) (ds.LocationY[bestIndex] / ds.gridsize);sdsd
 
             appendStatus("Ny rutt planerad till parkering: " + bestIndex + "\n");
 
@@ -148,33 +276,70 @@ public class ControlUI extends javax.swing.JFrame {
             // Förvandla utresan visuellt
             java.util.List<RobotState> detailedOut = transformer.transformPath(outPath, true, startState);
 
-            int destX = (int) (ds.LocationX[bestIndex] / ds.gridsize);
-            int destY = (int) (ds.LocationY[bestIndex] / ds.gridsize);
-
-            // Lägg till den visuella parkeringen (ritar blå linje i GUI)
+            java.util.List<RobotState> detailedOut = transformer.transformPath(outPath, true, null); 
+            // SCHEMALÄGG "FRAMME"-MEDDELANDE 
+            // Vi räknar ut exakt vilket steg i tidslinjen som är slutet på resan, 
+            // men INNAN manövern har påbörjats! 
+            int arrivalStep = masterDemoPath.size() + detailedOut.size() - 1; 
+            scheduledMessages.put(arrivalStep, "Framme vid parkeringsruta Nr: " + bestIndex + ". Påbörjar manöver."); 
+            scheduledSentMessages.put(arrivalStep, "Skickar hemrutt");  
+            
             if (bestIndex >= 5 && bestIndex <= 9) {
-                appendStatus("Utför parkering: Cirkelbåge och backning \n");
+                logSent("Utför parkering: Cirkelbåge och backning \n"); 
+                logSent("Typ av parkering: Cirkelbåge och backning "); 
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 java.util.List<RobotState> maneuver = transformer.generateParkingManeuver(lastState, destX, destY);
-                detailedOut.addAll(maneuver);
-            } else if (bestIndex == 1) {
-                appendStatus("Utför parkering: U-sväng och backning vänster \n");
-                RobotState lastState = detailedOut.get(detailedOut.size() - 1);
-                java.util.List<RobotState> maneuver = transformer.generateComplexParkingManeuver(lastState, destX, destY);
-                detailedOut.addAll(maneuver);
+                detailedOut.addAll(maneuver); 
+                logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n"); 
+                // logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n"); 
+                logReceived("Kör till parkeringsruta Nr: " + bestIndex); 
+            } else if (bestIndex == 1) { 
+                logSent("Utför parkering: U-sväng och backning vänster \n"); 
+                logSent("Typ av parkering: U-sväng och backning vänster "); 
+                RobotState lastState = detailedOut.get(detailedOut.size() -1); 
+                java.util.List<RobotState> maneuver = transformer.generateComplexParkingManeuver(lastState, destX, destY); 
+                detailedOut.addAll(maneuver); 
+                logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n"); 
+                // logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n"); 
+                logReceived("Kör till parkeringsruta Nr: " + bestIndex); 
             } else if (bestIndex >= 2 && bestIndex <= 4) {
-                appendStatus("Utför parkering: U-sväng och backning höger \n");
+                logSent("Utför parkering: U-sväng och backning höger \n"); 
+                logSent("Typ av parkering: U-sväng och backning höger "); 
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 java.util.List<RobotState> maneuver = transformer.generateTopParkingManeuver(lastState, destX, destY);
-                detailedOut.addAll(maneuver);
-            } else if (bestIndex == 10) {
-                appendStatus("Utför parkering: backning vid hörn \n");
+                detailedOut.addAll(maneuver); 
+                logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n");  
+                // logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n");  
+                logReceived("Kör till parkeringsruta Nr: " + bestIndex);  
+                
+            } else if (bestIndex == 10) { 
+                logSent("Utför parkering: backning vid hörn \n"); 
+                logSent("Typ av parkering: Backning vid hörn "); 
                 RobotState lastState = detailedOut.get(detailedOut.size() - 1);
                 java.util.List<RobotState> maneuver = transformer.generateSpot10Maneuver(lastState);
-                detailedOut.addAll(maneuver);
+                detailedOut.addAll(maneuver); 
+                logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n"); 
+                // logReceived("Lämnar bilen i parkeringsruta Nr: " + bestIndex + "\n"); 
+                logReceived("Kör till parkeringsruta Nr: " + bestIndex); 
+                
+            } else { // Bör inte ske 
+                logSent("Utför parkering: Standard \n"); 
+                logSent("Typ av parkering: Standard \n"); 
+                logSent("Typ av parkering: Standard "); 
+                RobotState lastState = detailedOut.get(detailedOut.size() - 1);
+                for(int i = 0; i < 10; i++) detailedOut.add(new RobotState(lastState.agvX, lastState.agvY, lastState.axleX, lastState.axleY, lastState.angle, false));
             }
 
-            // --- SPARA TILL DEMON OCH GUI ---
+            } 
+            
+            logSent("Kör rutten till parkeringsnod"); 
+            
+            // SCHEMALÄGG MEDDELANDET TILL RÄTT TIDSSTEG 
+            int dropOffStep = masterDemoPath.size() + detailedOut.size() - 1; 
+            scheduledMessages.put(dropOffStep, "Lämnade bilen i parkeringsruta Nr: " + bestIndex + "\n"); 
+            scheduledMessages.put(dropOffStep, "Lämnade bilen i parkeringsruta Nr: " + bestIndex); 
+            
+            // Spara allt till demon
             masterDemoPath.addAll(detailedOut);
             masterDemoRedSpots.add(new java.awt.geom.Point2D.Double(ds.LocationX[bestIndex], ds.LocationY[bestIndex]));
             masterDemoStops.add(masterDemoPath.size() - 1);
@@ -187,11 +352,44 @@ public class ControlUI extends javax.swing.JFrame {
             // =================================================================
             if (!isDemoMode) {
                 // --- 1. DRIFTLÄGE (FYSISK AGV) ---
+            // Förvandla hemresan 
+            RobotState stateAfterManeuver = masterDemoPath.get(masterDemoPath.size() - 1);
+            java.util.List<RobotState> detailedReturn = transformer.transformPath(returnPath, false, stateAfterManeuver);
+            java.util.List<RobotState> detailedReturn = transformer.transformPath(returnPath, false, stateAfterManeuver); 
+            
+            // --- NYTT: SPARA EXAKT VILKET STEG HEMRESAN BÖRJAR PÅ ---
+            if (!detailedReturn.isEmpty()) { 
+                RobotState lastReturnState = detailedReturn.get(detailedReturn.size() - 1); 
+                // Vi lägger till rotationen i slutet av listan för hemresan
+                detailedReturn.addAll(transformer.generateRotationOnSpot(lastReturnState, 0.0)); 
+            } 
+            
+            masterDemoPath.addAll(detailedReturn);
+            masterDemoStops.add(masterDemoPath.size() - 1);
+            // SPARA EXAKT VILKET STEG HEMRESAN BÖRJAR PÅ 
+            returnTripStartIndex = masterDemoPath.size(); 
+            scheduledMessages.put(returnTripStartIndex, "Hemrutt mottagen. Kör hem till startpunkten"); 
+            masterDemoPath.addAll(detailedReturn); 
+            masterDemoStops.add(masterDemoPath.size() - 1); 
 
                 RouteOptimizer optimizer = new RouteOptimizer(ds);
                 optimizer.compressPath(outPath, true);
 
-                RobotState lastState = detailedOut.get(detailedOut.size() - 1);
+            // --- SPARA LINJERNA SEPARAT ---
+            // --- SPARA LINJERNA SEPARAT --- 
+            currentOutboundLine.clear();
+            for (RobotState state : detailedOut) {
+                currentOutboundLine.add(new Point2D(state.agvX, state.agvY)); 
+            }
+            
+            currentReturnLine.clear();
+            for (RobotState state : detailedReturn) {
+                currentReturnLine.add(new Point2D(state.agvX, state.agvY)); 
+            }
+            
+            // Dölj den svarta rutten (eftersom den visar hemresan i förtid och förvirrar)
+            ds.currentPath = null; 
+            // ------------------------------------------
 
                 if (bestIndex >= 5 && bestIndex <= 9) {
                     ds.instructionQueue.add(new AgvInstruction(InstructionsStore.MOVE_LEFT, 100, 0, destX, destY, true));
@@ -302,6 +500,8 @@ public class ControlUI extends javax.swing.JFrame {
 //        }
 //        return "";
 //    }
+} 
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -324,14 +524,22 @@ public class ControlUI extends javax.swing.JFrame {
         txtSent = new javax.swing.JTextArea();
         jScrollPane6 = new javax.swing.JScrollPane();
         txtReceived = new javax.swing.JTextArea();
+        jToolBar1 = new javax.swing.JToolBar();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        jTextAreaPosition = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setForeground(java.awt.Color.orange);
+        setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        setForeground(new java.awt.Color(45, 128, 122));
         setMinimumSize(new java.awt.Dimension(578, 550));
         setSize(new java.awt.Dimension(0, 0));
 
         jPanel1.setBackground(new java.awt.Color(255, 255, 255));
         jPanel1.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         jPanel1.setPreferredSize(new java.awt.Dimension(540, 360));
+        jPanel1.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(255, 0, 255), 3));
+        jPanel1.setPreferredSize(new java.awt.Dimension(523, 350));
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -342,10 +550,12 @@ public class ControlUI extends javax.swing.JFrame {
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGap(0, 358, Short.MAX_VALUE)
+            .addGap(0, 356, Short.MAX_VALUE)
         );
 
         jToggleButton1.setText("Demo");
         jToggleButton1.setToolTipText("Tryck för att aktivera demoläget");
+        jToggleButton1.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(255, 118, 255), 2));
         jToggleButton1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jToggleButton1ActionPerformed(evt);
@@ -354,6 +564,7 @@ public class ControlUI extends javax.swing.JFrame {
 
         jButton1.setText("Stop");
         jButton1.setToolTipText("AGV avbryter");
+        jButton1.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 150, 255), 2));
         jButton1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButton1ActionPerformed(evt);
@@ -367,6 +578,7 @@ public class ControlUI extends javax.swing.JFrame {
 
         jButton2.setText("Start");
         jButton2.setToolTipText("AGV startar");
+        jButton2.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(5, 255, 45), 2));
         jButton2.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButton2ActionPerformed(evt);
@@ -375,6 +587,7 @@ public class ControlUI extends javax.swing.JFrame {
 
         jButton3.setText("←");
         jButton3.setToolTipText("Tar ett steg bakåt i rutten");
+        jButton3.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(213, 255, 255), 2));
         jButton3.setEnabled(false);
         jButton3.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -384,6 +597,7 @@ public class ControlUI extends javax.swing.JFrame {
 
         jButton4.setText("→");
         jButton4.setToolTipText("Tar ett steg vidare i rutten");
+        jButton4.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 204, 255), 2));
         jButton4.setEnabled(false);
         jButton4.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -393,6 +607,7 @@ public class ControlUI extends javax.swing.JFrame {
 
         jButton5.setText("≫  ");
         jButton5.setToolTipText("Snabbspola");
+        jButton5.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(255, 93, 54), 2));
         jButton5.setEnabled(false);
         jButton5.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -402,15 +617,33 @@ public class ControlUI extends javax.swing.JFrame {
 
         jScrollPane5.setName("txtSent"); // NOI18N
 
+        txtSent.setEditable(false);
         txtSent.setColumns(20);
         txtSent.setRows(5);
+        txtSent.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(245, 80, 100), 2));
+        txtSent.setOpaque(false);
         jScrollPane5.setViewportView(txtSent);
 
         jScrollPane6.setName("txtReceived"); // NOI18N
 
         txtReceived.setColumns(20);
         txtReceived.setRows(5);
+        txtReceived.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(168, 163, 241), 2));
+        txtReceived.setOpaque(false);
         jScrollPane6.setViewportView(txtReceived);
+
+        jToolBar1.setRollover(true);
+
+        jTextAreaPosition.setEditable(false);
+        jTextAreaPosition.setColumns(20);
+        jTextAreaPosition.setRows(5);
+        jTextAreaPosition.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(255, 125, 0), 2));
+        jTextAreaPosition.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        jTextAreaPosition.setFocusable(false);
+        jScrollPane2.setViewportView(jTextAreaPosition);
+        jTextAreaPosition.getAccessibleContext().setAccessibleParent(jTextAreaPosition);
+
+        jToolBar1.add(jScrollPane2);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -418,14 +651,13 @@ public class ControlUI extends javax.swing.JFrame {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
+                .addGap(12, 12, 12)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(6, 6, 6)
+                        .addComponent(jButton2)
+                        .addGap(12, 12, 12)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(jButton2)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                                 .addGroup(layout.createSequentialGroup()
                                     .addComponent(jButton3)
@@ -433,28 +665,58 @@ public class ControlUI extends javax.swing.JFrame {
                                     .addComponent(jButton4)
                                     .addGap(18, 18, 18)
                                     .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addComponent(jToggleButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addGap(146, 146, 146)
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 153, Short.MAX_VALUE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(jToggleButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 23, Short.MAX_VALUE)
+                                .addComponent(jToolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                        .addGroup(layout.createSequentialGroup()
+                            .addComponent(jButton3)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                            .addComponent(jButton4)
+                            .addGap(18, 18, 18)
+                            .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(jToggleButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addGap(146, 146, 146)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 153, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane5, javax.swing.GroupLayout.DEFAULT_SIZE, 173, Short.MAX_VALUE)
+                    .addComponent(jScrollPane6, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 173, Short.MAX_VALUE))
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 53, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jScrollPane5, javax.swing.GroupLayout.DEFAULT_SIZE, 173, Short.MAX_VALUE)
-                            .addComponent(jScrollPane6, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 173, Short.MAX_VALUE)))
-                    .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 642, Short.MAX_VALUE))
+                            .addComponent(jScrollPane5)
+                            .addComponent(jScrollPane6)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 517, Short.MAX_VALUE)
+                        .addGap(131, 131, 131)))
                 .addContainerGap())
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 523, Short.MAX_VALUE)
+                .addGap(131, 131, 131))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addGap(14, 14, 14)
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 362, Short.MAX_VALUE)
+                .addGap(8, 8, 8)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jButton2)
                             .addComponent(jButton1))
                         .addGap(103, 103, 103)
+                        .addGap(95, 95, 95)
                         .addComponent(jToggleButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -463,13 +725,20 @@ public class ControlUI extends javax.swing.JFrame {
                             .addComponent(jButton5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addContainerGap())
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                    .addGroup(layout.createSequentialGroup()
                         .addGap(8, 8, 8)
+                        .addComponent(jToolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jScrollPane1)
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jScrollPane5)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addComponent(jScrollPane6)
+                                .addGap(4, 4, 4)))
                         .addGap(20, 20, 20))))
         );
 
@@ -512,9 +781,17 @@ public class ControlUI extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton1ActionPerformed
 
     java.util.List<RobotState> masterDemoPath = new java.util.ArrayList<>();
-    private java.util.List<Integer> masterDemoStops = new java.util.ArrayList<>();
-    private javax.swing.Timer forwardTimer;
-    private int lastOptimizedLegStart = -1;
+    private java.util.List<Integer> masterDemoStops = new java.util.ArrayList<>(); // Målpunkter för demo 
+    private java.util.HashMap<Integer, String> scheduledMessages = new java.util.HashMap<>(); 
+    private java.util.HashMap<Integer, String> scheduledSentMessages = new java.util.HashMap<>(); 
+    private javax.swing.Timer forwardTimer; // Timer för framåt-knapp
+    private int lastOptimizedLegStart = -1; // Håll koll på vilka instruktioner som senast skickades 
+    private java.util.List<Point2D> masterDemoRedSpots = new java.util.ArrayList<>(); 
+    
+    private java.util.List<Point2D> masterDemoRedSpots = new java.util.ArrayList<>();     
+    private java.util.List<Point2D> currentOutboundLine = new java.util.ArrayList<>(); 
+    private java.util.List<Point2D> currentReturnLine = new java.util.ArrayList<>();
+    private int returnTripStartIndex = 0; 
 
     // Denna MÅSTE vara Javas inbyggda Point2D för att fungera med Point2D.Double
     private java.util.List<java.awt.geom.Point2D> masterDemoRedSpots = new java.util.ArrayList<>();
@@ -587,14 +864,28 @@ public class ControlUI extends javax.swing.JFrame {
 
     public String updateRobotPosition() { 
         if (masterDemoPath != null && ds.demoStep >= 0 && ds.demoStep < masterDemoPath.size()) {
-            RobotState state = masterDemoPath.get(ds.demoStep);
-            
+            // Hämta det förberäknade tillståndet för detta tidssteg
+            RobotState state = masterDemoPath.get(ds.demoStep); 
+            // KOLLA OM VI HAR ETT SCHEMALAGT MEDDELANDE JUST NU 
+            if (scheduledMessages.containsKey(ds.demoStep)) {
+                logReceived(scheduledMessages.get(ds.demoStep));
+                scheduledMessages.remove(ds.demoStep); // Ta bort så det inte skrivs ut igen om vi backar
+                scheduledMessages.remove(ds.demoStep); // Tar bort så meddelandet inte skrivs ut igen om vi backar 
+            } 
+            if (scheduledSentMessages.containsKey(ds.demoStep)) { 
+                logSent(scheduledSentMessages.get(ds.demoStep)); 
+                scheduledSentMessages.remove(ds.demoStep); 
+            } 
+            // Uppdatera DataStore med exakta koordinater för GUI:t
             ds.robotX = state.agvX;
             ds.robotY = state.agvY;
             ds.axleX = state.axleX; 
             ds.axleY = state.axleY;
             ds.robotAngle = state.angle;
             ds.isLoaded = state.isLoaded;
+            ds.isLoaded = state.isLoaded; 
+            
+            updatePositionDisplay(); 
 
             // --- HISTORIK: RÖDMARKERA RÄTT RUTA NÄR MANÖVERN ÄR KLAR ---
             ds.clearVisitedAreas(); 
@@ -629,7 +920,7 @@ public class ControlUI extends javax.swing.JFrame {
         }
 
         if (ds.demoStep <= 0) {
-            appendStatus("Demo: Redan vid den absoluta startpunkten.\n");
+            appendStatus("Redan vid den absoluta startpunkten.\n");
             return;
         }
 
@@ -647,7 +938,7 @@ public class ControlUI extends javax.swing.JFrame {
         // Hoppa direkt bakåt i tiden till den hållplatsen!
         ds.demoStep = prevStop;
         String pos = updateRobotPosition();
-        appendStatus("Demo: Hoppade tillbaka i historiken | Position: " + pos + "\n");
+        logSent("Hoppade tillbaka i historiken | Position: " + pos + "\n");
     }//GEN-LAST:event_jButton3ActionPerformed
 
     private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
@@ -666,18 +957,23 @@ public class ControlUI extends javax.swing.JFrame {
         int nextStop = masterDemoPath.size() - 1;
         for (int stop : masterDemoStops) {
             if (stop > ds.demoStep) {
-                nextStop = stop;
+                nextStop = stop; 
                 break;
             }
         }
 
-        final int targetStep = nextStop;
-        appendStatus("Demo: Kör sträckan fram till nästa mål/bas...\n");
-
+        final int targetStep = nextStop; 
+//        if (ds.isLoaded == true) {
+//            logReceived("Rutt mottagen. Kör rutten till parkeringsnod "); 
+//        } 
+//        if (ds.isLoaded == false) {
+//            logSent("Hemrutt beräknad. Kör hem till startpunkten\n"); 
+//        } 
+        
         // Inaktivera knapparna under körning
         jButton3.setEnabled(false);
         jButton4.setEnabled(false);
-        jButton5.setEnabled(false);
+        jButton5.setEnabled(false); 
 
         if (forwardTimer != null && forwardTimer.isRunning()) {
             forwardTimer.stop();
@@ -690,13 +986,12 @@ public class ControlUI extends javax.swing.JFrame {
                 if (ds.demoStep < targetStep) {
                     ds.demoStep++;
                     updateRobotPosition();
-                } else {
-                    ((javax.swing.Timer) e.getSource()).stop();
-                    appendStatus("Demo: Framme!\n");
-                    jButton3.setEnabled(true);
-                    jButton4.setEnabled(true);
-                    jButton5.setEnabled(true);
-                }
+                } else { 
+                    ((javax.swing.Timer) e.getSource()).stop(); 
+                    jButton3.setEnabled(true); 
+                    jButton4.setEnabled(true); 
+                    jButton5.setEnabled(true); 
+                } 
             }
         });
         forwardTimer.start();
@@ -705,16 +1000,16 @@ public class ControlUI extends javax.swing.JFrame {
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
 
         if (masterDemoPath == null || ds.demoStep >= masterDemoPath.size() - 1) {
-            appendStatus("Inget kvar att snabbspola!\n");
+            logSent("Inget kvar att snabbspola!\n");
             return;
         }
 
-        appendStatus("Snabbspolar...\n");
+        // logSent("Snabbspolar "); 
 
         // Inaktivera knappar under körning för att undvika krockar 
         jButton4.setEnabled(false);
         jButton5.setEnabled(false);
-        appendStatus("Snabbspolar från steg " + ds.demoStep + "...\n");
+        logSent("Snabbspolar från steg " + ds.demoStep);
 
         // Timer börjar loopa direkt från nuvarande ds.demoStep 
         javax.swing.Timer timer = new javax.swing.Timer(5, new java.awt.event.ActionListener() {
@@ -735,7 +1030,7 @@ public class ControlUI extends javax.swing.JFrame {
                     if (!success) {
                         // Inga fler bilar i listan, eller alla var inbyggda. Stanna! 
                         ((javax.swing.Timer) e.getSource()).stop();
-                        appendStatus("Snabbspolning slutförd.\n");
+                        logReceived("Snabbspolning slutförd.\n");
                         jButton5.setEnabled(true); // Gör så vi kan trycka igen 
                     }
                 }
@@ -750,23 +1045,22 @@ public class ControlUI extends javax.swing.JFrame {
         return success;
     }
 
-    public void appendStatus(String text) {
-        jTextAreaDemo.append(text);
-        jTextAreaDemo.setCaretPosition(jTextAreaDemo.getDocument().getLength());
+public void appendStatus(String text) {
+        // Styr om alla gamla systemmeddelanden till UT-rutan
+        txtSent.append(text);
+        txtSent.setCaretPosition(txtSent.getDocument().getLength());
     }
 
     public void logSent(String text) {
-        if (!isDemoMode) {
-            txtSent.append("UT: " + text + "\n");
-            txtSent.setCaretPosition(txtSent.getDocument().getLength());
-        }
+        txtSent.append(text + "\n");
+        txtSent.setCaretPosition(txtSent.getDocument().getLength());
     }
 
-    public void logReceived(String text) { // Tror inte det här används? 
-        if (!isDemoMode) {
-            txtReceived.append("IN: " + text + "\n");
-            txtReceived.setCaretPosition(txtReceived.getDocument().getLength());
-        }
+    public void logReceived(String text) {
+        // Nu fungerar denna i både Demo och Drift!
+    public void logReceived(String text) { 
+        txtReceived.append(text + "\n"); 
+        txtReceived.setCaretPosition(txtReceived.getDocument().getLength());
     }
 
 public java.awt.geom.Point2D calculateFreeingTarget(int destX, int destY, double angle, double dist_cm) {
@@ -799,10 +1093,13 @@ public java.awt.geom.Point2D calculateFreeingTarget(int destX, int destY, double
     private javax.swing.JButton jButton5;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane5;
     private javax.swing.JScrollPane jScrollPane6;
     private javax.swing.JTextArea jTextAreaDemo;
+    private javax.swing.JTextArea jTextAreaPosition;
     private javax.swing.JToggleButton jToggleButton1;
+    private javax.swing.JToolBar jToolBar1;
     private javax.swing.JTextArea txtReceived;
     private javax.swing.JTextArea txtSent;
     // End of variables declaration//GEN-END:variables

@@ -1,5 +1,3 @@
-#define SUPPRESS_HPP_WARNING
-
 #include <Arduino.h>
 #include <BluetoothSerial.h>
 #include <ServoEasing.hpp>
@@ -9,9 +7,9 @@
 #include <comm.h>
 #include <sreg_handler.h>
 #include <status_led.h>
+#include <imu.h>
+#include <dwm.h>
 #include "system_actions.h"
-#include "imu.h"
-#include "dwm.h"
 #include "sonar.h"
 
 // ========== PINS ==========
@@ -38,9 +36,11 @@
 #define UART_BAUD 115200
 #define WATCHDOG 500 // ms
 
-constexpr int SONAR_RANGE = 200; // mm
-constexpr int SONAR_SPEED = 100; // mm
-constexpr int SONAR_ANGLE = 70;  // ∓ deg
+constexpr float DWM_OFFSET = 75.0f; // mm
+
+constexpr int SONAR_RANGE = 150; // mm
+constexpr int SONAR_SPEED = 150; // mm
+constexpr int SONAR_ANGLE = 75;  // ∓ deg
 
 // ---------- COMM ----------
 BluetoothSerial SerialBT;
@@ -75,8 +75,9 @@ Sonar::SonarConfig sonar_cfg{
     false};
 Sonar sonar(sonar_cfg, sysctrl);
 
-// ---------- DWM ----------
+// ---------- POS ----------
 DWM dwm(Serial2);
+IMU imu(PIN_SDA, PIN_SCL);
 
 // ========== GLOBALS ==========
 Debug g_debug;
@@ -88,9 +89,7 @@ void watchdog_routine();
 
 void setup()
 {
-    delay(5000);
     // ========== STATE ==========
-    // Updated by led_x.update, do not set manually!
     sreg.setup();
     led_sys.setup();
     led_cmd.setup();
@@ -115,24 +114,29 @@ void setup()
     // ========== SONAR ==========
     sonar.setup();
 
-    // ========== DWM ==========
-    dwm.setup(1234, 100, 100);
+    // ========== POS ==========
+    uint16_t cfg;
+    if (dwm.dwm_cfg_get(cfg))
+        Serial.println("[DWM] cfg_get ok");
+    imu.setup();
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
     led_sys.set_status(StatusLED::State::STATUS_READY);
 
+    // ========== CALIBRATION ==========
+    if (!sysctrl.on_startup(dwm, DWM_OFFSET))
+        Serial.println("[SYSCTRL] \033[31mWARNING\033[0m - Calibration Failed");
+
     // watchdog start
     last_packet_time = millis();
 
-    sysctrl.test();
+    // sysctrl.test_move();
 }
 
 void loop()
 {
     // ========== ROUTINES ==========
-    sysctrl.test();
-
     // ota_handle();
     //  read BT. packet: ös movement, ös command
     //  $TCXXYYTTC\n or $TCCC\n
@@ -162,20 +166,17 @@ void loop()
         sysctrl.on_mcu_pkt_recieved(mcu_pkt);
 
     // ---------- DWM ----------
-    DwmState s;
+    DwmState d;
     ImuState i;
-    if (dwm.dwm_status_get())
-    {
-        if (dwm.dwm_get_pos(s))
-        {
-            // get imu state
-            // sysctrl.on_new_position_data(s, i);
-        }
-    }
+    if (dwm.read(d))
+        if (imu.read(i))
+            sysctrl.on_new_position_data(d, i, DWM_OFFSET);
+        else
+            Serial.println("[IMU] no read");
     else
-        Serial.println("[DWM] Module not ready");
+        Serial.println("[DWM] no read");
 
-    delay(2000);
+    delay(20);
 }
 
 void blt_status_routine()

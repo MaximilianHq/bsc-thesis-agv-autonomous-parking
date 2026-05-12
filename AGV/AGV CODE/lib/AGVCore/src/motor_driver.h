@@ -1,5 +1,6 @@
 #pragma once
 #include <types.h>
+// #include <park.h>
 
 // CAUTION DO NOT CHANGE
 #define PWM_FREQ 1000
@@ -38,6 +39,11 @@ public:
         int pin_drv, pin_en, pin_err;
     };
 
+    struct SpeedPair
+    {
+        uint8_t fast, slow;
+    };
+
     MotorDriver(MotorDriverConfig &cfg);
 
     MotorChannel c1, c2, c3, c4;
@@ -61,6 +67,7 @@ public:
     void temperature_error_reset_all();
 
     void move(uint8_t cmd, uint8_t spd_percent = 50, unsigned long duration_ms = 0);
+    static SpeedPair ratio_speed_pair(uint8_t target_percent, float slow_ratio);
 
 private:
     int _pin_drv, _pin_en, _pin_err;

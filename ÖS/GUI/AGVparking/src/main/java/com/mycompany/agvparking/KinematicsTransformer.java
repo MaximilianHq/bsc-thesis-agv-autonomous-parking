@@ -10,6 +10,30 @@ public class KinematicsTransformer {
         this.ds = ds;
     }
 
+    public List<RobotState> generateRotationOnSpot(RobotState lastState, double targetAngleRad) {
+        List<RobotState> maneuver = new ArrayList<>();
+        double L = ds.agvOffset * ds.gridsize;
+        double currentAngle = lastState.angle;
+        
+        // Räkna ut kortaste vägen för rotationen
+        double diff = targetAngleRad - currentAngle;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+
+        // Om vi redan står rätt (mindre än 1 grads diff), gör ingenting
+        if (Math.abs(diff) < 0.02) return maneuver;
+
+        int steps = 40; // Samma antal steg som i hörnsvängar
+        for (int i = 1; i <= steps; i++) {
+            double tempAngle = currentAngle + (diff * i / steps);
+            // AGV:n står kvar på samma punkt, men bakaxeln (axleX/Y) svingar runt den
+            maneuver.add(new RobotState(lastState.agvX, lastState.agvY, 
+                                        lastState.agvX - L * Math.cos(tempAngle), 
+                                        lastState.agvY - L * Math.sin(tempAngle), 
+                                        tempAngle, false));
+        }
+        return maneuver;
+    }
     // --- TRANSPORTSTRÄCKAN (På väg till mål eller bas) ---
     public List<RobotState> transformPath(List<Vertex> path, boolean loaded, RobotState startState) {
         List<RobotState> detailedPath = new ArrayList<>();
@@ -39,9 +63,22 @@ public class KinematicsTransformer {
             currentHeading = Math.atan2(nextGridY - gridY, nextGridX - gridX);
         }
 
-        // --- STARTPOSITIONEN ---
-        if (loaded) {
-            // Bakaxeln på rutnätet, AGV:n hamnar längre fram!
+// --- STARTPOSITIONEN ---
+        if (loaded && startState == null) {
+            // NYTT: "Inkörning" från utsidan!
+            // AGV:n står på startpunkten och bakaxeln är utanför (till vänster).
+            // AGV:n drar fram ekipaget tills bakaxeln hamnar på startnoden.
+            int pullSteps = Math.max(10, (int)(L * 1.5)); 
+            double startAxleX = gridX - L * Math.cos(currentHeading);
+            double startAxleY = gridY - L * Math.sin(currentHeading);
+            
+            for (int i = 0; i <= pullSteps; i++) {
+                double ax = startAxleX + (gridX - startAxleX) * ((double)i / pullSteps);
+                double ay = startAxleY + (gridY - startAxleY) * ((double)i / pullSteps);
+                detailedPath.add(new RobotState(ax + L * Math.cos(currentHeading), ay + L * Math.sin(currentHeading), ax, ay, currentHeading, true));
+            }
+        } else if (loaded && startState != null) {
+            // Bakaxeln på rutnätet, AGV:n hamnar längre fram
             detailedPath.add(new RobotState(gridX + L * Math.cos(currentHeading), gridY + L * Math.sin(currentHeading), gridX, gridY, currentHeading, true));
         } else {
             // AGV:n på rutnätet, dragstången släpar bakom
@@ -111,7 +148,7 @@ public class KinematicsTransformer {
         double axleY = startState.axleY;
         double angle = startState.angle;
         
-        for(int i = 0; i < 100; i++) maneuver.add(new RobotState(axleX + L*Math.cos(angle), axleY + L*Math.sin(angle), axleX, axleY, angle, true));
+        for(int i = 0; i < 50; i++) maneuver.add(new RobotState(axleX + L*Math.cos(angle), axleY + L*Math.sin(angle), axleX, axleY, angle, true));
         
         double targetAngle = -Math.PI / 2;
         double angleDiff = targetAngle - angle;
@@ -137,7 +174,7 @@ public class KinematicsTransformer {
             maneuver.add(new RobotState(agvX, agvY, axleX, axleY, angle, true));
         }
         
-        for(int i = 0; i < 100; i++) maneuver.add(new RobotState(axleX + L*Math.cos(angle), axleY + L*Math.sin(angle), axleX, axleY, angle, false));
+        for(int i = 0; i < 50; i++) maneuver.add(new RobotState(axleX + L*Math.cos(angle), axleY + L*Math.sin(angle), axleX, axleY, angle, false));
         
         double agvX = axleX + L*Math.cos(angle);
         double agvY = axleY + L*Math.sin(angle);
@@ -148,7 +185,7 @@ public class KinematicsTransformer {
             agvY += (forwardDist / steps) * Math.sin(angle);
             maneuver.add(new RobotState(agvX, agvY, agvX - L*Math.cos(angle), agvY - L*Math.sin(angle), angle, false));
         } 
-        for(int i = 0; i < 150; i++) maneuver.add(new RobotState(agvX, agvY, agvX - L*Math.cos(angle), agvY - L*Math.sin(angle), angle, false)); 
+        for(int i = 0; i < 50; i++) maneuver.add(new RobotState(agvX, agvY, agvX - L*Math.cos(angle), agvY - L*Math.sin(angle), angle, false)); 
         return maneuver; 
     }
     
@@ -162,7 +199,7 @@ public class KinematicsTransformer {
         double axleY = startState.axleY;
         double angle = startState.angle;
         
-        for(int i = 0; i < 100; i++) maneuver.add(new RobotState(axleX + L*Math.cos(angle), axleY + L*Math.sin(angle), axleX, axleY, angle, true));
+        for(int i = 0; i < 50; i++) maneuver.add(new RobotState(axleX + L*Math.cos(angle), axleY + L*Math.sin(angle), axleX, axleY, angle, true));
 
         // 1. Rotera 180 grader VÄNSTER runt BAKAXELN (-Math.PI = vänster i GUI)
         double angleDiff = -Math.PI; 
@@ -209,11 +246,14 @@ public class KinematicsTransformer {
         double finalAgvY = axleY + L * Math.sin(angle);
 
         // 4. Lasta av och pausa
-        for(int i = 0; i < 100; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, axleX, axleY, angle, false));
+        for(int i = 0; i < 50; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, axleX, axleY, angle, false));
 
         // 5. Kör 30 cm framåt
         double forwardDist = 30.0;
         steps = 30;
+        // 5. Kör 25 cm framåt
+        double forwardDist = 25.0;
+        steps = 25;
         for(int i = 1; i <= steps; i++) {
             finalAgvX += (forwardDist / steps) * Math.cos(angle);
             finalAgvY += (forwardDist / steps) * Math.sin(angle);
@@ -230,7 +270,7 @@ public class KinematicsTransformer {
             finalAgvY += (sideDist / steps) * Math.sin(sideAngle);
             maneuver.add(new RobotState(finalAgvX, finalAgvY, finalAgvX - L*Math.cos(angle), finalAgvY - L*Math.sin(angle), angle, false));
         } 
-        for(int i = 0; i < 150; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, finalAgvX - L*Math.cos(angle), finalAgvY - L*Math.sin(angle), angle, false)); 
+        for(int i = 0; i < 50; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, finalAgvX - L*Math.cos(angle), finalAgvY - L*Math.sin(angle), angle, false)); 
         return maneuver;
     } 
     
@@ -244,7 +284,7 @@ public class KinematicsTransformer {
         double axleY = startState.axleY;
         double angle = startState.angle;
         
-        for(int i = 0; i < 100; i++) maneuver.add(new RobotState(axleX + L*Math.cos(angle), axleY + L*Math.sin(angle), axleX, axleY, angle, true));
+        for(int i = 0; i < 50; i++) maneuver.add(new RobotState(axleX + L*Math.cos(angle), axleY + L*Math.sin(angle), axleX, axleY, angle, true));
 
         // 1. Rotera 180 grader Höger runt BAKAXELN (Math.PI = höger i GUI)
         double angleDiff = Math.PI; 
@@ -291,11 +331,14 @@ public class KinematicsTransformer {
         double finalAgvY = axleY + L * Math.sin(angle);
 
         // 4. Lasta av och pausa
-        for(int i = 0; i < 100; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, axleX, axleY, angle, false));
+        for(int i = 0; i < 50; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, axleX, axleY, angle, false));
 
         // 5. Kör 20 cm framåt // Oklart vad som krävs för att inte träffa väggen med AGVn 
         double forwardDist = 20.0;
         steps = 20;
+        // 5. Kör 15 cm framåt // Oklart vad som krävs för att inte träffa väggen med AGVn 
+        double forwardDist = 15.0;
+        steps = 15;
         for(int i = 1; i <= steps; i++) {
             finalAgvX += (forwardDist / steps) * Math.cos(angle);
             finalAgvY += (forwardDist / steps) * Math.sin(angle);
@@ -313,7 +356,7 @@ public class KinematicsTransformer {
             maneuver.add(new RobotState(finalAgvX, finalAgvY, finalAgvX - L*Math.cos(angle), finalAgvY - L*Math.sin(angle), angle, false));
         } 
         
-        for(int i = 0; i < 150; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, finalAgvX - L*Math.cos(angle), finalAgvY - L*Math.sin(angle), angle, false)); 
+        for(int i = 0; i < 50; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, finalAgvX - L*Math.cos(angle), finalAgvY - L*Math.sin(angle), angle, false)); 
         return maneuver;
     } 
     
@@ -328,7 +371,7 @@ public class KinematicsTransformer {
         double angle = startState.angle;
         
         // 0. Paus vid ankomst
-        for(int i = 0; i < 100; i++) maneuver.add(new RobotState(axleX + L*Math.cos(angle), axleY + L*Math.sin(angle), axleX, axleY, angle, true));
+        for(int i = 0; i < 50; i++) maneuver.add(new RobotState(axleX + L*Math.cos(angle), axleY + L*Math.sin(angle), axleX, axleY, angle, true));
 
         // 1. Rotera 180 grader åt VÄNSTER runt bakaxeln (-Math.PI = vänster i GUI)
         double angleDiff = -Math.PI; 
@@ -383,7 +426,7 @@ public class KinematicsTransformer {
         double finalAgvY = axleY + L * Math.sin(angle);
 
         // 5. Lasta av bilen och pausa
-        for(int i = 0; i < 100; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, axleX, axleY, angle, false));
+        for(int i = 0; i < 50; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, axleX, axleY, angle, false));
 
         // 6. Kör 60 cm framåt
         double forwardDist = 75.0;

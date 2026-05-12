@@ -37,6 +37,18 @@ public:
         _v[_count++] = data; // lägg ny längst bak
     }
 
+    void push_front(const T &data)
+    {
+        if (_count >= N)
+            _count--;
+
+        for (size_t i = _count; i > 0; i--)
+            _v[i] = _v[i - 1];
+
+        _v[0] = data;
+        _count++;
+    }
+
     void pop()
     {
         pop_front_discard();
