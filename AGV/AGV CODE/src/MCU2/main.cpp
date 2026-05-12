@@ -2,7 +2,7 @@
 #include <types.h>
 #include <comm.h>
 #include <ota.h>
-#include "motor_driver.h"
+#include <motor_driver.h>
 #include "system_actions.h"
 
 // UART
@@ -12,16 +12,20 @@
 #define PIN_ERR 34
 #define PIN_EN 21
 #define PIN_DRV 32
-// DIR [ 25, 26, 27, 33 ]
-#define PIN_DIR1 25 // real 3
-#define PIN_DIR2 33 // real 4
-#define PIN_DIR3 26 // real 2
-#define PIN_DIR4 27 // real 1
-// PWM [ 16, 17, 18, 19 ]
-#define PIN_PWM1 18 // real 3
-#define PIN_PWM2 19 // real 4
-#define PIN_PWM3 17 // real 2
-#define PIN_PWM4 16 // real 1
+// DIR: v physical v
+// [PWM4] [PWM3]
+// [PWM1] [PWM2]
+#define PIN_DIR1 25
+#define PIN_DIR2 33
+#define PIN_DIR3 26
+#define PIN_DIR4 27
+// PWM: v physical v
+// [PWM4] [PWM3]
+// [PWM1] [PWM2]
+#define PIN_PWM1 18
+#define PIN_PWM2 19
+#define PIN_PWM3 17
+#define PIN_PWM4 16
 
 // ========== DEFINITIONS ==========
 #define UART_BAUD 115200
@@ -65,8 +69,6 @@ void setup()
     md.outputs_enable();
     md.drivers_enable();
 
-    md.move(0x0C, 50);
-
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
 }
@@ -87,5 +89,5 @@ void loop()
         Serial.println("HELP");
         sysctrl.on_mcu_pkt_recieved(mcu_pkt);
     }
-    delay(200);
+    delay(20);
 }

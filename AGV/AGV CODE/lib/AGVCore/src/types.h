@@ -16,16 +16,16 @@ struct DwmState
 
 struct ImuState
 {
-    float ax; // acceleration x (m/s^2)
-    float ay; // acceleration y (m/s^2)
+    float ax; // acceleration x (mm/s^2)
+    float ay; // acceleration y (mm/s^2)
     float wz; // yaw rate (rad/s)
-    float dt;   // tidssteg (ms)
+    float dt; // tidssteg (s)
 };
 
 struct AgvState
 {
     Position pos;
-    float vx = 0, vy = 0; // OBS: tolkat som body-hastigheter (fram/sid) i detta exempel
+    float vx = 0, vy = 0; // REP 103 body-hastigheter: x framat, y vanster (mm/s)
     float theta = 0;
     long t_ms = 0;
 };
@@ -38,7 +38,7 @@ struct AgvMotion
 
 struct Debug
 {
-    const bool IAction = true;
+    const bool sysctrl = true;
     const bool dwm = false;
     const bool imu = true;
     const bool comm = true;

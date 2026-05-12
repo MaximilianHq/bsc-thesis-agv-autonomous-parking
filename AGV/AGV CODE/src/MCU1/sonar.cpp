@@ -58,8 +58,6 @@ bool Sonar::update()
     float ncdm = 2.0f;
     unsigned long timeout = static_cast<unsigned long>((ncdm * 2.0 * _sonar_range) / 0.343 + 2500);
     _duration = pulseIn(_pin_echo, HIGH, timeout);
-    Serial.print("dur = ");
-    Serial.println(_duration);
     if (_duration != 0)
     {
 
