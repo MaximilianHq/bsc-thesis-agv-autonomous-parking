@@ -159,6 +159,7 @@ public class BluetoothTransceiver implements Runnable {
             ds.robotY = y * ds.gridsize + (ds.gridsize / 2.0);
             ds.updateUiflag = true;
             
+            cui.updatePositionDisplay(); 
             cui.repaint(); // Uppdatera GUI direkt
             
             skickaACK((byte) 1, seq); // Bekräfta mottagning

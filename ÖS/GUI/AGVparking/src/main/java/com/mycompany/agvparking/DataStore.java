@@ -56,6 +56,7 @@ public class DataStore {
     // VARIABLER FÖR KINEMATIK 
     public java.util.List<Point2D> robotTrajectory; // AGV:ns exakta fysiska rutt
     public double agvOffset = 9.0; // Byt till exakt längd bakaxel till AGv (ange i antal rutor)
+    public double agvOffset = 7.5; // Byt till exakt längd bakaxel till AGv (ange i antal rutor)
     // -----------------------------------
     
     public Queue<AgvInstruction> instructionQueue;

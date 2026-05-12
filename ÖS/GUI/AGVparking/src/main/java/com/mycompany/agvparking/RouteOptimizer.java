@@ -97,6 +97,10 @@ public class RouteOptimizer {
         // Här skriver vi ut det i konsolen. Längre fram är det kanske här 
         // vi skapar ett meddelande och skickar det via Bluetooth
         System.out.println("Körinstruktion: Åk " + directionText + " i " + steps + " steg.");
+        System.out.println("Körinstruktion: Åk " + directionText + " i " + steps + " steg.");  
+       // --- NYTT: Uppdatera nuvarande vinkel så att OptPlan vet var vi slutade ---
+       // Detta räknar ut vinkeln i grader baserat på sista rörelsen (dx, dy)
+       ds.currentRotation = (int) Math.toDegrees(Math.atan2(dy, dx)); 
 
         // Lägg till instruktionen i brevlådan för Bluetooth
         
