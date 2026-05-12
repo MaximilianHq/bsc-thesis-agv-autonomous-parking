@@ -5,8 +5,7 @@
 class ServoContinious
 {
 public:
-    ServoContinious(int servoPin, int pwmChannel, int stopUs = 1500,
-                    int minUs = 1000, int maxUs = 2000, bool invert = false);
+    ServoContinious(int pin_servo, int pwm_chnl, bool invert = false);
 
     void setup();
     void update();
@@ -21,13 +20,17 @@ private:
     int _stop_pulse, _min_pulse, _max_pulse;
     bool _invert;
 
+    int _stop_us = 1500;
+    int _min_us = 1000;
+    int _max_us = 2000;
+
     unsigned long _move_duration = 0;
     unsigned long _move_start_time = 0;
     bool _timed_move_active = false;
 
     static const int _frequency = 50;
-    static const int _resolutionBits = 16;
-    static const int _periodUs = 1000000 / _frequency;
+    static const int _resolution_bits = 16;
+    static const int _period_us = 1000000 / _frequency;
 
-    void writeMicroseconds(int pulseUs);
+    void writeMicroseconds(int pulse_us);
 };

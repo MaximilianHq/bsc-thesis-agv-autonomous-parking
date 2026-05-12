@@ -2,22 +2,26 @@
 #include <types.h>
 #include "servo_continious.h"
 
-ServoContinious::ServoContinious(int pin_servo, int pwm_chnl, int stop_us, int min_pulse_us, int max_pulse_us, bool invert)
+ServoContinious::ServoContinious(int pin_servo, int pwm_chnl, bool invert)
     : _pin_servo(pin_servo),
       _chnl(pwm_chnl),
-      _stop_pulse(stop_us),
-      _min_pulse(min_pulse_us),
-      _max_pulse(max_pulse_us),
       _invert(invert)
 {
 }
 
 void ServoContinious::setup()
 {
+
+    if (g_debug.crane)
+        Serial.println("[CRANE] Running setup...");
+
     pinMode(_pin_servo, OUTPUT);
-    ledcSetup(_chnl, _frequency, _resolutionBits);
+    ledcSetup(_chnl, _frequency, _resolution_bits);
     ledcAttachPin(_pin_servo, _chnl);
     stop();
+
+    if (g_debug.crane)
+        Serial.println("[CRANE] Setup finished");
 }
 
 void ServoContinious::update()
@@ -54,6 +58,8 @@ void ServoContinious::drive_backward(int8_t speed, unsigned long duration)
 void ServoContinious::drive_manual(int8_t speed)
 {
     speed = constrain(speed, -100, 100);
+    if (_invert)
+        speed = -speed;
     int pulse;
 
     if (speed == 0)
@@ -72,8 +78,8 @@ void ServoContinious::writeMicroseconds(int pulse_us)
 {
     pulse_us = constrain(pulse_us, _min_pulse, _max_pulse);
 
-    uint32_t maxDuty = (1UL << _resolutionBits) - 1;
-    uint32_t duty = (uint32_t)pulse_us * maxDuty / _periodUs;
+    uint32_t maxDuty = (1UL << _resolution_bits) - 1;
+    uint32_t duty = (uint32_t)pulse_us * maxDuty / _period_us;
 
     ledcWrite(_chnl, duty);
 }

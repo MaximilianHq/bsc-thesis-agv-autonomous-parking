@@ -7,11 +7,12 @@
 class StatusLED;
 class DWM;
 class IMU;
+class ServoContinious;
 
 class SysCtrl
 {
 public:
-    SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd);
+    SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, ServoContinious &crane);
 
     // ========== IActions ==========
     void on_bt_no_connect();
@@ -39,6 +40,7 @@ private:
     Comm &_comm_mcu;
     StatusLED &_led_sys;
     StatusLED &_led_cmd;
+    ServoContinious &_crane;
 
     StaticVector<AgvState, 10> _state;
     float _err_co_dwm = 0.25f;

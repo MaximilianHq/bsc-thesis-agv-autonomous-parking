@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <BluetoothSerial.h>
 #include <ServoEasing.hpp>
+#include <servo_continious.h>
 #include <WiFi.h>
 #include <types.h>
 #include <ota.h>
@@ -59,7 +60,9 @@ StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
                   SRegHandler::pin_sreg::QF,
                   true);
 
-SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd);
+ServoContinious crane(PIN_CRANE_SERVO, 0, false);
+
+SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd, crane);
 
 // ---------- SONAR ----------
 Sonar::SonarConfig sonar_cfg{
@@ -114,6 +117,9 @@ void setup()
     // ========== SONAR ==========
     sonar.setup();
 
+    // ========== CRANE ==========
+    crane.setup();
+
     // ========== POS ==========
     uint16_t cfg;
     if (dwm.dwm_cfg_get(cfg))
@@ -146,6 +152,7 @@ void loop()
 
     // ========== UPDATES ==========
     sonar.update();
+    crane.update();
     led_sys.update();
     led_cmd.update();
 

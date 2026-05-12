@@ -2,14 +2,16 @@
 #include <status_led.h>
 #include <coords.h>
 #include <dwm.h>
+#include <servo_continious.h>
 
-SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd)
+SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, ServoContinious &crane)
     : _comm_bt(comm_bt),
       _comm_mcu(comm_mcu),
       _proto_handler_bt(comm_bt, *this),
       _proto_handler_mcu(comm_mcu, *this),
       _led_sys(led_sys),
-      _led_cmd(led_cmd) {}
+      _led_cmd(led_cmd),
+      _crane(crane) {}
 
 void SysCtrl::on_bt_no_connect()
 {
@@ -277,23 +279,33 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
 {
     switch (pkt.type)
     {
-    case 'D':
+    case 'D': // motion
         on_new_motion(pkt);
         break;
     case 'K':
         switch (pkt.data[0])
         {
-        case 'N':
+        case 'P': // pause
+            break;
+        case 'S': // start
+            break;
+        case 'N': // next motion
             _next_movement(pkt);
             break;
-        case 'H':
+        case 'H': // set status
             _led_cmd.set_status(StatusLED::State::STATUS_RETURNING);
+            break;
+        case 'L': // lift / lower
+            if (pkt.data[1] == 1)
+                _crane.drive_forward(100, 5000);
+            else if (pkt.data[1] == 1)
+                _crane.drive_backward(100, 5000);
             break;
         default:
             break;
         }
         break;
-    case 'X':
+    case 'X': // critical stop
         on_stop(pkt);
         break;
     default:

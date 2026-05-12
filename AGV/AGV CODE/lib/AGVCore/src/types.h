@@ -45,6 +45,7 @@ struct Debug
     const bool mcu1 = true;
     const bool mcu2 = true;
     const bool sonar = true;
+    const bool crane = true;
     const bool driver = true;
 };
 
