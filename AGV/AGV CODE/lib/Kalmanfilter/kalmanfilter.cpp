@@ -5,12 +5,14 @@
 
 KalmanFilter::KalmanFilter(float dt) // konstruktor för klassen KalmanFilter. dt är tidssteg mellan mätningar.
 {
-  _init_matrices(dt); // sätter upp alla matriser, A, H, P, Q, R
+  _dt = dt;
+  _init_matrices(); // sätter upp alla matriser, A, H, P, Q, R
 }
 
 // 3. Kalman gain, 4. Correction, 5. Error matrix
-void KalmanFilter::update(float z[meas_dim])
+void KalmanFilter::update(float z[meas_dim], float accX, float accY, float gyroZ)
 {
+  _predict(accX, accY, gyroZ);
 
   float y[meas_dim]; // y ska innehålla skillnaden mellan sensor och modell
 
@@ -53,7 +55,7 @@ void KalmanFilter::update(float z[meas_dim])
 
   float Sinv[meas_dim][meas_dim];
 
-  _invert4x4(S, Sinv);
+  _invert2x2(S, Sinv);
 
   // 3. Kalman gain, K = PH^T S^-1
   float PHt[state_dim][meas_dim];
@@ -102,9 +104,20 @@ void KalmanFilter::update(float z[meas_dim])
     {
 
       if (i == j)
-        I_KH[i][j] = 1 - KH[i][j];
+        I_KH[i][j] = 1.0f - KH[i][j];
       else
         I_KH[i][j] = -KH[i][j];
+    }
+
+  float temp[state_dim][state_dim];
+
+  for (int i = 0; i < state_dim; i++)
+    for (int j = 0; j < state_dim; j++)
+    {
+      temp[i][j] = 0;
+
+      for (int k = 0; k < state_dim; k++)
+        temp[i][j] += I_KH[i][k] * P[k][j];
     }
 
   float P_new[state_dim][state_dim];
@@ -115,7 +128,7 @@ void KalmanFilter::update(float z[meas_dim])
       P_new[i][j] = 0;
 
       for (int k = 0; k < state_dim; k++)
-        P_new[i][j] += I_KH[i][k] * P[k][j];
+        P_new[i][j] += temp[i][k] * I_KH[j][k];
     }
 
   for (int i = 0; i < state_dim; i++)
@@ -124,9 +137,62 @@ void KalmanFilter::update(float z[meas_dim])
 }
 
 // sätt upp alla matriser
-void KalmanFilter::_init_matrices(float dt)
+void KalmanFilter::_init_matrices()
 {
+  //reset state
+  for (int i = 0; i < state_dim; i++)
+    x[i] = 0;
 
+  //p matrix
+  for (int i = 0; i < state_dim; i++)
+  {
+    for (int j = 0; j < state_dim; j++)
+      P[i][j] = (i == j) ? 1 : 0;
+  }
+
+  //q matrix
+  for (int i = 0; i < state_dim; i++)
+  {
+    for (int j = 0; j < state_dim; j++)
+      Q[i][j] = 0;
+  }
+
+  Q[0][0] = 0.01;
+  Q[1][1] = 0.01;
+
+  Q[2][2] = 0.01;
+  Q[3][3] = 0.01;
+
+  Q[4][4] = 0.05;
+
+  //r matrix
+  for (int i = 0; i < meas_dim; i++)
+  {
+    for (int j = 0; j < meas_dim; j++)
+      R[i][j] = 0;
+  }
+
+  R[0][0] = 0.05;
+  R[1][1] = 0.05;
+
+  //h matrix
+  for (int i = 0; i < meas_dim; i++)
+  { 
+    for (int j = 0; j < state_dim; j++)
+    {
+      H[i][j] = 0;
+    }
+  }
+
+  //uwb x
+  H[0][0] = 1;
+
+  //uwb y
+  H[1][1] = 1;
+
+}
+
+  /*
   float dt2 = dt * dt;
 
   // reset state vector -> x = [0 0 0 0 0 0]
@@ -137,6 +203,8 @@ void KalmanFilter::_init_matrices(float dt)
   for (int i = 0; i < state_dim; i++)
     for (int j = 0; j < state_dim; j++)
       P[i][j] = (i == j) ? 1 : 0;
+
+
 
   // Q matrix (process noise), identitetsmatris fast med 0.01
   for (int i = 0; i < state_dim; i++)
@@ -214,84 +282,197 @@ void KalmanFilter::_init_matrices(float dt)
   H[3][5] = 0;
 }
 
-// 1. Prediction och 2. Prediction error
-void KalmanFilter::_predict()
-{
+*/
 
-  float x_new[state_dim]; // skapa temporär vektor för nytt state
-
-  // 1. Prediction, x_new = A*x,
-  for (int i = 0; i < state_dim; i++)
+  // 1. Prediction och 2. Prediction error
+  void KalmanFilter::_predict(float accX, float accY, float gyroZ)
   {
-    x_new[i] = 0;
 
-    for (int j = 0; j < state_dim; j++)
-      x_new[i] += A[i][j] * x[j];
+    float dt2 = _dt * _dt;
+
+    //rotate imu -> world frame
+
+    float yaw = x[4];
+
+    float cosYaw = cos(yaw);
+    float sinYaw = sin(yaw);
+
+    float accWorldX = cosYaw * accX - sinYaw * accY;
+
+    float accWorldY = sinYaw * accX + cosYaw * accY;
+
+    // motion model
+    x[0] += x[2] * _dt + 0.5f * accWorldX * dt2;
+    x[1] += x[3] * _dt + 0.5f * accWorldY * dt2;
+
+    x[2] += accWorldX * _dt;
+    x[3] += accWorldY * _dt;
+
+    x[4] += gyroZ * _dt;
+
+    while (x[4] > PI)
+      x[4] -= 2.0f * PI;
+
+    while (x[4] < -PI)
+      x[4] += 2.0f * PI;
+
+    // a matrix
+    for (int i = 0; i < state_dim; i++)
+    {
+      for (int j = 0; j < state_dim; j++)
+        A[i][j] = 0;
+    }
+
+    A[0][0] = 1;
+    A[0][2] = _dt;
+
+    A[1][1] = 1;
+    A[1][3] = _dt;
+
+    A[2][2] = 1;
+
+    A[3][3] = 1;
+
+    A[4][4] = 1;
+
+    //prediction covariance, P = A P A^T + Q
+    float AP[state_dim][state_dim];
+
+    for (int i = 0; i < state_dim; i++)
+    {
+      for (int j = 0; j < state_dim; j++)
+      {
+        AP[i][j] = 0;
+
+        for (int k = 0; k < state_dim; k++)
+          AP[i][j] += A[i][k] * P[k][j];
+      }
+    }
+
+    float APA[state_dim][state_dim];
+
+    for (int i = 0; i < state_dim; i++)
+    {
+      for (int j = 0; j < state_dim; j++)
+      {
+        APA[i][j] = 0;
+
+        for (int k = 0; k < state_dim; k++)
+          APA[i][j] += AP[i][k] * A[j][k];
+      }
+    }
+
+    for (int i = 0; i < state_dim; i++)
+    {
+      for (int j = 0; j < state_dim; j++)
+        P[i][j] = APA[i][j] + Q[i][j];
+    }
+
   }
 
-  for (int i = 0; i < state_dim; i++)
-    x[i] = x_new[i];
+    // 3x3 matrix inverse
+  void KalmanFilter::_invert2x2(float M[2][2], float inv[2][2])
+  {
+    float det =
+        M[0][0] * M[1][1] -
+        M[0][1] * M[1][0];
 
-  // 2. Prediction error, P = A P A^T + Q.
+    if (fabs(det) < 1e-6f)
+        return;
 
-  float AP[state_dim][state_dim];
+    float invDet = 1.0f / det;
 
-  for (int i = 0; i < state_dim; i++)
-    for (int j = 0; j < state_dim; j++)
-    {
-      AP[i][j] = 0;
+    inv[0][0] =  M[1][1] * invDet;
+    inv[0][1] = -M[0][1] * invDet;
 
-      // AP = A*P
-      for (int k = 0; k < state_dim; k++)
-        AP[i][j] += A[i][k] * P[k][j];
-    }
-
-  float APA[state_dim][state_dim];
-
-  for (int i = 0; i < state_dim; i++)
-    for (int j = 0; j < state_dim; j++)
-    {
-      APA[i][j] = 0;
-
-      // APA = AP * A^T
-      for (int k = 0; k < state_dim; k++)
-        APA[i][j] += AP[i][k] * A[j][k];
-    }
-
-  // lägg till process noise Q, P = APA + Q->= A P A ^ T + Q
-  for (int i = 0; i < state_dim; i++)
-    for (int j = 0; j < state_dim; j++)
-      P[i][j] = APA[i][j] + Q[i][j];
+    inv[1][0] = -M[1][0] * invDet;
+    inv[1][1] =  M[0][0] * invDet;
 }
 
-// för att beräkna invers av 4x4 matris (gauss jordan)
-void KalmanFilter::_invert4x4(float M[4][4], float inv[4][4])
-{
-  float aug[4][8];
-  for (int i = 0; i < 4; i++)
-  {
-    for (int j = 0; j < 4; j++)
-      aug[i][j] = M[i][j];
-    for (int j = 0; j < 4; j++)
-      aug[i][j + 4] = (i == j) ? 1.0f : 0.0f;
-  }
+      
+  
 
-  for (int col = 0; col < 4; col++)
-  {
-    float pivot = aug[col][col];
-    for (int j = 0; j < 8; j++)
-      aug[col][j] /= pivot;
-    for (int row = 0; row < 4; row++)
+
+
+        /*
+        float x_new[state_dim]; // skapa temporär vektor för nytt state
+
+        // 1. Prediction, x_new = A*x,
+        for (int i = 0; i < state_dim; i++)
+        {
+          x_new[i] = 0;
+
+          for (int j = 0; j < state_dim; j++)
+            x_new[i] += A[i][j] * x[j];
+        }
+
+        for (int i = 0; i < state_dim; i++)
+          x[i] = x_new[i];
+
+        // 2. Prediction error, P = A P A^T + Q.
+
+        float AP[state_dim][state_dim];
+
+        for (int i = 0; i < state_dim; i++)
+          for (int j = 0; j < state_dim; j++)
+          {
+            AP[i][j] = 0;
+
+            // AP = A*P
+            for (int k = 0; k < state_dim; k++)
+              AP[i][j] += A[i][k] * P[k][j];
+          }
+
+        float APA[state_dim][state_dim];
+
+        for (int i = 0; i < state_dim; i++)
+          for (int j = 0; j < state_dim; j++)
+          {
+            APA[i][j] = 0;
+
+            // APA = AP * A^T
+            for (int k = 0; k < state_dim; k++)
+              APA[i][j] += AP[i][k] * A[j][k];
+          }
+
+        // lägg till process noise Q, P = APA + Q->= A P A ^ T + Q
+        for (int i = 0; i < state_dim; i++)
+          for (int j = 0; j < state_dim; j++)
+            P[i][j] = APA[i][j] + Q[i][j];
+      }
+
+      
+
+    // för att beräkna invers av 4x4 matris (gauss jordan)
+    void KalmanFilter::_invert4x4(float M[4][4], float inv[4][4])
     {
-      if (row == col)
-        continue;
-      float factor = aug[row][col];
-      for (int j = 0; j < 8; j++)
-        aug[row][j] -= factor * aug[col][j];
-    }
-  }
+      float aug[4][8];
+      for (int i = 0; i < 4; i++)
+      {
+        for (int j = 0; j < 4; j++)
+          aug[i][j] = M[i][j];
+        for (int j = 0; j < 4; j++)
+          aug[i][j + 4] = (i == j) ? 1.0f : 0.0f;
+      }
 
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++)
-      inv[i][j] = aug[i][j + 4];
-};
+      for (int col = 0; col < 4; col++)
+      {
+        float pivot = aug[col][col];
+        for (int j = 0; j < 8; j++)
+          aug[col][j] /= pivot;
+        for (int row = 0; row < 4; row++)
+        {
+          if (row == col)
+            continue;
+          float factor = aug[row][col];
+          for (int j = 0; j < 8; j++)
+            aug[row][j] -= factor * aug[col][j];
+        }
+      }
+
+      for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+          inv[i][j] = aug[i][j + 4];
+    };
+
+    */
