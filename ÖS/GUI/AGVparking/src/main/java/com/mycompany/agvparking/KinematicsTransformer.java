@@ -141,8 +141,8 @@ public class KinematicsTransformer {
         
         double agvX = axleX + L*Math.cos(angle);
         double agvY = axleY + L*Math.sin(angle);
-        double forwardDist = 60.0;
-        steps = 60;
+        double forwardDist = 75.0;
+        steps = 75;
         for(int i = 1; i <= steps; i++) {
             agvX += (forwardDist / steps) * Math.cos(angle);
             agvY += (forwardDist / steps) * Math.sin(angle);
@@ -178,7 +178,7 @@ public class KinematicsTransformer {
         while(angle > Math.PI) angle -= 2*Math.PI;
         while(angle < -Math.PI) angle += 2*Math.PI;
         
-        // 2. Backa 60 cm neråt i rutan
+        // 2. Backa 80 cm neråt i rutan
         double backDist = 80.0;
         steps = 80;
         for(int i = 1; i <= steps; i++) {
@@ -386,8 +386,8 @@ public class KinematicsTransformer {
         for(int i = 0; i < 100; i++) maneuver.add(new RobotState(finalAgvX, finalAgvY, axleX, axleY, angle, false));
 
         // 6. Kör 60 cm framåt
-        double forwardDist = 60.0;
-        steps = 60;
+        double forwardDist = 75.0;
+        steps = 75;
         for(int i = 1; i <= steps; i++) {
             finalAgvX += (forwardDist / steps) * Math.cos(angle);
             finalAgvY += (forwardDist / steps) * Math.sin(angle);
