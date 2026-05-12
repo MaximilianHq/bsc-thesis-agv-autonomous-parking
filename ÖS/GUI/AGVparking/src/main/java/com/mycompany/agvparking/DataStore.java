@@ -28,6 +28,7 @@ public class DataStore {
     boolean updateUiflag;
     public volatile boolean isPaused = true;
     public volatile boolean isStopped = false;
+    public volatile boolean waitingForReturn = false;
 
     // AGV koordinater
     double robotX;

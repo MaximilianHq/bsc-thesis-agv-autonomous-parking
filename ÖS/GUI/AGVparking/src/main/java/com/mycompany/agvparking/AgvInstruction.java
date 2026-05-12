@@ -21,6 +21,14 @@ public class AgvInstruction {
     public int targetY;
     public int rotation;
     public boolean monitorPosition; 
+    public int waitTimeMs;
+    
+    
+//    // Nytt meddelande: WAIT 'W' - används för att pausa AGV utan att rensa några instruktionslistor.
+//    public AgvInstruction(char type, int waitTimeMs) {
+//        this.type = type;
+//        this.waitTimeMs = waitTimeMs;
+//    }
 
     public AgvInstruction(int maneuver, int velocity, int steps, int targetX, int targetY, boolean monitorPosition) {
         this.maneuver = maneuver;

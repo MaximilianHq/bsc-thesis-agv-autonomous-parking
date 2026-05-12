@@ -9,7 +9,6 @@ package com.mycompany.agvparking;
  * @author fredr
  */
 
-
 public class AGVparking {
 
     DataStore ds;
@@ -40,11 +39,15 @@ public class AGVparking {
         
         boolean isDemo = (choice == 0); 
         
+        // --- ÄNDRINGEN ÄR HÄR ---
+        // Skapa vägvisaren (OptPlan) FÖRST
+        OptPlan op = new OptPlan(ds);
         
-        // Initialize and show the GUI. The constructor gets access to the DataStore         
-        cui = new ControlUI(ds, isDemo); 
+        // Skicka in ds, op och isDemo till ControlUI
+        cui = new ControlUI(ds, op, isDemo); 
         cui.setVisible(true); 
         cui.showStatus(); 
+        // ------------------------
 
         /* Initialize the objects rr and gui
          */
@@ -59,11 +62,6 @@ public class AGVparking {
         t1.start();
         // t2.start(); 
         
-        
-        OptPlan op = new OptPlan(ds);
-        //op.createPlan();
-        //cui.repaint();
-
     }
 
     public static void main(String[] args) {
