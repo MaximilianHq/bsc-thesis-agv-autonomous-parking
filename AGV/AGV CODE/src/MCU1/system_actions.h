@@ -5,6 +5,8 @@
 #include <static_vector.h>
 
 class StatusLED;
+class DWM;
+class IMU;
 
 class SysCtrl
 {
@@ -19,17 +21,17 @@ public:
     void on_stop();
     void on_stop(Comm::Packet &pkt);
     void on_obstacle_detected(const Position &pos);
-    void on_new_position_data(const DwmState &dwm, const ImuState &imu) { return; };
+    void on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm_offset);
+    bool on_startup(DWM &dwm, float dwm_offset);
 
-    void test()
+    void test_move()
     {
-        Comm::Packet p = {'D', _proto_handler_mcu.get_sequence(), {0x00, 20}, 2, 0, true};
+        Comm::Packet p = {'D', _proto_handler_bt.get_sequence(), {0x03, 0x32}, 2, 0, true};
         p.crc = Comm::csum(p);
 
         if (!_forward_to_mcu(p))
-            if (g_debug.IAction)
-                Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: 'test' to [MCU2]");
-        Serial.println("test finished");
+            if (g_debug.sysctrl)
+                Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send test move command to [ÖS]");
     };
 
 private:
@@ -39,6 +41,36 @@ private:
     StatusLED &_led_cmd;
 
     StaticVector<AgvState, 10> _state;
+    float _err_co_dwm = 0.25f;
+    float _err_co_imu = 0.05f;
+    float _last_body_move_ang = 0.0f;
+    static constexpr float _heading_dist_threshold_mm = 50.0f;
+    static constexpr float _heading_speed_threshold_mm_s = 100.0f;
+    static constexpr float _heading_alignment_tolerance_rad = PI / 18.0f; // 10 degrees
+
+    static float _norm_ang(float ang)
+    {
+        while (ang > PI)
+            ang -= 2.0f * PI;
+        while (ang < -PI)
+            ang += 2.0f * PI;
+        return ang;
+    };
+
+    static bool _heading_adjustment_allowed(float ang)
+    {
+        ang = _norm_ang(ang);
+        const float nearest = roundf(ang / (PI / 2.0f)) * (PI / 2.0f);
+        const float err = fabs(_norm_ang(ang - nearest));
+        return err <= _heading_alignment_tolerance_rad;
+    };
+
+    static float _snap_body_motion_axis(float ang)
+    {
+        ang = _norm_ang(ang);
+        return _norm_ang(roundf(ang / (PI / 2.0f)) * (PI / 2.0f));
+    };
+
     StaticVector<Comm::Packet, 20> _motion_buffert;
 
     ProtocolHandler _proto_handler_bt, _proto_handler_mcu;

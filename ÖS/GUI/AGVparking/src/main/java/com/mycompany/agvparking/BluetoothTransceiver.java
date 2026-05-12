@@ -89,25 +89,36 @@ public class BluetoothTransceiver implements Runnable {
                     cui.logSent(loggText + " Seq:" + nuvarandeSekvens);
                     nuvarandeSekvens = (nuvarandeSekvens + 1) % 256;
 
-                    // --- STOP-AND-WAIT LOGIK ---
+                    // --- STOP-AND-WAIT LOGIK (Closed-Loop med Tolerans) ---
                     if (typ == 'D') {
-                        // Vi pausar här och väntar på att AGV:n skickar en position som matchar målet
+                        // 1. Definiera hur nära som är "framme" (Toleransradie)
+                        double toleranceDistance = ds.gridsize * 1.5; // STOR FELMARGINAL! Ändra efter tester
                         boolean framme = false;
+                        
                         while (!framme && !ds.isStopped && !ds.isPaused) {
                             
-                            int currentGridX = (int) (ds.robotX / ds.gridsize);
-                            int currentGridY = (int) (ds.robotY / ds.gridsize);
+                            // Räkna ut målkoordinaten (mitten på mål-rutan)
+                            double targetX_cm = (instruktion.targetX * ds.gridsize) + (ds.gridsize / 2.0);
+                            double targetY_cm = (instruktion.targetY * ds.gridsize) + (ds.gridsize / 2.0);
                             
-                            if (currentGridX == instruktion.targetX && currentGridY == instruktion.targetY) {
+                            // Använd Pythagoras sats för att kolla det exakta avståndet i cm
+                            double dx = targetX_cm - ds.robotX;
+                            double dy = targetY_cm - ds.robotY;
+                            double avståndTillMål = Math.sqrt((dx * dx) + (dy * dy));
+                            
+                            if (avståndTillMål <= toleranceDistance) {
+                                // Vi är tillräckligt nära! Släpp loopen och skicka nästa kommando.
                                 framme = true;
+                                cui.appendStatus("Delmål nått (Avvikelse: " + String.format("%.1f", avståndTillMål) + " enheter)\n");
                             } else {
+                                // Vi är inte framme än, vänta på nästa $P-uppdatering
                                 Thread.sleep(100); 
                             }
                         }
                     } else if (typ == 'K') {
-                        // Om vi skickar ett K-kommando (t.ex. släpp bil), vänta lite innan vi skickar nästa
                         Thread.sleep(500); 
                     }
+                    // --------------------------------------------------------
                 } else {
                     Thread.sleep(200); // Ingen instruktion i kön, vila lite
                 }
@@ -148,25 +159,114 @@ public class BluetoothTransceiver implements Runnable {
         
         byte typ = data[1];
         
-        // Positionsuppdatering börjar med 'P' [cite: 67]
-        if (typ == 'P' && data.length >= 8) {
-            int x = data[3] & 0xFF; // X-koordinat är på index 3 [cite: 67]
-            int y = data[4] & 0xFF; // Y-koordinat är på index 4 [cite: 67]
-            int seq = data[6] & 0xFF; // Sekvensnummer ligger på index 6 [cite: 67]
-
-            // Uppdatera DataStore så att sändar-loopen ser att vi rör oss
-            ds.robotX = x * ds.gridsize + (ds.gridsize / 2.0);
-            ds.robotY = y * ds.gridsize + (ds.gridsize / 2.0);
-            ds.updateUiflag = true;
+// --- POSITIONSDATA ($P) ---
+        if (typ == 'P' && data.length >= 11) { 
+            
+            // 1. Läs in X (i millimeter)
+            int xHigh = data[2] & 0xFF;
+            int xLow = data[3] & 0xFF;
+            short x_mm = (short) ((xHigh << 8) | xLow); // cast till short fångar minustecken!
+            
+            // 2. Läs in Y (i millimeter)
+            int yHigh = data[4] & 0xFF;
+            int yLow = data[5] & 0xFF;
+            short y_mm = (short) ((yHigh << 8) | yLow);
             
             cui.updatePositionDisplay(); 
             cui.repaint(); // Uppdatera GUI direkt
+            // 3. Läs in Vinkeln (Theta i grader * 100)
+            int thetaHigh = data[6] & 0xFF;
+            int thetaLow = data[7] & 0xFF;
+            short thetaRå = (short) ((thetaHigh << 8) | thetaLow);
+            
+            // 4. Läs in Status (data[8]) och Seq (data[9])
+            
+            
+            // ---------- HAR INGET FÖR DETTA ÄNNU! ----------
+            int statusByte = data[8] & 0xFF;
+            // -----------------------------------------------
+            int seq = data[9] & 0xFF; 
+
+            // --- VINKELKONVERTERING ---
+            // Återskapa decimalerna: 3141 blir 31.41 grader
+            double thetaGrader = thetaRå / 100.0;
+            
+            // Konvertera till radianer för Javas Math-funktioner
+            double thetaRadianer = thetaGrader * (Math.PI / 180.0);
+            
+            // AGV = Positivt motsols. Java GUI = Positivt medsols.
+            // Vi sätter ett minustecken för att översätta det rätt till skärmen!
+            ds.robotAngle = -thetaRadianer; 
+
+            // --- SKALNING OCH POSITIONERING ---
+            // Din karta är 3500 mm (350 cm) delat på antalet rader (ds.rows)
+            double cell_size_mm = 3500.0 / ds.rows; 
+            
+            ds.robotX = (x_mm / cell_size_mm) * ds.gridsize;
+            ds.robotY = (y_mm / cell_size_mm) * ds.gridsize;
+            
+            // --- RÄKNA UT BAKAXELN PÅ BILEN ---
+            double pixelOffset = ds.agvOffset * ds.gridsize;
+            ds.axleX = ds.robotX - pixelOffset * Math.cos(ds.robotAngle);
+            ds.axleY = ds.robotY - pixelOffset * Math.sin(ds.robotAngle);
+            
+            ds.updateUiflag = true;
+            cui.repaint(); 
             
             skickaACK((byte) 1, seq); // Bekräfta mottagning
         }
-        // Lägg in hantering av 'H' (Hinder) eller 'A' (ACK) här i framtiden om nödvändigt [cite: 67]
+        
+        // --- HINDERDETEKTERING ($H) ---
+        // Format antaget: $ H X Y Seq CRC \n (Minst 8 bytes)
+        else if (typ == 'H' && data.length >= 8) {
+            int hinderX = data[3] & 0xFF; 
+            int hinderY = data[4] & 0xFF;
+            int seq = data[6] & 0xFF;
+            
+            cui.appendStatus("LARM: AGV upptäckte ett hinder på (" + hinderX + ", " + hinderY + ")!\n");
+            
+            // 1. Skicka ACK tillbaka direkt så AGV vet att vi mottagit varningen
+            skickaACK((byte) 1, seq);
+            
+            // 2. Tvinga AGV att stanna omedelbart och rensa gamla rutten från kön
+            skickaStoppKommando();
+            
+            // 3. Lägg in hindret i vår karta så Dijkstra kan se det
+            if (hinderX >= 0 && hinderX < ds.columns && hinderY >= 0 && hinderY < ds.rows) {
+                // Addera till listan av hinder
+                ds.ObstacleMatrix[hinderX][hinderY] = 1; 
+            }
+            
+            // 4. Be ControlUI att räkna om rutten runt hindret.
+            // (SwingUtilities används för att inte krascha GUI:t från en bakgrundstråd)
+            javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    cui.recalculateCurrentMission();
+                }
+            });
+        }
+        // --- FELMEDDELANDE FRÅN AGV ($E) ---
+        else if (typ == 'E' && data.length >= 6) { 
+            int seq_ref = data[2] & 0xFF; // Vilket kommando från oss som misslyckades
+            int seq = data[3] & 0xFF;     // AGV:ns sekvensnummer för felmeddelandet
+            
+            cui.appendStatus("KRITISKT LARM: AGV rapporterar fel! Refererar till vår sekvens: " + seq_ref + ".\n");
+            
+            // 1. Skicka ACK för att bekräfta att vi sett felet
+            skickaACK((byte) 1, seq);
+            
+            // 2. Tvinga systemet att stanna
+            skickaStoppKommando();
+            
+            // 3. Spärra vidare körning i Java-programmet
+            ds.isStopped = true; 
+            ds.isPaused = false; 
+            
+            cui.appendStatus("Systemet är fryst. Målbufferten i AGV:n kan vara tom. Starta om körningen.\n");
+        }
     }
-
+    
+    
     private void skickaACK(byte status, int seq) {
         try {
             byte typ = 'A';

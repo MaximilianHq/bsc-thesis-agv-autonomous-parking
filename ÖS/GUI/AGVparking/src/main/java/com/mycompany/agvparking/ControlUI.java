@@ -380,6 +380,37 @@ public class ControlUI extends javax.swing.JFrame {
         unvisitedMissions.clear();
         return false;
     }
+    
+    public void recalculateCurrentMission() {
+        if (currentMissionIndex == -1) return;
+        appendStatus("Räknar om rutten från nuvarande position...\n");
+
+        // Var är AGV:n just exakt nu?
+        int currentX = (int) (ds.robotX / ds.gridsize);
+        int currentY = (int) (ds.robotY / ds.gridsize);
+        int startNodeId = (currentY * ds.columns) + currentX;
+
+        // Vart skulle vi?
+        int destX = (int) (ds.LocationX[currentMissionIndex] / ds.gridsize);
+        int destY = (int) (ds.LocationY[currentMissionIndex] / ds.gridsize);
+        int endNodeId = (destY * ds.columns) + destX;
+
+        // Skapa en ny rutt i grafen
+        OptPlan op = new OptPlan(ds);
+        op.createPlan(startNodeId, endNodeId);
+        
+        if (ds.currentPath != null && !ds.currentPath.isEmpty()) {
+            // Här måste vi berätta för Bluetooth-tråden att det finns en ny rutt!
+            // Eftersom vi tömde kön när vi tryckte på Stopp, måste vi komprimera den igen.
+            RouteOptimizer optimizer = new RouteOptimizer(ds);
+            optimizer.compressPath(ds.currentPath, ds.isLoaded);
+            
+            ds.isPaused = false; // Släpp på spärren så Bluetooth rullar vidare
+            repaint();
+        } else {
+            appendStatus("FEL: Kunde inte hitta någon ny väg till målet!\n");
+        }
+    }
 
 
 //    public String updateRobotPosition() { 
@@ -809,7 +840,21 @@ public class ControlUI extends javax.swing.JFrame {
                 ds.robotTrajectory = currentOutboundLine; // Visa bara vägen till målet
             } else {
                 ds.robotTrajectory = currentReturnLine;   // Visa bara vägen hem
-            }            
+            }    
+            
+            if (!isDemoMode && ds.currentPath != null) {
+                boolean isLegStart = (ds.demoStep == 0);
+                for (int stop : masterDemoStops) {
+                    if (ds.demoStep == stop + 1) {
+                        isLegStart = true;
+                    }
+                }
+                if (isLegStart) {
+                    RouteOptimizer optimizer = new RouteOptimizer(ds);
+                    optimizer.compressPath(ds.currentPath, ds.isLoaded); 
+                }
+            }
+            
             repaint();
             return String.format("(%.1f, %.1f)", ds.robotX, ds.robotY); 
         }
@@ -990,4 +1035,5 @@ public void appendStatus(String text) {
 
     // Egendefinierade variabler
     private BluetoothTransceiver btTransceiver;
+    private int currentMissionIndex = -1;
 }
