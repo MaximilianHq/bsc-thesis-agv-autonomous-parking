@@ -53,27 +53,34 @@ public class RouteOptimizer {
                 firstMove = false;
             } else {
                     // Skriv ut instruktion för raksträckan vi precis kört
-                    printInstruction(currentDx, currentDy, stepCount, currentX, currentY);
+                    printInstruction(currentDx, currentDy, stepCount, currentX, currentY,isLoaded);
 
                     // --- NYTT: IDENTIFIERA SVÄNG OCH LÄGG TILL CURVED TRAJECTORY ---
                     // Kryssprodukten avslöjar om vi svänger höger eller vänster
                     int crossProduct = currentDx * dy - currentDy * dx;
+ 
                     
                     if (crossProduct > 0) { // HÖGERSVÄNG
+                        int maneuver = isLoaded ? InstructionsStore.CURVED_TRAJECTORY_RIGHT : InstructionsStore.TURNING_RIGHT;
+                        //Hastighet
+                    int velocity = InstructionsStore.getTargetVelocity(maneuver,isLoaded);
                         if (isLoaded) {
                             System.out.println("Körinstruktion: Kurvad bana Höger (90 grader)");
-                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.MOVE_RIGHT, 100, 0, currentX, currentY, false));
+                            ds.instructionQueue.add(new AgvInstruction(maneuver, velocity, 0, currentX, currentY, false));
                         } else {
                             System.out.println("Körinstruktion: Rotera Höger på stället");
-                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_RIGHT, 100, 0, currentX, currentY, false));
+                            ds.instructionQueue.add(new AgvInstruction(maneuver, velocity, 0, currentX, currentY, false));
                         }
                     } else if (crossProduct < 0) { // VÄNSTERSVÄNG
+                        int maneuver = isLoaded ? InstructionsStore.CURVED_TRAJECTORY_LEFT : InstructionsStore.TURNING_LEFT;
+                        //Hastighet
+                    int velocity = InstructionsStore.getTargetVelocity(maneuver,isLoaded);
                         if (isLoaded) {
                             System.out.println("Körinstruktion: Kurvad bana Vänster (90 grader)");
-                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.MOVE_LEFT, 100, 0, currentX, currentY, false));
+                            ds.instructionQueue.add(new AgvInstruction(maneuver, velocity, 0, currentX, currentY, false));
                         } else {
                             System.out.println("Körinstruktion: Rotera Vänster på stället");
-                            ds.instructionQueue.add(new AgvInstruction(InstructionsStore.TURNING_LEFT, 100, 0, currentX, currentY, false));
+                            ds.instructionQueue.add(new AgvInstruction(maneuver, velocity, 0, currentX, currentY, false));
                         }
                     }
 
@@ -92,15 +99,19 @@ public class RouteOptimizer {
             int finalX = lastId % ds.columns;
             int finalY = lastId / ds.columns;
             // Skriv ut instruktion
-            printInstruction(currentDx, currentDy, stepCount, finalX, finalY);
+            printInstruction(currentDx, currentDy, stepCount, finalX, finalY, isLoaded);
         }
 
         System.out.println("--- Optimering klar ---\n");
     }
 
     // Hjälpmetod för att tolka dx och dy till de 8 möjliga manövrarna
-    private void printInstruction(int dx, int dy, int steps, int targetX, int targetY) {
+    private void printInstruction(int dx, int dy, int steps, int targetX, int targetY, boolean isLoaded) {
        int direction = InstructionsStore.getDirectionFromDelta(dx,dy);
+       
+       //Hastighet
+       int velocity = InstructionsStore.getTargetVelocity(direction, isLoaded);
+       
         String directionText = InstructionsStore.getInstructionText(direction);
 
         // Här skriver vi ut det i konsolen. Längre fram är det kanske här 
@@ -112,10 +123,10 @@ public class RouteOptimizer {
         boolean shouldMonitor = true; 
         if (direction >= 5) { 
             shouldMonitor = false; 
-        ds.instructionQueue.add(new AgvInstruction(direction, 100, steps, targetX, targetY, shouldMonitor)); 
+        ds.instructionQueue.add(new AgvInstruction(direction, velocity, steps, targetX, targetY, shouldMonitor)); 
         } 
         if (direction > 0 && direction <= 4) { 
-            ds.instructionQueue.add(new AgvInstruction(direction, 100, steps, targetX, targetY, shouldMonitor)); 
+            ds.instructionQueue.add(new AgvInstruction(direction, velocity, steps, targetX, targetY, shouldMonitor)); 
         } 
         
             }

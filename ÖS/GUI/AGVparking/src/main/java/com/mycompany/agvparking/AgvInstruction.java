@@ -22,25 +22,22 @@ public class AgvInstruction {
     public int rotation;
     public boolean monitorPosition; 
 
+    
     public AgvInstruction(int maneuver, int velocity, int steps, int targetX, int targetY, boolean monitorPosition) {
         this.maneuver = maneuver;
         this.velocity = velocity;
         this.steps = steps; 
-
-    }
-    public AgvInstruction(int maneuver, int velocity, int steps, int targetX, int targetY) {
-        this.maneuver = maneuver;
-        this.velocity = velocity;
-        this.steps = steps;
         this.targetX = targetX;
         this.targetY = targetY;
-       
+        this.monitorPosition = monitorPosition;
+
     }
     
-    public AgvInstruction(int maneuver, int rotation)
+    public AgvInstruction(int maneuver, int rotation, int velocity)//Denna är nog överflödig, används inte längre
     {
         this.maneuver = maneuver; 
-        this.rotation = rotation;//Behövs något mer göras för denna?
+        this.rotation = rotation;
+        this.velocity = velocity;
     }
     
     
