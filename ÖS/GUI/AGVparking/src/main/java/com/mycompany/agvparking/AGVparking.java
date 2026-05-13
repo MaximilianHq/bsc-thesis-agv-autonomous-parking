@@ -6,10 +6,8 @@ package com.mycompany.agvparking;
 
 /**
  *
- * @author fredr
  * @author KTS - G2 
  */
-
 
 public class AGVparking {
 
@@ -27,12 +25,14 @@ public class AGVparking {
         
         // ds.setFileName("C:\\Users\\fredr\\OneDrive - Linköpings universitet\\TNK132\\TNK132\\GUI\\Lab2\\Autopark-Lab2\\loc.txt");
         ds.setFileName("C:\\Users\\andre\\OneDrive - Linköpings universitet\\GitHub\\Kandidatprojekt\\Kanditatprojekt-2026\\ÖS\\loc_ny.txt");
+        ds.setFileName("C:\\Users\\andre\\OneDrive - Linköpings universitet\\GitHub\\Kandidatprojekt\\Kanditatprojekt-2026\\ÖS\\loc_ny.txt"); 
         ds.readCoords(); 
 
         Object[] options = {"Demo-läge", "Drift-läge"}; 
         int choice = javax.swing.JOptionPane.showOptionDialog( 
         null, 
         "Välj startläge för Autopark:", 
+        "Välj startläge för Autopark:",
         "Startinställningar", 
         javax.swing.JOptionPane.YES_NO_OPTION, 
         javax.swing.JOptionPane.QUESTION_MESSAGE, 
@@ -42,11 +42,15 @@ public class AGVparking {
         
         boolean isDemo = (choice == 0); 
         
+        // --- ÄNDRINGEN ÄR HÄR ---
+        // Skapa vägvisaren (OptPlan) FÖRST
+        OptPlan op = new OptPlan(ds);
         
-        // Initialize and show the GUI. The constructor gets access to the DataStore         
-        cui = new ControlUI(ds, isDemo); 
+        // Skicka in ds, op och isDemo till ControlUI
+        cui = new ControlUI(ds, op, isDemo); 
         cui.setVisible(true); 
         cui.showStatus(); 
+        // ------------------------
 
         /* Initialize the objects rr and gui
          */
@@ -61,14 +65,8 @@ public class AGVparking {
         t1.start();
         // t2.start(); 
         
-        
-        OptPlan op = new OptPlan(ds);
-        //op.createPlan();
-        //cui.repaint();
-
     }
 
-    public static void main(String[] args) {
     public static void main(String[] args) { 
     try { 
             // Ladda det mörka temat som bas 
