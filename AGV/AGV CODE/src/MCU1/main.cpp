@@ -176,14 +176,16 @@ void loop()
     DwmState d;
     ImuState i;
     if (dwm.read(d))
+    {
         if (imu.read(i))
             sysctrl.on_new_position_data(d, i, DWM_OFFSET);
-        else
+        else if (g_debug.imu)
             Serial.println("[IMU] no read");
-    else
+    }
+    else if (g_debug.dwm)
         Serial.println("[DWM] no read");
 
-    delay(20);
+    delay(200);
 }
 
 void blt_status_routine()

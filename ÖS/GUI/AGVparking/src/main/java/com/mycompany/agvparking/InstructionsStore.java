@@ -71,4 +71,33 @@ public class InstructionsStore {
         }
     }
     
+    //Hämta hstighet. Tar inte hänsyn till START_PARKING = 13
+  public static int getTargetVelocity(int maneuver, boolean isLoaded) {
+    // STOP (14) ska ALLTID ha hastighet 0
+    if (maneuver == 14) return 0;
+
+    // Kategorisering manövrar
+    boolean isStraight = (maneuver <= 0x03);
+    boolean isDiagonal = (maneuver >= 0x04 && maneuver <= 0x07);
+    boolean isTurning = (maneuver >= 0x08 && maneuver <= 0x0D);
+
+    // Säkerhetsspärr: Ingen diagonal körning med släp
+    if (isLoaded && isDiagonal) {
+        return 0; 
+    }
+
+    // Hastighetslogik
+    if (isLoaded) {
+        // Med släp
+        if (isStraight) return 100;
+        if (isTurning)  return 75;
+        return 75; 
+    } else {
+        // Utan släp 
+        if (isStraight) return 75;
+        if (isTurning || isDiagonal) return 50;
+        return 75; 
+    }
+}
+    
 }

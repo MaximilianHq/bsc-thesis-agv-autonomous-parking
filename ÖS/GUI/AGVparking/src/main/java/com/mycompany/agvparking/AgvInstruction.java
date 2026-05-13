@@ -13,6 +13,7 @@ public class AgvInstruction {
     
     public char type = 'D'; // Standard, eftersom de flesta meddelanden är av typen D (körkommando)
     public int instructionByte; // Kommer användas för 'K' kommandon (enskilt kommando
+    public int instructionByte; // Kommer användas för 'K' kommandon (enskilt kommando) 
     
     public int maneuver;
     public int velocity; // Kanske ska ändras till angleAGV
@@ -21,26 +22,31 @@ public class AgvInstruction {
     public int targetY;
     public int rotation;
     public boolean monitorPosition; 
+    public int waitTimeMs;
+    
+    
+//    // Nytt meddelande: WAIT 'W' - används för att pausa AGV utan att rensa några instruktionslistor.
+//    public AgvInstruction(char type, int waitTimeMs) {
+//        this.type = type;
+//        this.waitTimeMs = waitTimeMs;
+//    }
 
+    
     public AgvInstruction(int maneuver, int velocity, int steps, int targetX, int targetY, boolean monitorPosition) {
         this.maneuver = maneuver;
         this.velocity = velocity;
         this.steps = steps; 
-
-    }
-    public AgvInstruction(int maneuver, int velocity, int steps, int targetX, int targetY) {
-        this.maneuver = maneuver;
-        this.velocity = velocity;
-        this.steps = steps;
         this.targetX = targetX;
         this.targetY = targetY;
-       
+        this.monitorPosition = monitorPosition;
+
     }
     
-    public AgvInstruction(int maneuver, int rotation)
+    public AgvInstruction(int maneuver, int rotation, int velocity)//Denna är nog överflödig, används inte längre
     {
         this.maneuver = maneuver; 
-        this.rotation = rotation;//Behövs något mer göras för denna?
+        this.rotation = rotation;
+        this.velocity = velocity;
     }
     
     

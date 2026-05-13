@@ -2,6 +2,58 @@
 #include <types.h>
 #include "comm.h"
 
+namespace
+{
+    void print_hex_byte(uint8_t value)
+    {
+        if (value < 0x10)
+            Serial.print("0");
+        Serial.print(value, HEX);
+    }
+
+    void debug_print_packet(const String &dbg_name, const char *label, const Comm::Packet &pkt, uint8_t crc_value)
+    {
+        Serial.print("[COMM ");
+        Serial.print(dbg_name);
+        Serial.print("] ");
+        Serial.print(label);
+        Serial.print(": ");
+
+        print_hex_byte(static_cast<uint8_t>('$'));
+        Serial.print(" ");
+        print_hex_byte(static_cast<uint8_t>(pkt.type));
+
+        for (size_t i = 0; i < pkt.data_len; i++)
+        {
+            Serial.print(" ");
+            print_hex_byte(pkt.data[i]);
+        }
+
+        Serial.print(" ");
+        print_hex_byte(pkt.seq);
+        Serial.print(" ");
+        print_hex_byte(crc_value);
+        Serial.print(" ");
+        print_hex_byte(static_cast<uint8_t>('\n'));
+        Serial.println();
+
+        Serial.print("[COMM ");
+        Serial.print(dbg_name);
+        Serial.print("] type=");
+        Serial.write(pkt.type);
+        Serial.print(" data_len=");
+        Serial.print(pkt.data_len);
+        Serial.print(" seq=0x");
+        print_hex_byte(pkt.seq);
+        Serial.print(" crc=0x");
+        print_hex_byte(crc_value);
+        Serial.print(" calc=0x");
+        print_hex_byte(Comm::csum(pkt));
+        Serial.print(" approved=");
+        Serial.println(pkt.approved ? "yes" : "no");
+    }
+} // namespace
+
 uint8_t Comm::csum(const Packet &pkt)
 {
     uint8_t crc = 0;
@@ -16,7 +68,6 @@ Comm::Comm(Stream &s, const String &debug_id) : _str(s), _dbg_name(debug_id) {}
 
 bool Comm::read(Packet &out)
 {
-    bool packet_delivered = false;
     bool started_packet = false;
 
     while (_str.available())
@@ -26,23 +77,51 @@ bool Comm::read(Packet &out)
         switch (_state)
         {
         case WAIT_START:
-            if (g_debug.comm)
-                Serial.println("[COMM " + _dbg_name + "] Packet recieving...");
             if (b == '$')
             {
                 started_packet = true;
-                _pkt = Packet{}; // nollställ
+                _pkt = Packet{};
                 _read_index = 0;
                 _state = READ_TYPE;
+                if (g_debug.comm)
+                    Serial.println("[COMM " + _dbg_name + "] Packet recieving...");
             }
             break;
 
         case READ_TYPE:
+            if (b == '$')
+            {
+                _pkt = Packet{};
+                _read_index = 0;
+                if (g_debug.comm)
+                    Serial.println("[COMM " + _dbg_name + "] Restarting packet read");
+                break;
+            }
+
+            if (b == '\r' || b == '\n')
+            {
+                _state = WAIT_START;
+                break;
+            }
+
             _pkt.type = static_cast<char>(b);
             _state = READ_BODY;
             break;
 
         case READ_BODY:
+            if (b == '$')
+            {
+                _pkt = Packet{};
+                _read_index = 0;
+                _state = READ_TYPE;
+                if (g_debug.comm)
+                    Serial.println("[COMM " + _dbg_name + "] Resync on new start byte");
+                break;
+            }
+
+            if (b == '\r')
+                break;
+
             if (b == '\n')
             {
                 if (g_debug.comm)
@@ -56,37 +135,14 @@ bool Comm::read(Packet &out)
                     _pkt.data[_pkt.data_len + 1] = 0;
                     _pkt.approved = (_pkt.crc == csum(_pkt));
 
-                    out = _pkt; // leverera färdigt paket
-                    packet_delivered = true;
-
-                    // === NY DEBUG: skriv hela paketet ===
                     if (g_debug.comm)
-                    {
-                        Serial.print("[COMM " + _dbg_name + "] Recieving message: $ ");
-                        Serial.write(_pkt.type);
+                        debug_print_packet(_dbg_name, "Recieved frame", _pkt, _pkt.crc);
 
-                        for (size_t i = 0; i < _pkt.data_len; i++)
-                        {
-                            Serial.print(_pkt.data[i], HEX);
-                            Serial.print(" ");
-                        }
-
-                        Serial.println();
-
-                        Serial.println();
-                        Serial.print("Received crc: ");
-                        Serial.print("CHAR = ");
-                        Serial.print(static_cast<char>(_pkt.crc));
-                        Serial.print(", HEX = ");
-                        Serial.println(_pkt.crc);
-
-                        Serial.print("Calculated crc: ");
-                        Serial.print("CHAR = ");
-                        Serial.print(static_cast<char>(csum(_pkt)));
-                        Serial.print(", HEX = ");
-                        Serial.println(csum(_pkt));
-                    }
+                    out = _pkt;
+                    _state = WAIT_START;
+                    return true;
                 }
+
                 _state = WAIT_START;
             }
             else
@@ -107,10 +163,10 @@ bool Comm::read(Packet &out)
         }
     }
 
-    if (g_debug.comm && started_packet && !packet_delivered)
+    if (g_debug.comm && started_packet)
         Serial.println("[COMM " + _dbg_name + "] Read paused");
 
-    return packet_delivered;
+    return false;
 }
 
 bool Comm::write(const Packet &pkt)
@@ -119,24 +175,7 @@ bool Comm::write(const Packet &pkt)
         return false;
 
     if (g_debug.comm)
-    {
-        Serial.println("[COMM " + _dbg_name + "] Sending message: $ ");
-        Serial.write(pkt.type);
-
-        for (size_t i = 0; i < pkt.data_len; i++)
-        {
-            Serial.print(pkt.data[i], HEX);
-            Serial.print(" ");
-        }
-
-        Serial.println();
-
-        Serial.print("Calculated crc: ");
-        Serial.print("CHAR = ");
-        Serial.print(static_cast<char>(csum(pkt)));
-        Serial.print(", HEX = ");
-        Serial.println(csum(pkt));
-    }
+        debug_print_packet(_dbg_name, "Sending frame", pkt, (pkt.crc != 0) ? pkt.crc : csum(pkt));
 
     _str.write(static_cast<uint8_t>('$'));
     _str.write(static_cast<uint8_t>(pkt.type));

@@ -80,7 +80,7 @@ void SysCtrl::on_obstacle_detected(const Position &pos)
 
 void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm_offset)
 {
-    if (true)
+    if (g_debug.positioning)
     {
         Serial.println("[SYSCTRL] Received values");
         Serial.print("[DWM] X: ");
@@ -167,7 +167,7 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm
         upd.theta = _norm_ang(upd.theta + _err_co_imu * theta_err);
     }
 
-    if (true)
+    if (g_debug.positioning)
     {
         const float theta_rep103_deg = upd.theta * 180.0f / PI;
         const float theta_y_forward_deg = _norm_ang((PI / 2.0f) - upd.theta) * 180.0f / PI;
@@ -225,7 +225,7 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm
 bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
 {
     if (g_debug.sysctrl)
-        Serial.print("[SYSCTRL] Calibrating Position...");
+        Serial.println("[SYSCTRL] Calibrating AGV Angle...");
 
     DwmState d1, d2;
 
@@ -240,7 +240,7 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
     }
 
     // Kör fram på MCU2
-    Comm::Packet p = {'D', _proto_handler_mcu.get_sequence(), {0x01, 0x32}, 2, 0, true};
+    Comm::Packet p = {'D', _proto_handler_mcu.get_sequence(), {0x00, 0x32}, 2, 0, true};
     p.crc = Comm::csum(p);
     if (!_forward_to_mcu(p))
     {
@@ -270,7 +270,7 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
     _state.push_back(s);
 
     if (g_debug.sysctrl)
-        Serial.print("[SYSCTRL] Calibration Complete");
+        Serial.println("[SYSCTRL] Calibration Complete");
 
     return true;
 }
@@ -279,27 +279,24 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
 {
     switch (pkt.type)
     {
-    case 'D': // motion
+    case 'D':
+        if (g_debug.sysctrl)
+            Serial.println("[SYSCTRL] New movement");
         on_new_motion(pkt);
         break;
     case 'K':
         switch (pkt.data[0])
         {
-        case 'P': // pause
-            break;
-        case 'S': // start
-            break;
-        case 'N': // next motion
+        case 'N':
+            if (g_debug.sysctrl)
+                Serial.println("[SYSCTRL] Next movement");
             _next_movement(pkt);
             break;
         case 'H': // set status
             _led_cmd.set_status(StatusLED::State::STATUS_RETURNING);
             break;
-        case 'L': // lift / lower
-            if (pkt.data[1] == 1)
-                _crane.drive_forward(100, 5000);
-            else if (pkt.data[1] == 1)
-                _crane.drive_backward(100, 5000);
+        case 'C': // run calibration // TODO fixa så att sysctrl har dwm och imu
+            // on_startup();
             break;
         default:
             break;
