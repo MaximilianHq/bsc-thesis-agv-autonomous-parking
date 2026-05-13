@@ -47,19 +47,27 @@ class ProtocolHandler
 public:
     ProtocolHandler(Comm &comm, SysCtrl &actions);
 
-    uint8_t get_sequence() const;
-    void iterate_sequence();
-    void add_buffer_sent(const Comm::Packet &pkt);
-    void add_buffer_rcvd(const Comm::Packet &pkt);
+    struct Sequence
+    {
+        uint8_t seq;
+        bool avalible;
+    };
+
+    Sequence get_sequence() const;
     void handle(const Comm::Packet &pkt);
+    bool send_pkt(Comm::Packet &pkt, bool que = true);
 
 private:
     static Comm::Packet _make_ack(const Comm::Packet &pkt);
 
     Comm &_comm;
-    uint8_t _seq;
     SysCtrl &_actions;
 
+    uint8_t _seq;
+    bool _avalible;
+
     StaticVector<Comm::Packet, 10> _pkt_buffer_sent;
-    StaticVector<Comm::Packet, 10> _pkt_buffer_rcvd;
+    StaticVector<Comm::Packet, 10> _pkt_send_que;
+
+    void _iterate_sequence();
 };

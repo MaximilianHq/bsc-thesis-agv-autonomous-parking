@@ -42,35 +42,29 @@ void SysCtrl::on_new_motion(Comm::Packet &pkt) { _motion_buffert.push_back(pkt);
 
 void SysCtrl::on_stop()
 {
-    Comm::Packet p = {'X', _proto_handler_mcu.get_sequence(), {}, 0, 0, true};
-    p.crc = Comm::csum(p);
+    Comm::Packet p = {'X', 0, {}, 0, 0, true};
 
     on_stop(p);
 }
 
 void SysCtrl::on_stop(Comm::Packet &pkt)
 {
-    if (!_forward_to_mcu(pkt))
-        if (g_debug.sysctrl)
-            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: 'stop' to [MCU2]");
+    if (!_proto_handler_mcu.send_pkt(pkt) && g_debug.sysctrl)
+        Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: 'stop' to [MCU2]");
+    if (!_proto_handler_bt.send_pkt(pkt) && g_debug.sysctrl)
+        Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send status: 'stop' to [ÖS]");
     _led_cmd.set_status(StatusLED::State::STATUS_CMD_STOPPING);
 }
 
 void SysCtrl::on_obstacle_detected(const Position &pos)
 {
-    Comm::Packet p = {'H', _proto_handler_bt.get_sequence(), {}, 4, 0, true};
+    Comm::Packet p = {'H', 0, {}, 4, 0, true};
     p.data[0] = static_cast<uint8_t>((pos.x >> 8) & 0xFF);
     p.data[1] = static_cast<uint8_t>(pos.x & 0xFF);
     p.data[2] = static_cast<uint8_t>((pos.y >> 8) & 0xFF);
     p.data[3] = static_cast<uint8_t>(pos.y & 0xFF);
-    p.crc = Comm::csum(p);
 
-    if (_comm_mcu.write(p))
-    {
-        _proto_handler_bt.iterate_sequence();
-        _proto_handler_bt.add_buffer_sent(p);
-    }
-    else if (g_debug.sysctrl)
+    if (!_proto_handler_bt.send_pkt(p, false) && g_debug.sysctrl)
         Serial.println("[SysCtrl] \033[31mWARNING\033[0m - Failed send obstacle position to [ÖS]");
 
     _led_cmd.set_status(StatusLED::State::STATUS_OBSTACLE);
@@ -192,7 +186,7 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm
     _state.push_front(upd);
 
     // send position update
-    Comm::Packet p = {'P', _proto_handler_bt.get_sequence(), {}, 7, 0, true};
+    Comm::Packet p = {'P', 0, {}, 7, 0, true};
 
     const int16_t x = static_cast<int16_t>(upd.pos.x);
     const int16_t y = static_cast<int16_t>(upd.pos.y);
@@ -209,14 +203,7 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm
 
     p.data[6] = 0x00;
 
-    p.crc = Comm::csum(p);
-
-    if (_comm_bt.write(p))
-    {
-        _proto_handler_bt.iterate_sequence();
-        _proto_handler_bt.add_buffer_sent(p);
-    }
-    else if (g_debug.sysctrl)
+    if (!_proto_handler_bt.send_pkt(p, false) && g_debug.sysctrl)
         Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send AGV position to [ÖS]");
 };
 
@@ -238,15 +225,24 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
     }
 
     // Kör fram på MCU2
-    Comm::Packet p = {'D', _proto_handler_mcu.get_sequence(), {0x00, 0x32}, 2, 0, true};
-    p.crc = Comm::csum(p);
-    if (!_forward_to_mcu(p))
+    Comm::Packet p = {'D', 0, {0x00, 0x32}, 2, 0, true};
+
+    if (!_proto_handler_mcu.send_pkt(p))
     {
         if (g_debug.sysctrl)
-            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: Drive to [MCU2]");
+            Serial.println("[SYSCTRL] \033[31mWATNING\033[0m - Failed to send command: Drive to [MCU2]");
         return false;
     }
-    delay(2000);
+
+    delay(100);
+    if (!_proto_handler_mcu.get_sequence().avalible)
+    {
+        if (g_debug.sysctrl)
+            Serial.println("[SYSCTRL] \033[31mWATNING\033[0m - Response timed out");
+        return false;
+    }
+
+    delay(1000);
     on_stop();
 
     for (int i = 0; i < 10; i++)
@@ -321,23 +317,10 @@ void SysCtrl::_process_mcu_packet(Comm::Packet &pkt)
     }
 }
 
-bool SysCtrl::_forward_to_mcu(Comm::Packet &pkt)
-{
-    pkt.seq = _proto_handler_mcu.get_sequence();
-    pkt.crc = Comm::csum(pkt);
-
-    if (!_comm_mcu.write(pkt))
-        return false;
-
-    _proto_handler_mcu.iterate_sequence();
-    _proto_handler_mcu.add_buffer_sent(pkt);
-    return true;
-}
-
 void SysCtrl::_next_movement(Comm::Packet &pkt)
 {
     if (_motion_buffert.size())
-        if (_forward_to_mcu(_motion_buffert[0]))
+        if (_proto_handler_mcu.send_pkt(_motion_buffert[0]))
         {
             _motion_buffert.pop(0);
 
@@ -353,15 +336,9 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
         }
     else
     {
-        Comm::Packet p = {'E', _proto_handler_bt.get_sequence(), {'N', pkt.seq}, 1, 0, true};
-        p.crc = Comm::csum(p);
+        Comm::Packet p = {'E', 0, {'N', pkt.seq}, 1, 0, true};
 
-        if (_comm_mcu.write(p))
-        {
-            _proto_handler_bt.iterate_sequence();
-            _proto_handler_bt.add_buffer_sent(p);
-        }
-        else if (g_debug.sysctrl)
+        if (!_proto_handler_bt.send_pkt(p) && g_debug.sysctrl)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send no movement error to [ÖS]");
     }
 }

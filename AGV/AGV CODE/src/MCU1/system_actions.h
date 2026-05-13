@@ -26,10 +26,9 @@ public:
 
     void test_move()
     {
-        Comm::Packet p = {'D', _proto_handler_bt.get_sequence(), {0x03, 0x32}, 2, 0, true};
-        p.crc = Comm::csum(p);
+        Comm::Packet p = {'D', 0, {0x03, 0x32}, 2, 0, true};
 
-        if (!_forward_to_mcu(p))
+        if (!_proto_handler_mcu.send_pkt(p))
             if (g_debug.sysctrl)
                 Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send test move command to [ÖS]");
     };
@@ -41,8 +40,8 @@ private:
     StatusLED &_led_cmd;
 
     StaticVector<AgvState, 10> _state;
-    float _err_co_dwm = 0.25f;
-    float _err_co_imu = 0.05f;
+    const float _err_co_dwm = 0.25f;
+    const float _err_co_imu = 0.05f;
     float _last_body_move_ang = 0.0f;
     static constexpr float _heading_dist_threshold_mm = 50.0f;
     static constexpr float _heading_speed_threshold_mm_s = 100.0f;
@@ -77,6 +76,5 @@ private:
 
     void _process_bt_packet(Comm::Packet &pkt);
     void _process_mcu_packet(Comm::Packet &pkt);
-    bool _forward_to_mcu(Comm::Packet &pkt);
     void _next_movement(Comm::Packet &pkt);
 };
