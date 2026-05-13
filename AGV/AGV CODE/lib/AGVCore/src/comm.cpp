@@ -182,7 +182,7 @@ bool Comm::write(const Packet &pkt)
 
     _str.write(pkt.data, pkt.data_len);
     _str.write(pkt.seq);
-    _str.write((pkt.crc != 0) ? pkt.crc : csum(pkt));
+    _str.write(pkt.crc);
 
     _str.write(static_cast<uint8_t>('\n'));
 
@@ -191,17 +191,7 @@ bool Comm::write(const Packet &pkt)
 
 ProtocolHandler::ProtocolHandler(Comm &comm, SysCtrl &actions) : _comm(comm), _actions(actions) {}
 
-uint8_t ProtocolHandler::get_sequence() const { return _seq; }
-void ProtocolHandler::iterate_sequence()
-{
-    uint8_t prev = _seq;
-    _seq++;
-    if (prev > _seq && g_debug.comm)
-        Serial.println("[PROTOHANDLER] \033[33mWARNING\033[0m - Sequence overflow");
-}
-
-void ProtocolHandler::add_buffer_sent(const Comm::Packet &pkt) { _pkt_buffer_sent.push_back(pkt); }
-void ProtocolHandler::add_buffer_rcvd(const Comm::Packet &pkt) { _pkt_buffer_rcvd.push_back(pkt); }
+ProtocolHandler::Sequence ProtocolHandler::get_sequence() const { return {_seq, _avalible}; }
 
 void ProtocolHandler::handle(const Comm::Packet &pkt)
 {
@@ -209,8 +199,17 @@ void ProtocolHandler::handle(const Comm::Packet &pkt)
     if (pkt.type == 'A')
     {
         if (pkt.approved)
+        {
             _pkt_buffer_sent.pop_if([&pkt](const Comm::Packet &p)
                                     { return p.seq == pkt.seq; });
+            if (_pkt_send_que.size() > 0)
+            {
+                auto pkt = _pkt_send_que.pop_front();
+                send_pkt(pkt);
+            }
+            else
+                _avalible = true;
+        }
         else
             _comm.write(*_pkt_buffer_sent.find_if([&pkt](const Comm::Packet &p)
                                                   { return p.seq == pkt.seq; }));
@@ -229,7 +228,26 @@ void ProtocolHandler::handle(const Comm::Packet &pkt)
         Serial.println("[PROTOHANDLER] Failed to respond");
 
     if (pkt.approved)
-        _pkt_buffer_rcvd.push_back(pkt);
+        _pkt_send_que.push_back(pkt);
+}
+
+bool ProtocolHandler::send_pkt(Comm::Packet &pkt, bool que)
+{
+    Sequence seq = get_sequence();
+    if (!seq.avalible && que)
+        _pkt_send_que.push_back(pkt);
+
+    pkt.seq = seq.seq;
+    pkt.crc = (pkt.crc != 0) ? pkt.crc : Comm::csum(pkt);
+
+    if (!_comm.write(pkt))
+        return false;
+
+    _iterate_sequence();
+    _pkt_buffer_sent.push_back(pkt);
+    _avalible = false;
+
+    return true;
 }
 
 Comm::Packet ProtocolHandler::_make_ack(const Comm::Packet &pkt)
@@ -237,4 +255,12 @@ Comm::Packet ProtocolHandler::_make_ack(const Comm::Packet &pkt)
     Comm::Packet p = {'A', pkt.seq, {((pkt.approved) ? static_cast<uint8_t>(0x01) : static_cast<uint8_t>(0x00))}, 1, 0, true};
     p.crc = Comm::csum(p);
     return p;
+}
+
+void ProtocolHandler::_iterate_sequence()
+{
+    uint8_t prev = _seq;
+    _seq++;
+    if (prev > _seq && g_debug.comm)
+        Serial.println("[PROTOHANDLER] \033[33mWARNING\033[0m - Sequence overflow");
 }
