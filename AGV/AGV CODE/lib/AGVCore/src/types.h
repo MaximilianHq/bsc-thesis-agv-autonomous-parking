@@ -39,6 +39,7 @@ struct AgvMotion
 struct Debug
 {
     const bool sysctrl = true;
+    const bool positioning = false;
     const bool dwm = false;
     const bool imu = true;
     const bool comm = true;
@@ -65,4 +66,4 @@ static void pds(uint8_t *arr, int base = HEX, size_t len = 0, String msg = "")
         Serial.print(arr[i], base);
         Serial.print(" ");
     }
-}
+};

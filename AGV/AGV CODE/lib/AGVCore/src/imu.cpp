@@ -27,10 +27,10 @@ void IMU::setup()
     last_sample = millis();
 }
 
-//kalibrering
+// kalibrering
 void IMU::calibrate()
 {
-    Serial.println("Calibrating IMU... keep still");
+    Serial.println("[IMU] Calibrating... keep still");
 
     float sx = 0;
     float sy = 0;
@@ -57,12 +57,12 @@ void IMU::calibrate()
     _offset_ax = sx / n;
     _offset_ay = sy / n;
 
-    //ta bort gravitationen
+    // ta bort gravitationen
     _offset_az = (sz / n) - 1.0f;
 
     _offset_gz = sgz / n;
 
-    Serial.println("Calibration done");
+    Serial.println("[IMU] Calibration Complete");
 }
 
 bool IMU::read(ImuState &state)
@@ -104,7 +104,7 @@ bool IMU::read(ImuState &state)
     if (fabs(wz) < _GYRO_DEADZONE_RAD_S)
         wz = 0.0f;
 
-    //output
+    // output
     state.ax = ax;
     state.ay = ay;
     state.wz = wz;
