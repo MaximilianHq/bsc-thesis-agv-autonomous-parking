@@ -1,10 +1,11 @@
 #include "system_actions.h"
+#include <types.h>
 #include <status_led.h>
 #include <coords.h>
 #include <dwm.h>
-#include <servo_continious.h>
+#include "lift.h"
 
-SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, ServoContinious &crane)
+SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, Lift &crane)
     : _comm_bt(comm_bt),
       _comm_mcu(comm_mcu),
       _proto_handler_bt(comm_bt, *this),
@@ -271,6 +272,21 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
     return true;
 }
 
+void SysCtrl::on_lift(bool dir)
+{
+
+    if (dir)
+    {
+        Serial.println("[CRANE] Lifting up");
+        _crane.lift(100);
+    }
+    else
+    {
+        Serial.println("[CRANE] Lifting down");
+        _crane.lower(100);
+    }
+}
+
 void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
 {
     switch (pkt.type)
@@ -300,6 +316,9 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
         break;
     case 'X': // critical stop
         on_stop(pkt);
+        break;
+    case 'L': // lift command
+        on_lift(pkt.data[0] != 0);
         break;
     default:
         break;
@@ -342,21 +361,5 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
 
         if (!_proto_handler_bt.send_pkt(p) && g_debug.sysctrl)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send no movement error to [ÖS]");
-    }
-}
-
-void on_lift(Comm::Packet &pkt, ServoContinious &crane, bool dir)
-{
-    // Comm::Packet p = {'L', _proto_handler_bt.get_sequence(), {}};
-
-    if (dir)
-    {
-        Serial.println("[LIFt] Lifting up");
-        crane.drive_forward(100, 2000);
-    }
-    else
-    {
-        Serial.println("[LIFt] Lifting down");
-        crane.drive_backward(100, 2000);
     }
 }

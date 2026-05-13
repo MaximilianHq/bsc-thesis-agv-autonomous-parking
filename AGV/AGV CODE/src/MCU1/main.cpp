@@ -10,6 +10,7 @@
 #include <status_led.h>
 #include <imu.h>
 #include <dwm.h>
+#include "lift.h"
 #include "system_actions.h"
 #include "sonar.h"
 
@@ -29,6 +30,8 @@
 #define PIN_SHREG_CLK 25
 // CRANE
 #define PIN_CRANE_SERVO 23
+#define PIN_CRANE_ENDSTOP 36
+#define PIN_CRANE_BEGINSTOP 39
 // IMU
 #define PIN_SCL 22
 #define PIN_SDA 21
@@ -60,7 +63,7 @@ StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
                   SRegHandler::pin_sreg::QF,
                   true);
 
-ServoContinious crane(PIN_CRANE_SERVO, 0, false);
+Lift crane(PIN_CRANE_SERVO, PIN_CRANE_BEGINSTOP, PIN_CRANE_ENDSTOP, 0, sysctrl, false);
 
 SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd, crane);
 

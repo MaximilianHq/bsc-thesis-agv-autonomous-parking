@@ -7,12 +7,12 @@
 class StatusLED;
 class DWM;
 class IMU;
-class ServoContinious;
+class Lift;
 
 class SysCtrl
 {
 public:
-    SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, ServoContinious &crane);
+    SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, Lift &crane);
 
     // ========== IActions ==========
     void on_bt_no_connect();
@@ -24,14 +24,14 @@ public:
     void on_obstacle_detected(const Position &pos);
     void on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm_offset);
     bool on_startup(DWM &dwm, float dwm_offset);
+    void on_lift(bool dir);
 
     void test_move()
     {
         Comm::Packet p = {'D', 0, {0x03, 0x32}, 2, 0, true};
 
-        if (!_proto_handler_mcu.send_pkt(p))
-            if (g_debug.sysctrl)
-                Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send test move command to [ÖS]");
+        if (!_proto_handler_mcu.send_pkt(p) && g_debug.sysctrl)
+            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send test move command to [ÖS]");
     };
 
 private:
@@ -39,11 +39,11 @@ private:
     Comm &_comm_mcu;
     StatusLED &_led_sys;
     StatusLED &_led_cmd;
-    ServoContinious &_crane;
+    Lift &_crane;
 
     StaticVector<AgvState, 10> _state;
-    const float _err_co_dwm = 0.25f;
-    const float _err_co_imu = 0.05f;
+    float _err_co_dwm = 0.25f;
+    float _err_co_imu = 0.05f;
     float _last_body_move_ang = 0.0f;
     static constexpr float _heading_dist_threshold_mm = 50.0f;
     static constexpr float _heading_speed_threshold_mm_s = 100.0f;
@@ -78,5 +78,6 @@ private:
 
     void _process_bt_packet(Comm::Packet &pkt);
     void _process_mcu_packet(Comm::Packet &pkt);
+    bool _forward_to_mcu(Comm::Packet &pkt);
     void _next_movement(Comm::Packet &pkt);
 };
