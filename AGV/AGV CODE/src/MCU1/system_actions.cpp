@@ -344,3 +344,19 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send no movement error to [ÖS]");
     }
 }
+
+void on_lift(Comm::Packet &pkt, ServoContinious &crane, bool dir)
+{
+    // Comm::Packet p = {'L', _proto_handler_bt.get_sequence(), {}};
+
+    if (dir)
+    {
+        Serial.println("[LIFt] Lifting up");
+        crane.drive_forward(100, 2000);
+    }
+    else
+    {
+        Serial.println("[LIFt] Lifting down");
+        crane.drive_backward(100, 2000);
+    }
+}
