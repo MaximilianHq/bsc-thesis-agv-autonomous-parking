@@ -12,7 +12,7 @@ SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &l
       _proto_handler_mcu(comm_mcu, *this),
       _led_sys(led_sys),
       _led_cmd(led_cmd),
-      _crane(crane) {}
+      _crane(crane) {_crane.attach_sysctrl(*this);}
 
 void SysCtrl::on_bt_no_connect()
 {

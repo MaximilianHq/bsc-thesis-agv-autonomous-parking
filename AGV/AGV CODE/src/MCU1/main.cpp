@@ -63,7 +63,7 @@ StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
                   SRegHandler::pin_sreg::QF,
                   true);
 
-Lift crane(PIN_CRANE_SERVO, PIN_CRANE_BEGINSTOP, PIN_CRANE_ENDSTOP, 0, false);
+Lift crane(PIN_CRANE_SERVO, PIN_CRANE_BEGINSTOP, PIN_CRANE_ENDSTOP, 1, false);
 
 SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd, crane);
 

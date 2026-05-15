@@ -15,11 +15,25 @@ public:
           _pin_begin_stop(pin_begin_stop),
           _pin_endstop(pin_endstop) {}
 
+    void home()
+    {
+        if (g_debug.crane)
+            Serial.println("[CRANE] Homing...");
+        while (digitalRead(_pin_begin_stop) == LOW)
+            lower(100);
+        if (g_debug.crane)
+            Serial.println("[CRANE] Hominging complete");
+    }
+
     void setup()
     {
         _servo.setup();
-        pinMode(_pin_begin_stop, INPUT_PULLUP);
-        pinMode(_pin_endstop, INPUT_PULLUP);
+        pinMode(_pin_begin_stop, INPUT);
+        pinMode(_pin_endstop, INPUT);
+        home();
+
+        if (g_debug.crane)
+            Serial.println("[CRANE] Setup complete");
     }
 
     void attach_sysctrl(SysCtrl &sysctrl)
@@ -30,13 +44,18 @@ public:
     void update()
     {
         _servo.update();
-
         if (_is_moving)
         {
-            if (digitalRead(_pin_endstop) == LOW || digitalRead(_pin_begin_stop) == LOW)
+            if (digitalRead(_pin_endstop) == HIGH || digitalRead(_pin_begin_stop) == HIGH)
             {
                 _is_moving = false;
                 _servo.stop();
+
+                if (g_debug.crane && digitalRead(_pin_endstop) == HIGH)
+                    Serial.println("[CRANE] Endstop hit, stopping");
+
+                if (g_debug.crane && digitalRead(_pin_begin_stop) == HIGH)
+                    Serial.println("[CRANE] Contact with Car, stopping");
 
                 if (_sysctrl != nullptr)
                 {
@@ -55,7 +74,7 @@ public:
     void lower(int8_t speed = 100, unsigned long duration = 0)
     {
         _is_moving = true;
-        _servo.drive_backward(speed, duration);
+        _servo.drive_backward(speed);
     }
 
 private:

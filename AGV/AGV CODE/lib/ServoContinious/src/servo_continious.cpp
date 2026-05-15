@@ -13,7 +13,7 @@ void ServoContinious::setup()
 {
 
     if (g_debug.crane)
-        Serial.println("[CRANE] Running setup...");
+        Serial.println("[Servo] Running setup...");
 
     pinMode(_pin_servo, OUTPUT);
     ledcSetup(_chnl, _frequency, _resolution_bits);
@@ -21,7 +21,7 @@ void ServoContinious::setup()
     stop();
 
     if (g_debug.crane)
-        Serial.println("[CRANE] Setup finished");
+        Serial.println("[Servo] Setup finished");
 }
 
 void ServoContinious::update()
@@ -63,20 +63,20 @@ void ServoContinious::drive_manual(int8_t speed)
     int pulse;
 
     if (speed == 0)
-        pulse = _stop_pulse;
+        pulse = _stop_us;
     else if (speed > 0)
-        pulse = map(speed, 0, 100, _stop_pulse, _max_pulse);
+        pulse = map(speed, 0, 100, _stop_us, _max_us);
     else
-        pulse = map(speed, -100, 0, _min_pulse, _stop_pulse);
+        pulse = map(speed, -100, 0, _min_us, _stop_us);
 
     writeMicroseconds(pulse);
 }
 
-void ServoContinious::stop() { writeMicroseconds(_stop_pulse); }
+void ServoContinious::stop() { writeMicroseconds(_stop_us); }
 
 void ServoContinious::writeMicroseconds(int pulse_us)
 {
-    pulse_us = constrain(pulse_us, _min_pulse, _max_pulse);
+    pulse_us = constrain(pulse_us, _min_us, _max_us);
 
     uint32_t maxDuty = (1UL << _resolution_bits) - 1;
     uint32_t duty = (uint32_t)pulse_us * maxDuty / _period_us;

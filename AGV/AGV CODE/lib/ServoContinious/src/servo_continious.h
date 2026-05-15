@@ -17,10 +17,9 @@ public:
 
 private:
     int _pin_servo, _chnl;
-    int _stop_pulse, _min_pulse, _max_pulse;
     bool _invert;
 
-    int _stop_us = 1520;
+    int _stop_us = 1500;
     int _min_us = 1000;
     int _max_us = 2000;
 
