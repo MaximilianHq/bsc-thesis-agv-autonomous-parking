@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include "system_actions.h"
 #include <types.h>
 #include <servo_continious.h>
 
@@ -31,23 +32,30 @@ public:
         _servo.update();
 
         if (_is_moving)
+        {
             if (digitalRead(_pin_endstop) == LOW || digitalRead(_pin_begin_stop) == LOW)
             {
                 _is_moving = false;
                 _servo.stop();
+
+                if (_sysctrl != nullptr)
+                {
+                    _sysctrl->on_lift_done();
+                }
             }
+        }
     }
 
-    void lift(int8_t speed = 100)
+    void lift(int8_t speed = 100, unsigned long duration = 0)
     {
         _is_moving = true;
-        _servo.drive_forward(speed);
+        _servo.drive_forward(speed, duration);
     }
 
-    void lower(int8_t speed = 100)
+    void lower(int8_t speed = 100, unsigned long duration = 0)
     {
         _is_moving = true;
-        _servo.drive_backward(speed);
+        _servo.drive_backward(speed, duration);
     }
 
 private:

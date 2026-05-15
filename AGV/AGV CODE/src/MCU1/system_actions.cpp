@@ -277,14 +277,21 @@ void SysCtrl::on_lift(bool dir)
 
     if (dir)
     {
-        Serial.println("[CRANE] Lifting up");
+        Serial.println("[SYSCTRL] Lifting up");
         _crane.lift(100);
     }
     else
     {
-        Serial.println("[CRANE] Lifting down");
+        Serial.println("[SYSCTRL] Lowering down");
         _crane.lower(100);
     }
+}
+
+void SysCtrl::on_lift_done()
+{
+    Comm::Packet p = {'L', 0, {}, 0, 0, true};
+    _crane.lift(100, 1500);
+    Serial.println("[SYSCTRL] Lift done");
 }
 
 void SysCtrl::_process_bt_packet(Comm::Packet &pkt)

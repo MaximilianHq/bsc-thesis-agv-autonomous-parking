@@ -121,6 +121,7 @@ void setup()
     sonar.setup();
 
     // ========== CRANE ==========
+    crane.attach_sysctrl(sysctrl);
     crane.setup();
 
     // ========== POS ==========

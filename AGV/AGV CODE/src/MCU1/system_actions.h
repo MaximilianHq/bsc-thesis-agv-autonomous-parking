@@ -25,6 +25,7 @@ public:
     void on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm_offset);
     bool on_startup(DWM &dwm, float dwm_offset);
     void on_lift(bool dir);
+    void on_lift_done();
 
     void test_move()
     {
