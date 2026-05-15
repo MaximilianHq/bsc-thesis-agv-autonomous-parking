@@ -9,17 +9,21 @@ class Lift
 {
 public:
     Lift(int pin_servo, int pin_begin_stop, int pin_endstop,
-         int pwm_chnl, SysCtrl &sysctrl, bool invert)
+         int pwm_chnl, bool invert)
         : _servo(pin_servo, pwm_chnl, invert),
           _pin_begin_stop(pin_begin_stop),
-          _pin_endstop(pin_endstop),
-          _sysctrl(sysctrl) {}
+          _pin_endstop(pin_endstop) {}
 
     void setup()
     {
         _servo.setup();
         pinMode(_pin_begin_stop, INPUT_PULLUP);
         pinMode(_pin_endstop, INPUT_PULLUP);
+    }
+
+    void attach_sysctrl(SysCtrl &sysctrl)
+    {
+        _sysctrl = &sysctrl;
     }
 
     void update()
@@ -47,7 +51,7 @@ public:
     }
 
 private:
-    SysCtrl &_sysctrl;
+    SysCtrl *_sysctrl = nullptr;
     ServoContinious _servo;
     int _pin_endstop, _pin_begin_stop;
     bool _is_moving = false;
