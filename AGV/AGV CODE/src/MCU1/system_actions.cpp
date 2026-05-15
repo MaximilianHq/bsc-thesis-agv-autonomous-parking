@@ -293,7 +293,10 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
     {
     case 'D':
         if (g_debug.sysctrl)
-            Serial.println("[SYSCTRL] New movement");
+        {
+            Serial.print("[SYSCTRL] New movement: ");
+            Serial.println(pkt.data[0]);
+        }
         on_new_motion(pkt);
         break;
     case 'K':
