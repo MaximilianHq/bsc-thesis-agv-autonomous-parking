@@ -8,11 +8,14 @@ class SysCtrl;
 class Comm
 {
 public:
+    static constexpr size_t DATA_BYTES = 10;
+    static constexpr size_t FRAME_BYTES = 14;
+
     struct Packet
     {
         char type;             // type
         uint8_t seq = 0;       // sequence
-        uint8_t data[9] = {0}; // data
+        uint8_t data[DATA_BYTES] = {0}; // data
         uint8_t data_len = 0;  // data_length
         uint8_t crc = 0;       // checksum
         bool approved = false; // data integrity
@@ -56,6 +59,7 @@ public:
     Sequence get_sequence() const;
     void handle(const Comm::Packet &pkt);
     bool send_pkt(Comm::Packet &pkt, bool que = true);
+    void clear_send_queue();
 
 private:
     static Comm::Packet _make_ack(const Comm::Packet &pkt);
@@ -64,7 +68,7 @@ private:
     SysCtrl &_actions;
 
     uint8_t _seq;
-    bool _avalible;
+    bool _avalible = true;
 
     StaticVector<Comm::Packet, 10> _pkt_buffer_sent;
     StaticVector<Comm::Packet, 10> _pkt_send_que;

@@ -41,7 +41,13 @@ void SysCtrl::on_mcu_pkt_recieved(Comm::Packet &pkt)
     _process_mcu_packet(pkt);
 }
 
-void SysCtrl::on_new_motion(Comm::Packet &pkt) { _motion_buffert.push_back(pkt); }
+void SysCtrl::on_new_motion(Comm::Packet &pkt)
+{
+    Comm::Packet clean_pkt = {'D', 0, {}, 2, 0, true};
+    clean_pkt.data[0] = pkt.data[0];
+    clean_pkt.data[1] = pkt.data[1];
+    _motion_buffert.push_back(clean_pkt);
+}
 
 void SysCtrl::on_stop()
 {
@@ -52,9 +58,17 @@ void SysCtrl::on_stop()
 
 void SysCtrl::on_stop(Comm::Packet &pkt)
 {
-    if (!_proto_handler_mcu.send_pkt(pkt) && g_debug.sysctrl)
+    (void)pkt;
+
+    _motion_buffert.clear();
+    _proto_handler_mcu.clear_send_queue();
+
+    Comm::Packet stop_mcu = {'X', 0, {}, 0, 0, true};
+    Comm::Packet stop_bt = {'X', 0, {}, 0, 0, true};
+
+    if (!_proto_handler_mcu.send_pkt(stop_mcu) && g_debug.sysctrl)
         Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: 'stop' to [MCU2]");
-    if (!_proto_handler_bt.send_pkt(pkt) && g_debug.sysctrl)
+    if (!_proto_handler_bt.send_pkt(stop_bt) && g_debug.sysctrl)
         Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send status: 'stop' to [ÖS]");
     _led_cmd.set_status(StatusLED::State::STATUS_CMD_STOPPING);
 }
@@ -228,7 +242,7 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
     }
 
     // Kör fram på MCU2
-    Comm::Packet p = {'D', 0, {0x00, 0x32}, 2, 0, true};
+    Comm::Packet p = {'D', 0, {0xD0, 0x32}, 2, 0, true};
 
     if (!_proto_handler_mcu.send_pkt(p))
     {
@@ -237,16 +251,25 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
         return false;
     }
 
-    delay(100);
-    if (!_proto_handler_mcu.get_sequence().avalible)
+    do
     {
-        if (g_debug.sysctrl)
-            Serial.println("[SYSCTRL] \033[31mWATNING\033[0m - Response timed out");
-        return false;
-    }
+        Comm::Packet mcu_pkt;
+        if (_comm_mcu.read(mcu_pkt))
+            on_mcu_pkt_recieved(mcu_pkt);
+        delay(20);
+    } while (!_proto_handler_mcu.get_sequence().avalible);
 
     delay(1000);
+
     on_stop();
+
+    do
+    {
+        Comm::Packet mcu_pkt;
+        if (_comm_mcu.read(mcu_pkt))
+            on_mcu_pkt_recieved(mcu_pkt);
+        delay(20);
+    } while (!_proto_handler_mcu.get_sequence().avalible);
 
     for (int i = 0; i < 10; i++)
     {

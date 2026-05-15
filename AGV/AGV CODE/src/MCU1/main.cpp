@@ -188,8 +188,6 @@ void loop()
     }
     else if (g_debug.dwm)
         Serial.println("[DWM] no read");
-
-    delay(200);
 }
 
 void blt_status_routine()

@@ -2,63 +2,11 @@
 #include <types.h>
 #include "comm.h"
 
-namespace
-{
-    void print_hex_byte(uint8_t value)
-    {
-        if (value < 0x10)
-            Serial.print("0");
-        Serial.print(value, HEX);
-    }
-
-    void debug_print_packet(const String &dbg_name, const char *label, const Comm::Packet &pkt, uint8_t crc_value)
-    {
-        Serial.print("[COMM ");
-        Serial.print(dbg_name);
-        Serial.print("] ");
-        Serial.print(label);
-        Serial.print(": ");
-
-        print_hex_byte(static_cast<uint8_t>('$'));
-        Serial.print(" ");
-        print_hex_byte(static_cast<uint8_t>(pkt.type));
-
-        for (size_t i = 0; i < pkt.data_len; i++)
-        {
-            Serial.print(" ");
-            print_hex_byte(pkt.data[i]);
-        }
-
-        Serial.print(" ");
-        print_hex_byte(pkt.seq);
-        Serial.print(" ");
-        print_hex_byte(crc_value);
-        Serial.print(" ");
-        print_hex_byte(static_cast<uint8_t>('\n'));
-        Serial.println();
-
-        Serial.print("[COMM ");
-        Serial.print(dbg_name);
-        Serial.print("] type=");
-        Serial.write(pkt.type);
-        Serial.print(" data_len=");
-        Serial.print(pkt.data_len);
-        Serial.print(" seq=0x");
-        print_hex_byte(pkt.seq);
-        Serial.print(" crc=0x");
-        print_hex_byte(crc_value);
-        Serial.print(" calc=0x");
-        print_hex_byte(Comm::csum(pkt));
-        Serial.print(" approved=");
-        Serial.println(pkt.approved ? "yes" : "no");
-    }
-} // namespace
-
 uint8_t Comm::csum(const Packet &pkt)
 {
     uint8_t crc = 0;
     crc ^= static_cast<uint8_t>(pkt.type);
-    for (size_t i = 0; i < pkt.data_len; i++)
+    for (size_t i = 0; i < DATA_BYTES; i++)
         crc ^= pkt.data[i];
     crc ^= pkt.seq;
     return crc;
@@ -98,66 +46,64 @@ bool Comm::read(Packet &out)
                 break;
             }
 
-            if (b == '\r' || b == '\n')
-            {
-                _state = WAIT_START;
-                break;
-            }
-
             _pkt.type = static_cast<char>(b);
+            _pkt.data_len = DATA_BYTES;
             _state = READ_BODY;
             break;
 
         case READ_BODY:
-            if (b == '$')
+            if (_read_index < DATA_BYTES)
+                _pkt.data[_read_index++] = b;
+            else if (_read_index == DATA_BYTES)
             {
-                _pkt = Packet{};
-                _read_index = 0;
-                _state = READ_TYPE;
-                if (g_debug.comm)
-                    Serial.println("[COMM " + _dbg_name + "] Resync on new start byte");
-                break;
+                _pkt.seq = b;
+                _read_index++;
             }
-
-            if (b == '\r')
-                break;
-
-            if (b == '\n')
+            else if (_read_index == DATA_BYTES + 1)
             {
+                _pkt.crc = b;
+                _pkt.approved = (_pkt.crc == csum(_pkt));
+
                 if (g_debug.comm)
-                    Serial.println("[COMM " + _dbg_name + "] Packet recieved!");
-                if (_read_index >= 2)
                 {
-                    _pkt.data_len = _read_index - 2; // points to seq
-                    _pkt.seq = _pkt.data[_pkt.data_len];
-                    _pkt.crc = _pkt.data[_pkt.data_len + 1];
-                    _pkt.data[_pkt.data_len] = 0;
-                    _pkt.data[_pkt.data_len + 1] = 0;
-                    _pkt.approved = (_pkt.crc == csum(_pkt));
-
-                    if (g_debug.comm)
-                        debug_print_packet(_dbg_name, "Recieved frame", _pkt, _pkt.crc);
-
-                    out = _pkt;
-                    _state = WAIT_START;
-                    return true;
+                    Serial.println("[COMM " + _dbg_name + "] Packet recieved!");
+                    const uint8_t calc_crc = csum(_pkt);
+                    Serial.print("[COMM " + _dbg_name + "] start: ");
+                    if (static_cast<uint8_t>('$') < 0x10)
+                        Serial.print("0");
+                    Serial.println(static_cast<uint8_t>('$'), HEX);
+                    Serial.print("[COMM " + _dbg_name + "] type: ");
+                    if (static_cast<uint8_t>(_pkt.type) < 0x10)
+                        Serial.print("0");
+                    Serial.println(static_cast<uint8_t>(_pkt.type), HEX);
+                    pds(_pkt.data, DATA_BYTES, "[COMM " + _dbg_name + "] data");
+                    Serial.print("[COMM " + _dbg_name + "] seq: ");
+                    if (_pkt.seq < 0x10)
+                        Serial.print("0");
+                    Serial.println(_pkt.seq, HEX);
+                    Serial.print("[COMM " + _dbg_name + "] crc: ");
+                    if (_pkt.crc < 0x10)
+                        Serial.print("0");
+                    Serial.println(_pkt.crc, HEX);
+                    Serial.print("[COMM " + _dbg_name + "] calc: ");
+                    if (calc_crc < 0x10)
+                        Serial.print("0");
+                    Serial.println(calc_crc, HEX);
+                    Serial.print("[COMM " + _dbg_name + "] approved=");
+                    Serial.println(_pkt.approved ? "yes" : "no");
                 }
 
+                out = _pkt;
                 _state = WAIT_START;
+                _read_index = 0;
+                return true;
             }
             else
             {
-                if (_read_index < sizeof(_pkt.data))
-                {
-                    _pkt.data[_read_index++] = b;
-                }
-                else
-                {
-                    // overflow: kasta paket och vänta på ny start
-                    if (g_debug.comm)
-                        Serial.println("[COMM " + _dbg_name + "] Packet corrupt");
-                    _state = WAIT_START;
-                }
+                if (g_debug.comm)
+                    Serial.println("[COMM " + _dbg_name + "] Packet corrupt");
+                _state = WAIT_START;
+                _read_index = 0;
             }
             break;
         }
@@ -174,17 +120,41 @@ bool Comm::write(const Packet &pkt)
     if (!pkt.approved)
         return false;
 
+    const uint8_t crc_to_send = (pkt.crc != 0) ? pkt.crc : csum(pkt);
+
     if (g_debug.comm)
-        debug_print_packet(_dbg_name, "Sending frame", pkt, (pkt.crc != 0) ? pkt.crc : csum(pkt));
+    {
+        const uint8_t calc_crc = csum(pkt);
+        Serial.print("[COMM " + _dbg_name + "] start: ");
+        if (static_cast<uint8_t>('$') < 0x10)
+            Serial.print("0");
+        Serial.println(static_cast<uint8_t>('$'), HEX);
+        Serial.print("[COMM " + _dbg_name + "] type: ");
+        if (static_cast<uint8_t>(pkt.type) < 0x10)
+            Serial.print("0");
+        Serial.println(static_cast<uint8_t>(pkt.type), HEX);
+        pds(pkt.data, DATA_BYTES, "[COMM " + _dbg_name + "] data");
+        Serial.print("[COMM " + _dbg_name + "] seq: ");
+        if (pkt.seq < 0x10)
+            Serial.print("0");
+        Serial.println(pkt.seq, HEX);
+        Serial.print("[COMM " + _dbg_name + "] crc: ");
+        if (crc_to_send < 0x10)
+            Serial.print("0");
+        Serial.println(crc_to_send, HEX);
+        Serial.print("[COMM " + _dbg_name + "] calc: ");
+        if (calc_crc < 0x10)
+            Serial.print("0");
+        Serial.println(calc_crc, HEX);
+        Serial.print("[COMM " + _dbg_name + "] approved=");
+        Serial.println(pkt.approved ? "yes" : "no");
+    }
 
     _str.write(static_cast<uint8_t>('$'));
     _str.write(static_cast<uint8_t>(pkt.type));
-
-    _str.write(pkt.data, pkt.data_len);
+    _str.write(pkt.data, DATA_BYTES);
     _str.write(pkt.seq);
-    _str.write(pkt.crc);
-
-    _str.write(static_cast<uint8_t>('\n'));
+    _str.write(crc_to_send);
 
     return true;
 }
@@ -213,7 +183,6 @@ void ProtocolHandler::handle(const Comm::Packet &pkt)
         else
             _comm.write(*_pkt_buffer_sent.find_if([&pkt](const Comm::Packet &p)
                                                   { return p.seq == pkt.seq; }));
-
         return;
     }
 
@@ -226,19 +195,21 @@ void ProtocolHandler::handle(const Comm::Packet &pkt)
     }
     else if (g_debug.comm)
         Serial.println("[PROTOHANDLER] Failed to respond");
-
-    if (pkt.approved)
-        _pkt_send_que.push_back(pkt);
 }
 
 bool ProtocolHandler::send_pkt(Comm::Packet &pkt, bool que)
 {
     Sequence seq = get_sequence();
     if (!seq.avalible && que)
+    {
         _pkt_send_que.push_back(pkt);
+        return true;
+    }
+    else if (!seq.avalible)
+        return false;
 
     pkt.seq = seq.seq;
-    pkt.crc = (pkt.crc != 0) ? pkt.crc : Comm::csum(pkt);
+    pkt.crc = Comm::csum(pkt);
 
     if (!_comm.write(pkt))
         return false;
@@ -248,6 +219,11 @@ bool ProtocolHandler::send_pkt(Comm::Packet &pkt, bool que)
     _avalible = false;
 
     return true;
+}
+
+void ProtocolHandler::clear_send_queue()
+{
+    _pkt_send_que.clear();
 }
 
 Comm::Packet ProtocolHandler::_make_ack(const Comm::Packet &pkt)
