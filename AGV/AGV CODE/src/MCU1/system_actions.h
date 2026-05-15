@@ -29,7 +29,7 @@ public:
 
     void test_move()
     {
-        Comm::Packet p = {'D', 0, {0x03, 0x32}, 2, 0, true};
+        Comm::Packet p = {'D', 0, {0xD3, 0x32}, 2, 0, true};
 
         if (!_proto_handler_mcu.send_pkt(p) && g_debug.sysctrl)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send test move command to [ÖS]");

@@ -168,7 +168,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
 
     switch (cmd)
     {
-    case 0x00:
+    case 0xD0:
         // Forward
         c1.execute_move(true, spd_percent);
         c2.execute_move(true, spd_percent);
@@ -179,7 +179,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
             Serial.println("[DRIVER] Exicuted new movement: Forward");
         break;
 
-    case 0x01:
+    case 0xD1:
         // Backward
         c1.execute_move(false, spd_percent);
         c2.execute_move(false, spd_percent);
@@ -190,7 +190,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
             Serial.println("[DRIVER] Exicuted new movement: Backward");
         break;
 
-    case 0x02:
+    case 0xD2:
         // Right
         c1.execute_move(true, spd_percent);
         c2.execute_move(false, spd_percent);
@@ -200,7 +200,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Right");
         break;
-    case 0x03:
+    case 0xD3:
         // Left
         c1.execute_move(false, spd_percent);
         c2.execute_move(true, spd_percent);
@@ -210,7 +210,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Left");
         break;
-    case 0x04:
+    case 0xD4:
         // Forward-Right
         c1.execute_move(true, spd_percent);
         c2.stop();
@@ -220,7 +220,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Forward-Right");
         break;
-    case 0x05:
+    case 0xD5:
         // Forward-Left
         c1.stop();
         c2.execute_move(true, spd_percent);
@@ -230,7 +230,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
         if (g_debug.driver)
             Serial.println("[DRIVER] Exicuted new movement: Forward-Left");
         break;
-    case 0x06:
+    case 0xD6:
         // Backward-Right
         c1.stop();
         c2.execute_move(false, spd_percent);
@@ -241,7 +241,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
             Serial.println("[DRIVER] Exicuted new movement: Backward-Right");
         break;
 
-    case 0x07:
+    case 0xD7:
         // Backward-Left
         c1.execute_move(false, spd_percent);
         c2.stop();
@@ -252,7 +252,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
             Serial.println("[DRIVER] Exicuted new movement: Backward-Left");
         break;
 
-    case 0x08:
+    case 0xD8:
         // Turning-Right
         c1.execute_move(true, spd_percent);
         c2.execute_move(false, spd_percent);
@@ -263,7 +263,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
             Serial.println("[DRIVER] Exicuted new movement: Turning-Right");
         break;
 
-    case 0x09:
+    case 0xD9:
         // Turning-Left
         c1.execute_move(false, spd_percent);
         c2.execute_move(true, spd_percent);
@@ -274,7 +274,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
             Serial.println("[DRIVER] Exicuted new movement: Turning-Left");
         break;
 
-    case 0x0A:
+    case 0xDA:
         // Curved-Trajectory-Right
         c1.execute_move(true, spd_percent);
         c2.execute_move(true, spd_percent - spd_diff);
@@ -285,7 +285,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
             Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Right");
         break;
 
-    case 0x0B:
+    case 0xDB:
         // Curved-Trajectory-Left
         c1.execute_move(true, spd_percent - spd_diff);
         c2.execute_move(true, spd_percent);
@@ -296,7 +296,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
             Serial.println("[DRIVER] Exicuted new movement: Curved-Trajectory-Left");
         break;
 
-    case 0x0C:
+    case 0xDC:
     { // <-- DO NOT REMOVE
         // Lateral-Arc-Right
         MotorDriver::SpeedPair lateral_arc = ratio_speed_pair(spd_percent, 0.75f);
@@ -310,7 +310,7 @@ void MotorDriver::move(uint8_t cmd, uint8_t spd_percent, unsigned long duration_
     } // <-- DO NOT REMOVE
     break;
 
-    case 0x0D:
+    case 0xDD:
     { // <-- DO NOT REMOVE
         // Lateral-Arc-Left
         MotorDriver::SpeedPair lateral_arc = ratio_speed_pair(spd_percent, 0.75f);

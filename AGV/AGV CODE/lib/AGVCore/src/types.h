@@ -52,19 +52,19 @@ struct Debug
 
 extern Debug g_debug;
 
-static void pds(uint8_t *arr, int base = HEX, size_t len = 0, String msg = "")
+static void pds(const uint8_t *arr, size_t len, String msg = "", int base = HEX)
 {
     Serial.print(msg);
-    Serial.print(len);
-    Serial.print("/");
-    Serial.print(sizeof(len));
-    Serial.print(": ");
+    if (msg.length() > 0)
+        Serial.print(": ");
 
-    for (size_t i = 0; i < (len != 0) ? len : sizeof(arr); i++)
+    for (size_t i = 0; i < len; i++)
     {
         if (arr[i] < 0x10)
             Serial.print("0");
         Serial.print(arr[i], base);
-        Serial.print(" ");
+        if (i + 1 < len)
+            Serial.print(" ");
     }
+    Serial.println();
 };
