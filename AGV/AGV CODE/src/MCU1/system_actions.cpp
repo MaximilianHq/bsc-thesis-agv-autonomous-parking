@@ -351,7 +351,7 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
             Serial.println(pkt.data[0]);
         }
         on_new_motion(pkt);
-        _led_sys.set_status(StatusLED::State::STATUS_MOVING);
+        _led_cmd.set_status(StatusLED::State::STATUS_MOVING);
         break;
     case 'K':
         switch (pkt.data[0])

@@ -120,7 +120,7 @@ void setup()
     sonar.setup();
 
     // ========== CRANE ==========
-    crane.setup();
+    // crane.setup();
 
     // ========== POS ==========
     uint16_t cfg;
@@ -151,7 +151,7 @@ void loop()
 
     // ========== UPDATES ==========
     sonar.update();
-    crane.update();
+    // crane.update();
     led_sys.update();
     led_cmd.update();
     sysctrl.update();
