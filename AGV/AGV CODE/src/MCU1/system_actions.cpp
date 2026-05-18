@@ -227,6 +227,8 @@ bool SysCtrl::on_startup()
     if (g_debug.sysctrl)
         Serial.println("[SYSCTRL] Calibrating AGV Angle...");
 
+    _led_cmd.set_status(StatusLED::State::STATUS_BOOT);
+
     DwmState d1, d2;
 
     // Ta första mätvärdet
@@ -349,6 +351,7 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
             Serial.println(pkt.data[0]);
         }
         on_new_motion(pkt);
+        _led_sys.set_status(StatusLED::State::STATUS_MOVING);
         break;
     case 'K':
         switch (pkt.data[0])
@@ -358,18 +361,13 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
                 Serial.println("[SYSCTRL] Next movement");
             _next_movement(pkt);
             break;
-        case 'H': // set status
-            _led_cmd.set_status(StatusLED::State::STATUS_RETURNING);
-            break;
         case 'C':
             on_startup();
             break;
         case 'L': // lift command
             on_lift(pkt.data[0] != 0);
-            if (g_debug.sysctrl)
-                Serial.println("[SYSCTRL] WARNING - Entering endless loop");
-            while (!_crane_done)
-                delay(100);
+            _crane_lifting = true;
+            _led_sys.set_status(StatusLED::State::STATUS_LIFTING);
             break;
         default:
             break;

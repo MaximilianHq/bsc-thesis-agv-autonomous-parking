@@ -17,6 +17,12 @@ public:
     {
         _proto_handler_bt.update();
         _proto_handler_mcu.update();
+
+        if (_crane_lifting && _crane_done)
+        {
+            _crane_lifting = false;
+            on_lift_done();
+        }
     };
 
     // ========== IActions ==========
@@ -44,14 +50,15 @@ private:
 
     DWM &_dwm;
     const float _dwm_offset = 75.0f;
-    const float _err_co_dwm = 0.25f;
-    const float _err_co_imu = 0.05f;
+    const float _err_co_dwm = 0.20f;
+    const float _err_co_imu = 0.5f;
     float _last_body_move_ang = 0.0f;
     static constexpr float _heading_dist_threshold_mm = 50.0f;
     static constexpr float _heading_speed_threshold_mm_s = 100.0f;
     static constexpr float _heading_alignment_tolerance_rad = PI / 18.0f; // 10 degrees
 
     Lift &_crane;
+    bool _crane_lifting = false;
     bool _crane_done = false;
 
     static float _norm_ang(float ang)

@@ -10,10 +10,10 @@ const StatusLED::LEDConfig StatusLED::_led_states[] = {
     {{0, 255, 255}, false, 500}, // STATUS_CMD_RECEIVING
     {{255, 0, 0}, false, 500},   // STATUS_ERROR
 
-    {{255, 0, 0}, false, 500},  // STATUS_CMD_STOPPING
-    {{255, 0, 0}, true, 500},   // STATUS_OBSTACLE
-    {{0, 255, 255}, true, 500}, // STATUS_PARKING
-    {{255, 255, 0}, true, 500}  // STATUS_RETURNING
+    {{0, 255, 0}, false, 500},   // STATUS_MOVING
+    {{255, 0, 0}, false, 500},   // STATUS_CMD_STOPPING
+    {{255, 165, 0}, true, 200},  // STATUS_OBSTACLE
+    {{255, 255, 0}, true, 1000}, // STATUS_LIFTING
 };
 
 StatusLED::StatusLED(SRegHandler &sreg, int pin_r, int pin_g, int pin_b,
@@ -94,6 +94,8 @@ void StatusLED::set_status(State state)
     else
         _set_color(s.color);
 }
+
+StatusLED::State StatusLED::get_status() { return _state; }
 
 void StatusLED::_set_color(uint8_t r, uint8_t g, uint8_t b)
 {

@@ -30,22 +30,22 @@ void ServoContinious::update()
         stop();
 }
 
-void ServoContinious::drive_forward(int8_t speed, unsigned long duration = 0)
+void ServoContinious::drive_forward(int8_t speed, unsigned long duration)
 {
     drive_manual(abs(speed));
     if (!duration)
-        duration = 9999999999;
+        duration = 4294967295UL;
 
     _move_duration = duration;
     _timed_move_active = true;
     _move_start_time = millis();
 }
 
-void ServoContinious::drive_backward(int8_t speed, unsigned long duration = 0)
+void ServoContinious::drive_backward(int8_t speed, unsigned long duration)
 {
     drive_manual(-abs(speed));
     if (!duration)
-        duration = 9999999999;
+        duration = 4294967295UL;
 
     _move_duration = duration;
     _timed_move_active = true;

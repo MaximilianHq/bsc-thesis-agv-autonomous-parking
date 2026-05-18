@@ -17,10 +17,10 @@ public:
         STATUS_ERROR,         // Error state
 
         // --- OPERATION / COMMAND STATES ---
+        STATUS_MOVING,       // AGV moving
         STATUS_CMD_STOPPING, // Stopping current action
         STATUS_OBSTACLE,     // Obstacle detected
-        STATUS_PARKING,      // Performing parking maneuver
-        STATUS_RETURNING     // Returning to home/base
+        STATUS_LIFTING       // Lifting crane
     };
 
     struct Color
@@ -50,6 +50,7 @@ public:
     void update(StatusLED::State state);
     void update();
     void set_status(State state);
+    StatusLED::State get_status();
 
 private:
     int _pin_r, _pin_g, _pin_b;

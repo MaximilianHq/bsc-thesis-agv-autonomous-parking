@@ -97,6 +97,7 @@ void setup()
     sreg.setup();
     led_sys.setup();
     led_cmd.setup();
+    led_cmd.set_status(StatusLED::State::STATUS_BOOT);
 
     // ========== UART ==========
     Serial.begin(UART_BAUD, SERIAL_8N1); // PC
@@ -129,7 +130,6 @@ void setup()
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
-    led_sys.set_status(StatusLED::State::STATUS_READY);
 
     // ========== CALIBRATION ==========
     // if (!sysctrl.on_startup())
@@ -137,8 +137,6 @@ void setup()
 
     // watchdog start
     last_packet_time = millis();
-
-    // sysctrl.test_move();
 }
 
 void loop()
@@ -148,7 +146,7 @@ void loop()
     //  read BT. packet: ös movement, ös command
     //  $TCXXYYTTC\n or $TCCC\n
 
-    // blt_status_routine();
+    blt_status_routine();
     // watchdog_routine();
 
     // ========== UPDATES ==========

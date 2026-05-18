@@ -21,7 +21,7 @@ public:
             Serial.println("[CRANE] Homing...");
         _is_moving = true;
         while (digitalRead(_pin_begin_stop) == LOW)
-            lower(100);
+            _servo.drive_forward(100);
         _servo.stop();
         _is_moving = false;
         _is_homed = true;
@@ -64,14 +64,14 @@ public:
         }
     }
 
-    void lift(int8_t speed = 100, bool &return_variable)
+    void lift(int8_t speed, bool &return_variable)
     {
         _rsv = &return_variable;
         _is_moving = true;
         _servo.drive_forward(speed);
     }
 
-    void lower(int8_t speed = 100, bool &return_variable)
+    void lower(int8_t speed, bool &return_variable)
     {
         _rsv = &return_variable;
         _is_moving = true;
