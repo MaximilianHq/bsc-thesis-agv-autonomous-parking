@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <types.h>
+#include <initializer_list>
 
 template <typename T, size_t N>
 
@@ -8,6 +9,15 @@ class StaticVector
 {
 public:
     StaticVector() {}
+
+    StaticVector(std::initializer_list<T> list)
+    {
+        if (list.size() > N)
+            _raise_error("[FATAL ERROR] StaticVector initializer list too large");
+
+        for (const T &item : list)
+            _v[_count++] = item;
+    }
 
     StaticVector(const StaticVector &v) : _count(v._count)
     {
