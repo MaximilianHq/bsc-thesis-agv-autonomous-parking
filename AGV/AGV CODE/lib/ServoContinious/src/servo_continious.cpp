@@ -27,28 +27,25 @@ void ServoContinious::setup()
 void ServoContinious::update()
 {
     if (_timed_move_active && (millis() - _move_start_time >= _move_duration))
-    {
         stop();
-        _timed_move_active = false;
-    }
 }
 
-void ServoContinious::drive_forward(int8_t speed, unsigned long duration)
+void ServoContinious::drive_forward(int8_t speed, unsigned long duration = 0)
 {
     drive_manual(abs(speed));
     if (!duration)
-        return;
+        duration = 9999999999;
 
     _move_duration = duration;
     _timed_move_active = true;
     _move_start_time = millis();
 }
 
-void ServoContinious::drive_backward(int8_t speed, unsigned long duration)
+void ServoContinious::drive_backward(int8_t speed, unsigned long duration = 0)
 {
     drive_manual(-abs(speed));
     if (!duration)
-        return;
+        duration = 9999999999;
 
     _move_duration = duration;
     _timed_move_active = true;
@@ -69,12 +66,16 @@ void ServoContinious::drive_manual(int8_t speed)
     else
         pulse = map(speed, -100, 0, _min_us, _stop_us);
 
-    writeMicroseconds(pulse);
+    write_microseconds(pulse);
 }
 
-void ServoContinious::stop() { writeMicroseconds(_stop_us); }
+void ServoContinious::stop()
+{
+    write_microseconds(_stop_us);
+    _timed_move_active = false;
+}
 
-void ServoContinious::writeMicroseconds(int pulse_us)
+void ServoContinious::write_microseconds(int pulse_us)
 {
     pulse_us = constrain(pulse_us, _min_us, _max_us);
 

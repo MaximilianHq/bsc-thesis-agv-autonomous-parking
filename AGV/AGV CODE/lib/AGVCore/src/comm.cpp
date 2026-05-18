@@ -262,5 +262,5 @@ void ProtocolHandler::_iterate_sequence()
     uint8_t prev = _seq;
     _seq++;
     if (prev > _seq && g_debug.comm)
-        Serial.println("[PROTOHANDLER] \033[33mWARNING\033[0m - Sequence overflow");
+        Serial.println("[PROTOHANDLER] WARNING - Sequence overflow");
 }

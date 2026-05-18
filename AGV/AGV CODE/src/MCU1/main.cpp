@@ -119,8 +119,7 @@ void setup()
     sonar.setup();
 
     // ========== CRANE ==========
-    // crane.attach_sysctrl(sysctrl);
-    // crane.setup();
+    crane.setup();
 
     // ========== POS ==========
     uint16_t cfg;
@@ -134,7 +133,7 @@ void setup()
 
     // ========== CALIBRATION ==========
     // if (!sysctrl.on_startup())
-    //     Serial.println("[SYSCTRL] \033[31mWARNING\033[0m - Calibration Failed");
+    //     Serial.println("[SYSCTRL] WARNING - Calibration Failed");
 
     // watchdog start
     last_packet_time = millis();
@@ -154,7 +153,7 @@ void loop()
 
     // ========== UPDATES ==========
     sonar.update();
-    // crane.update();
+    crane.update();
     led_sys.update();
     led_cmd.update();
     sysctrl.update();
@@ -203,7 +202,7 @@ void watchdog_routine()
     {
         sysctrl.on_stop();
         if (g_debug.mcu1)
-            Serial.println("[WATCHDOG] \033[31mWARNING\033[0m - Stopping AGV");
+            Serial.println("[WATCHDOG] WARNING - Stopping AGV");
         last_packet_time = millis();
     }
 }

@@ -19,26 +19,28 @@ public:
     {
         if (g_debug.crane)
             Serial.println("[CRANE] Homing...");
+        _is_moving = true;
         while (digitalRead(_pin_begin_stop) == LOW)
-            lower(1);
+            lower(100);
+        _servo.stop();
+        _is_moving = false;
+        _is_homed = true;
         if (g_debug.crane)
-            Serial.println("[CRANE] Hominging complete");
+            Serial.println("[CRANE] Hominging Complete");
     }
 
     void setup()
     {
+        if (g_debug.crane)
+            Serial.println("[CRANE] Running Setup...");
+
         _servo.setup();
         pinMode(_pin_begin_stop, INPUT);
         pinMode(_pin_endstop, INPUT);
         home();
 
         if (g_debug.crane)
-            Serial.println("[CRANE] Setup complete");
-    }
-
-    void attach_sysctrl(SysCtrl &sysctrl)
-    {
-        _sysctrl = &sysctrl;
+            Serial.println("[CRANE] Setup Complete");
     }
 
     void update()
@@ -57,29 +59,31 @@ public:
                 if (g_debug.crane && digitalRead(_pin_begin_stop) == HIGH)
                     Serial.println("[CRANE] Contact with Car, stopping");
 
-                if (_sysctrl != nullptr)
-                {
-                    _sysctrl->on_lift_done();
-                }
+                *_rsv = true;
             }
         }
     }
 
-    void lift(int8_t speed = 100, unsigned long duration = 0)
+    void lift(int8_t speed = 100, bool &return_variable)
     {
+        _rsv = &return_variable;
         _is_moving = true;
-        _servo.drive_forward(speed, duration);
+        _servo.drive_forward(speed);
     }
 
-    void lower(int8_t speed = 100, unsigned long duration = 0)
+    void lower(int8_t speed = 100, bool &return_variable)
     {
+        _rsv = &return_variable;
         _is_moving = true;
         _servo.drive_backward(speed);
     }
 
+    bool is_homed() { return _is_homed; }
+
 private:
-    SysCtrl *_sysctrl = nullptr;
+    bool *_rsv; // return status varaible pointer
     ServoContinious _servo;
     int _pin_endstop, _pin_begin_stop;
     bool _is_moving = false;
+    bool _is_homed = false;
 };

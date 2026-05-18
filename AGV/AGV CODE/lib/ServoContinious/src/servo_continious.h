@@ -31,5 +31,5 @@ private:
     static const int _resolution_bits = 16;
     static const int _period_us = 1000000 / _frequency;
 
-    void writeMicroseconds(int pulse_us);
+    void write_microseconds(int pulse_us);
 };

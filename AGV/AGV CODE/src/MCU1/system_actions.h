@@ -32,23 +32,17 @@ public:
     void on_lift(bool dir);
     void on_lift_done();
 
-    void test_move()
-    {
-        Comm::Packet p = {'D', 0, {0xD3, 0x32}, 2, 0, true};
-
-        if (!_proto_handler_mcu.send_pkt(p) && g_debug.sysctrl)
-            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send test move command to [ÖS]");
-    };
-
 private:
     Comm &_comm_bt;
     Comm &_comm_mcu;
+    StaticVector<AgvState, 10> _state;
+    StaticVector<Comm::Packet, 20> _motion_buffert;
+    ProtocolHandler _proto_handler_bt, _proto_handler_mcu;
+
     StatusLED &_led_sys;
     StatusLED &_led_cmd;
-    DWM &_dwm;
-    Lift &_crane;
 
-    StaticVector<AgvState, 10> _state;
+    DWM &_dwm;
     const float _dwm_offset = 75.0f;
     const float _err_co_dwm = 0.25f;
     const float _err_co_imu = 0.05f;
@@ -56,6 +50,9 @@ private:
     static constexpr float _heading_dist_threshold_mm = 50.0f;
     static constexpr float _heading_speed_threshold_mm_s = 100.0f;
     static constexpr float _heading_alignment_tolerance_rad = PI / 18.0f; // 10 degrees
+
+    Lift &_crane;
+    bool _crane_done = false;
 
     static float _norm_ang(float ang)
     {
@@ -79,10 +76,6 @@ private:
         ang = _norm_ang(ang);
         return _norm_ang(roundf(ang / (PI / 2.0f)) * (PI / 2.0f));
     };
-
-    StaticVector<Comm::Packet, 20> _motion_buffert;
-
-    ProtocolHandler _proto_handler_bt, _proto_handler_mcu;
 
     void _process_bt_packet(Comm::Packet &pkt);
     void _process_mcu_packet(Comm::Packet &pkt);

@@ -12,7 +12,7 @@ SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &l
       _led_sys(led_sys),
       _led_cmd(led_cmd),
       _dwm(dwm),
-      _crane(crane) { _crane.attach_sysctrl(*this); }
+      _crane(crane) {}
 
 void SysCtrl::on_bt_no_connect()
 {
@@ -67,9 +67,9 @@ void SysCtrl::on_stop(Comm::Packet &pkt)
     Comm::Packet stop_bt = {'X', 0, {}, 0, 0, true};
 
     if (!_proto_handler_mcu.send_pkt(stop_mcu) && g_debug.sysctrl)
-        Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: 'stop' to [MCU2]");
+        Serial.println("[SysCtrl] WATNING - Failed to send command: 'stop' to [MCU2]");
     if (!_proto_handler_bt.send_pkt(stop_bt) && g_debug.sysctrl)
-        Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send status: 'stop' to [ÖS]");
+        Serial.println("[SysCtrl] WATNING - Failed to send status: 'stop' to [ÖS]");
     _led_cmd.set_status(StatusLED::State::STATUS_CMD_STOPPING);
 }
 
@@ -245,10 +245,12 @@ bool SysCtrl::on_startup()
     if (!_proto_handler_mcu.send_pkt(p_drive))
     {
         if (g_debug.sysctrl)
-            Serial.println("[SYSCTRL] \033[31mWATNING\033[0m - Failed to send command: Drive to [MCU2]");
+            Serial.println("[SYSCTRL] WARNING - Failed to send command: Drive to [MCU2]");
         return false;
     }
 
+    if (g_debug.sysctrl)
+        Serial.println("[SYSCTRL] WARNING - Entering endless loop");
     do
     {
         Comm::Packet mcu_pkt;
@@ -262,6 +264,8 @@ bool SysCtrl::on_startup()
     delay(1000);
     on_stop();
 
+    if (g_debug.sysctrl)
+        Serial.println("[SYSCTRL] WARNING - Entering endless loop");
     do
     {
         Comm::Packet mcu_pkt;
@@ -293,8 +297,10 @@ bool SysCtrl::on_startup()
     Comm::Packet p_comp = {'K', 0, {'C'}, 0, 0, true};
 
     if (!_proto_handler_bt.send_pkt(p_comp) && g_debug.sysctrl)
-        Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send status: 'Calibration Complete' to [ÖS]");
+        Serial.println("[SysCtrl] WARNING - Failed to send status: 'Calibration Complete' to [ÖS]");
 
+    if (g_debug.sysctrl)
+        Serial.println("[SYSCTRL] WARNING - Entering endless loop");
     do
     {
         Comm::Packet bt_pkt;
@@ -313,23 +319,22 @@ bool SysCtrl::on_startup()
 
 void SysCtrl::on_lift(bool dir)
 {
-
+    _crane_done = false;
     if (dir)
     {
         Serial.println("[SYSCTRL] Lifting up");
-        _crane.lift(100);
+        _crane.lift(100, _crane_done);
     }
     else
     {
         Serial.println("[SYSCTRL] Lowering down");
-        _crane.lower(100);
+        _crane.lower(100, _crane_done);
     }
 }
 
 void SysCtrl::on_lift_done()
 {
     Comm::Packet p = {'L', 0, {}, 0, 0, true};
-    _crane.lift(100, 1500);
     Serial.println("[SYSCTRL] Lift done");
 }
 
@@ -356,11 +361,15 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
         case 'H': // set status
             _led_cmd.set_status(StatusLED::State::STATUS_RETURNING);
             break;
-        case 'C': // run calibration // TODO fixa så att sysctrl har dwm och imu
+        case 'C':
             on_startup();
             break;
         case 'L': // lift command
             on_lift(pkt.data[0] != 0);
+            if (g_debug.sysctrl)
+                Serial.println("[SYSCTRL] WARNING - Entering endless loop");
+            while (!_crane_done)
+                delay(100);
             break;
         default:
             break;
@@ -402,14 +411,14 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
         {
             on_stop();
             if (g_debug.sysctrl)
-                Serial.println("[SYSCTRL] \033[31mWARNING\033[0m - Failed to send command: 'next movement' to [MCU2]");
+                Serial.println("[SYSCTRL] WARNING - Failed to send command: 'next movement' to [MCU2]");
         }
     else
     {
         Comm::Packet p = {'E', 0, {'N', pkt.seq}, 1, 0, true};
 
         if (!_proto_handler_bt.send_pkt(p) && g_debug.sysctrl)
-            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send no movement error to [ÖS]");
+            Serial.println("[SYSCTRL] WARNING - Failed send no movement error to [ÖS]");
     }
 }
 
