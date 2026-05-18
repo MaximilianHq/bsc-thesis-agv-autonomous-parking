@@ -159,7 +159,31 @@ bool Comm::write(const Packet &pkt)
     return true;
 }
 
-ProtocolHandler::ProtocolHandler(Comm &comm, SysCtrl &actions) : _comm(comm), _actions(actions) {}
+ProtocolHandler::ProtocolHandler(Comm &comm, SysCtrl &actions)
+    : _comm(comm), _actions(actions) {}
+
+void ProtocolHandler::update()
+{
+    unsigned long now = millis();
+    if (_avalible || (now - _last_message_sent < _force_update_interval))
+        return;
+
+    if (_pkt_last_sent.approved && _pkt_last_sent.is_critical)
+    {
+        _comm.write(_pkt_last_sent);
+        _last_message_sent = now;
+        return;
+    }
+
+    _avalible = true;
+    _pkt_last_sent = Comm::Packet{0};
+
+    if (_pkt_send_que.size() > 0)
+    {
+        auto pkt = _pkt_send_que.pop_front();
+        send_pkt(pkt);
+    }
+}
 
 ProtocolHandler::Sequence ProtocolHandler::get_sequence() const { return {_seq, _avalible}; }
 
@@ -170,8 +194,10 @@ void ProtocolHandler::handle(const Comm::Packet &pkt)
     {
         if (pkt.approved)
         {
-            _pkt_buffer_sent.pop_if([&pkt](const Comm::Packet &p)
-                                    { return p.seq == pkt.seq; });
+            if (!_avalible)
+                _iterate_sequence();
+
+            _pkt_last_sent = Comm::Packet{0};
             if (_pkt_send_que.size() > 0)
             {
                 auto pkt = _pkt_send_que.pop_front();
@@ -181,8 +207,10 @@ void ProtocolHandler::handle(const Comm::Packet &pkt)
                 _avalible = true;
         }
         else
-            _comm.write(*_pkt_buffer_sent.find_if([&pkt](const Comm::Packet &p)
-                                                  { return p.seq == pkt.seq; }));
+        {
+            _comm.write(_pkt_last_sent);
+            _last_message_sent = millis();
+        }
         return;
     }
 
@@ -214,22 +242,18 @@ bool ProtocolHandler::send_pkt(Comm::Packet &pkt, bool que)
     if (!_comm.write(pkt))
         return false;
 
-    _iterate_sequence();
-    _pkt_buffer_sent.push_back(pkt);
+    _pkt_last_sent = pkt;
     _avalible = false;
+    _last_message_sent = millis();
 
     return true;
 }
 
-void ProtocolHandler::clear_send_queue()
-{
-    _pkt_send_que.clear();
-}
+void ProtocolHandler::clear_send_queue() { _pkt_send_que.clear(); }
 
 Comm::Packet ProtocolHandler::_make_ack(const Comm::Packet &pkt)
 {
     Comm::Packet p = {'A', pkt.seq, {((pkt.approved) ? static_cast<uint8_t>(0x01) : static_cast<uint8_t>(0x00))}, 1, 0, true};
-    p.crc = Comm::csum(p);
     return p;
 }
 

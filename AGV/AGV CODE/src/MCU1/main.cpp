@@ -40,8 +40,6 @@
 #define UART_BAUD 115200
 #define WATCHDOG 500 // ms
 
-constexpr float DWM_OFFSET = 75.0f; // mm
-
 constexpr int SONAR_RANGE = 150; // mm
 constexpr int SONAR_SPEED = 150; // mm
 constexpr int SONAR_ANGLE = 75;  // ∓ deg
@@ -65,7 +63,11 @@ StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
 
 Lift crane(PIN_CRANE_SERVO, PIN_CRANE_BEGINSTOP, PIN_CRANE_ENDSTOP, 1, false);
 
-SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd, crane);
+// ---------- POS ----------
+DWM dwm(Serial2);
+IMU imu(PIN_SDA, PIN_SCL);
+
+SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd, dwm, crane);
 
 // ---------- SONAR ----------
 Sonar::SonarConfig sonar_cfg{
@@ -80,10 +82,6 @@ Sonar::SonarConfig sonar_cfg{
     180,
     false};
 Sonar sonar(sonar_cfg, sysctrl);
-
-// ---------- POS ----------
-DWM dwm(Serial2);
-IMU imu(PIN_SDA, PIN_SCL);
 
 // ========== GLOBALS ==========
 Debug g_debug;
@@ -121,8 +119,8 @@ void setup()
     sonar.setup();
 
     // ========== CRANE ==========
-    crane.attach_sysctrl(sysctrl);
-    crane.setup();
+    // crane.attach_sysctrl(sysctrl);
+    // crane.setup();
 
     // ========== POS ==========
     uint16_t cfg;
@@ -135,8 +133,8 @@ void setup()
     led_sys.set_status(StatusLED::State::STATUS_READY);
 
     // ========== CALIBRATION ==========
-    if (!sysctrl.on_startup(dwm, DWM_OFFSET))
-        Serial.println("[SYSCTRL] \033[31mWARNING\033[0m - Calibration Failed");
+    // if (!sysctrl.on_startup())
+    //     Serial.println("[SYSCTRL] \033[31mWARNING\033[0m - Calibration Failed");
 
     // watchdog start
     last_packet_time = millis();
@@ -156,9 +154,10 @@ void loop()
 
     // ========== UPDATES ==========
     sonar.update();
-    crane.update();
+    // crane.update();
     led_sys.update();
     led_cmd.update();
+    sysctrl.update();
 
     // ========== CODE ==========
 
@@ -182,7 +181,7 @@ void loop()
     if (dwm.read(d))
     {
         if (imu.read(i))
-            sysctrl.on_new_position_data(d, i, DWM_OFFSET);
+            sysctrl.on_new_position_data(d, i);
         else if (g_debug.imu)
             Serial.println("[IMU] no read");
     }

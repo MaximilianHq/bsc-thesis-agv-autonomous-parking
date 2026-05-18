@@ -1,18 +1,18 @@
 #include "system_actions.h"
 #include <types.h>
 #include <status_led.h>
-#include <coords.h>
 #include <dwm.h>
 #include "lift.h"
 
-SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, Lift &crane)
+SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, DWM &dwm, Lift &crane)
     : _comm_bt(comm_bt),
       _comm_mcu(comm_mcu),
       _proto_handler_bt(comm_bt, *this),
       _proto_handler_mcu(comm_mcu, *this),
       _led_sys(led_sys),
       _led_cmd(led_cmd),
-      _crane(crane) {_crane.attach_sysctrl(*this);}
+      _dwm(dwm),
+      _crane(crane) { _crane.attach_sysctrl(*this); }
 
 void SysCtrl::on_bt_no_connect()
 {
@@ -75,19 +75,18 @@ void SysCtrl::on_stop(Comm::Packet &pkt)
 
 void SysCtrl::on_obstacle_detected(const Position &pos)
 {
-    Comm::Packet p = {'H', 0, {}, 4, 0, true};
+    Comm::Packet p = {'H', 0, {}, 4, 0, true, false};
     p.data[0] = static_cast<uint8_t>((pos.x >> 8) & 0xFF);
     p.data[1] = static_cast<uint8_t>(pos.x & 0xFF);
     p.data[2] = static_cast<uint8_t>((pos.y >> 8) & 0xFF);
     p.data[3] = static_cast<uint8_t>(pos.y & 0xFF);
 
-    if (!_proto_handler_bt.send_pkt(p, false) && g_debug.sysctrl)
-        Serial.println("[SysCtrl] \033[31mWARNING\033[0m - Failed send obstacle position to [ÖS]");
+    _proto_handler_bt.send_pkt(p, false);
 
     _led_cmd.set_status(StatusLED::State::STATUS_OBSTACLE);
 }
 
-void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm_offset)
+void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu)
 {
     if (g_debug.positioning)
     {
@@ -130,7 +129,7 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm
 
     // add dwm offset to agv center
     Position dwm_pos_agv = dwm.pos;
-    abs2agv(dwm_pos_agv, pred_state.theta, dwm_offset);
+    _to_agv_center(dwm_pos_agv, pred_state.theta);
 
     // update body velocities from IMU
     pred_state.vx += imu.ax * imu.dt;
@@ -203,7 +202,7 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm
     _state.push_front(upd);
 
     // send position update
-    Comm::Packet p = {'P', 0, {}, 7, 0, true};
+    Comm::Packet p = {'P', 0, {}, 7, 0, true, false};
 
     const int16_t x = static_cast<int16_t>(upd.pos.x);
     const int16_t y = static_cast<int16_t>(upd.pos.y);
@@ -220,11 +219,10 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm
 
     p.data[6] = 0x00;
 
-    if (!_proto_handler_bt.send_pkt(p, false) && g_debug.sysctrl)
-        Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send AGV position to [ÖS]");
+    !_proto_handler_bt.send_pkt(p, false);
 };
 
-bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
+bool SysCtrl::on_startup()
 {
     if (g_debug.sysctrl)
         Serial.println("[SYSCTRL] Calibrating AGV Angle...");
@@ -234,7 +232,7 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
     // Ta första mätvärdet
     for (int i = 0; i < 10; i++)
     {
-        if (dwm.read(d1))
+        if (_dwm.read(d1))
             break;
         else if (i == 9)
             return false;
@@ -242,9 +240,9 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
     }
 
     // Kör fram på MCU2
-    Comm::Packet p = {'D', 0, {0xD0, 0x32}, 2, 0, true};
+    Comm::Packet p_drive = {'D', 0, {0xD0, 0x32}, 2, 0, true};
 
-    if (!_proto_handler_mcu.send_pkt(p))
+    if (!_proto_handler_mcu.send_pkt(p_drive))
     {
         if (g_debug.sysctrl)
             Serial.println("[SYSCTRL] \033[31mWATNING\033[0m - Failed to send command: Drive to [MCU2]");
@@ -256,11 +254,12 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
         Comm::Packet mcu_pkt;
         if (_comm_mcu.read(mcu_pkt))
             on_mcu_pkt_recieved(mcu_pkt);
+
+        _proto_handler_mcu.update();
         delay(20);
     } while (!_proto_handler_mcu.get_sequence().avalible);
 
     delay(1000);
-
     on_stop();
 
     do
@@ -268,12 +267,14 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
         Comm::Packet mcu_pkt;
         if (_comm_mcu.read(mcu_pkt))
             on_mcu_pkt_recieved(mcu_pkt);
+
+        _proto_handler_mcu.update();
         delay(20);
     } while (!_proto_handler_mcu.get_sequence().avalible);
 
     for (int i = 0; i < 10; i++)
     {
-        if (dwm.read(d2))
+        if (_dwm.read(d2))
             break;
         else if (i == 9)
             return false;
@@ -286,8 +287,23 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
     const float dx = static_cast<float>(d2.pos.x - d1.pos.x);
     const float dy = static_cast<float>(d2.pos.y - d1.pos.y);
     s.theta = atan2f(dy, dx);
-    abs2agv(s, dwm_offset);
+    _to_agv_center(s.pos, s.theta);
     _state.push_back(s);
+
+    Comm::Packet p_comp = {'K', 0, {'C'}, 0, 0, true};
+
+    if (!_proto_handler_bt.send_pkt(p_comp) && g_debug.sysctrl)
+        Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send status: 'Calibration Complete' to [ÖS]");
+
+    do
+    {
+        Comm::Packet bt_pkt;
+        if (_comm_bt.read(bt_pkt))
+            on_bt_pkt_recieved(bt_pkt);
+
+        _proto_handler_bt.update();
+        delay(20);
+    } while (!_proto_handler_bt.get_sequence().avalible);
 
     if (g_debug.sysctrl)
         Serial.println("[SYSCTRL] Calibration Complete");
@@ -341,7 +357,10 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
             _led_cmd.set_status(StatusLED::State::STATUS_RETURNING);
             break;
         case 'C': // run calibration // TODO fixa så att sysctrl har dwm och imu
-            // on_startup();
+            on_startup();
+            break;
+        case 'L': // lift command
+            on_lift(pkt.data[0] != 0);
             break;
         default:
             break;
@@ -349,9 +368,6 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
         break;
     case 'X': // critical stop
         on_stop(pkt);
-        break;
-    case 'L': // lift command
-        on_lift(pkt.data[0] != 0);
         break;
     default:
         break;
@@ -395,4 +411,10 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
         if (!_proto_handler_bt.send_pkt(p) && g_debug.sysctrl)
             Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send no movement error to [ÖS]");
     }
+}
+
+void SysCtrl::_to_agv_center(Position &p, float ang) const
+{
+    p.x = p.x - _dwm_offset * cosf(ang);
+    p.y = p.y - _dwm_offset * sinf(ang);
 }

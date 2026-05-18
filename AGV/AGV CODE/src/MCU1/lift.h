@@ -20,7 +20,7 @@ public:
         if (g_debug.crane)
             Serial.println("[CRANE] Homing...");
         while (digitalRead(_pin_begin_stop) == LOW)
-            lower(100);
+            lower(1);
         if (g_debug.crane)
             Serial.println("[CRANE] Hominging complete");
     }

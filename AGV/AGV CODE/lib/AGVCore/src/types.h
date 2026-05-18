@@ -42,10 +42,10 @@ struct Debug
     const bool positioning = false;
     const bool dwm = false;
     const bool imu = true;
-    const bool comm = false;
+    const bool comm = true;
     const bool mcu1 = true;
     const bool mcu2 = true;
-    const bool sonar = true;
+    const bool sonar = false;
     const bool crane = true;
     const bool driver = true;
 };

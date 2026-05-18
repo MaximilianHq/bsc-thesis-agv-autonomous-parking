@@ -6,13 +6,18 @@
 
 class StatusLED;
 class DWM;
-class IMU;
 class Lift;
 
 class SysCtrl
 {
 public:
-    SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, Lift &crane);
+    SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, DWM &dwm, Lift &crane);
+
+    void update()
+    {
+        _proto_handler_bt.update();
+        _proto_handler_mcu.update();
+    };
 
     // ========== IActions ==========
     void on_bt_no_connect();
@@ -22,8 +27,8 @@ public:
     void on_stop();
     void on_stop(Comm::Packet &pkt);
     void on_obstacle_detected(const Position &pos);
-    void on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm_offset);
-    bool on_startup(DWM &dwm, float dwm_offset);
+    void on_new_position_data(DwmState &dwm, const ImuState &imu);
+    bool on_startup();
     void on_lift(bool dir);
     void on_lift_done();
 
@@ -40,11 +45,13 @@ private:
     Comm &_comm_mcu;
     StatusLED &_led_sys;
     StatusLED &_led_cmd;
+    DWM &_dwm;
     Lift &_crane;
 
     StaticVector<AgvState, 10> _state;
-    float _err_co_dwm = 0.25f;
-    float _err_co_imu = 0.05f;
+    const float _dwm_offset = 75.0f;
+    const float _err_co_dwm = 0.25f;
+    const float _err_co_imu = 0.05f;
     float _last_body_move_ang = 0.0f;
     static constexpr float _heading_dist_threshold_mm = 50.0f;
     static constexpr float _heading_speed_threshold_mm_s = 100.0f;
@@ -79,6 +86,6 @@ private:
 
     void _process_bt_packet(Comm::Packet &pkt);
     void _process_mcu_packet(Comm::Packet &pkt);
-    bool _forward_to_mcu(Comm::Packet &pkt);
     void _next_movement(Comm::Packet &pkt);
+    void _to_agv_center(Position &p, float ang) const;
 };
