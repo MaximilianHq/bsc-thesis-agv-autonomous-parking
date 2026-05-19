@@ -51,7 +51,7 @@ private:
     DWM &_dwm;
     const float _dwm_offset = 5.0f;
     const float _err_co_dwm = 0.75f;
-    const float _err_co_imu = 0.1f;
+    const float _err_co_imu = 0.10f;
     float _last_body_move_ang = 0.0f;
     static constexpr float _heading_dist_threshold_mm = 50.0f;
     static constexpr float _heading_speed_threshold_mm_s = 100.0f;

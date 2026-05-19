@@ -263,7 +263,7 @@ bool SysCtrl::on_startup()
         delay(20);
     } while (!_proto_handler_mcu.get_sequence().avalible);
 
-    delay(1000);
+    delay(2000);
     on_stop();
 
     if (g_debug.sysctrl)
@@ -293,6 +293,35 @@ bool SysCtrl::on_startup()
     const float dx = static_cast<float>(d2.pos.x - d1.pos.x);
     const float dy = static_cast<float>(d2.pos.y - d1.pos.y);
     s.theta = atan2f(dy, dx);
+
+    if (g_debug.positioning)
+    {
+        Serial.println("[SYSCTRL] Startup angle calibration");
+        Serial.print("[DWM] P1 X: ");
+        Serial.print(d1.pos.x / 1000.0f, 3);
+        Serial.print("  Y: ");
+        Serial.print(d1.pos.y / 1000.0f, 3);
+        Serial.print("  Z: ");
+        Serial.println(d1.pos.z / 1000.0f, 3);
+
+        Serial.print("[DWM] P2 X: ");
+        Serial.print(d2.pos.x / 1000.0f, 3);
+        Serial.print("  Y: ");
+        Serial.print(d2.pos.y / 1000.0f, 3);
+        Serial.print("  Z: ");
+        Serial.println(d2.pos.z / 1000.0f, 3);
+
+        Serial.print("[DWM] DX: ");
+        Serial.print(dx / 1000.0f, 3);
+        Serial.print("  DY: ");
+        Serial.println(dy / 1000.0f, 3);
+
+        Serial.print("[SYSCTRL] Startup ANG_REP103: ");
+        Serial.print(s.theta * 180.0f / PI);
+        Serial.print("  ANG_REL: ");
+        Serial.println(_norm_ang((PI / 2.0f) - s.theta) * 180.0f / PI);
+    }
+
     _to_agv_center(s.pos, s.theta);
     _state.clear();
     _state.push_front(s);
