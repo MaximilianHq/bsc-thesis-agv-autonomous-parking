@@ -49,7 +49,7 @@ private:
     StatusLED &_led_cmd;
 
     DWM &_dwm;
-    const float _dwm_offset = 75.0f;
+    const float _dwm_offset = 5.0f;
     const float _err_co_dwm = 0.75f;
     const float _err_co_imu = 0.1f;
     float _last_body_move_ang = 0.0f;

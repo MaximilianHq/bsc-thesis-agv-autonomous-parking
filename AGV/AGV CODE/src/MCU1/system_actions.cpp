@@ -294,7 +294,8 @@ bool SysCtrl::on_startup()
     const float dy = static_cast<float>(d2.pos.y - d1.pos.y);
     s.theta = atan2f(dy, dx);
     _to_agv_center(s.pos, s.theta);
-    _state.push_back(s);
+    _state.clear();
+    _state.push_front(s);
 
     Comm::Packet p_comp = {'K', 0, {'C'}, 0, 0, true};
 
