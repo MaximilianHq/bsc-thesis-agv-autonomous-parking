@@ -82,7 +82,7 @@ bool IMU::read(ImuState &state)
     float ay = (_imu.accelY() - _offset_ay) * _G_TO_MM_S2;
 
     // Biblioteket returnerar gyro i deg/s, konvertera till rad/s.
-    float wz = (_imu.gyroZ() - _offset_gz) * DEG_TO_RAD;
+    float wz = -(_imu.gyroZ() - _offset_gz) * DEG_TO_RAD;
 
     // Efter langa pauser, t.ex. startup eller blockerande delay, vill vi inte
     // integrera hela luckan som om den vore riktig rorelse.
