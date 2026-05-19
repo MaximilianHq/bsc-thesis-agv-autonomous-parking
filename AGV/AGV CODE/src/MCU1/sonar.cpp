@@ -62,8 +62,6 @@ bool Sonar::update()
     {
 
         _distance = _duration * .343 / 2; // mm
-        Serial.print("dis = ");
-        Serial.println(_distance);
 
         if (_distance <= _sonar_range) // critical behaviour
         {

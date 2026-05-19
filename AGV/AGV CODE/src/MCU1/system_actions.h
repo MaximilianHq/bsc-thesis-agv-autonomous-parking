@@ -39,7 +39,7 @@ protected:
     DWM &_dwm;
     const float _dwm_offset = 5.0f;
     const float _err_co_dwm = 0.75f;
-    const float _err_co_imu = 0.10f;
+    const float _err_co_imu = 0.00f;
     float _last_body_move_ang = 0.0f;
     static constexpr float _heading_dist_threshold_mm = 50.0f;
     static constexpr float _heading_speed_threshold_mm_s = 100.0f;
@@ -54,6 +54,7 @@ protected:
     static bool _heading_adjustment_allowed(float ang);
     static float _snap_body_motion_axis(float ang);
 
+    bool _read_dwm_average(DwmState &avg, uint8_t samples = 10);
     void _process_mcu_packet(Comm::Packet &pkt);
     void _to_agv_center(Position &p, float ang) const;
 };
@@ -91,6 +92,7 @@ public:
     LocalCtrl(Comm &comm_mcu, StatusLED &led_sys,
               StatusLED &led_cmd, DWM &dwm, Lift &crane);
 
+    bool on_startup() override;
     void on_new_move(uint8_t move, uint8_t spd = 0x32);
 };
 
@@ -103,13 +105,16 @@ public:
         LiftUp,
         LiftDown,
         WaitUntil,
+        RecalibrateAngle,
+        AlignToPi,
+        AlignToCenter,
         Stop,
     };
 
     struct DemoPoint
     {
         Position p;
-        uint8_t approach_type = 0x00;
+        char approach_type = 0x00;
     };
 
     using WaitCondition = std::function<bool(const AgvState &state, const DemoPoint &point)>;
@@ -120,6 +125,7 @@ public:
         uint8_t move = 0x00;
         uint8_t speed = 0x00;
         WaitCondition wait_condition = nullptr;
+        int16_t target_y = 0;
     };
 
     DemoCtrl(Comm &comm_mcu, StatusLED &led_sys,
@@ -132,13 +138,19 @@ public:
     void update() override;
 
 private:
+    static bool _theta_within_margin(float theta, float target_theta, float margin_deg = 1.5f);
+    static uint8_t _align_cmd_for_target(float theta, float target_theta);
+    static bool _y_within_margin(int16_t y, int16_t target_y, int16_t margin_mm = 20);
+    static uint8_t _center_cmd_for_target(int16_t y, int16_t target_y);
     void _build_demo_program(const DemoPoint &point);
     void _advance_step();
 
-    StaticVector<DemoStep, 16> _program;
+    StaticVector<DemoStep, 24> _program;
     DemoPoint _active_demo_point;
     uint8_t _active_step = 0;
     bool _step_started = false;
     bool _demo_is_active = false;
     bool _demo_is_done = false;
+    uint8_t _align_cmd = 0x00;
+    uint8_t _center_cmd = 0x00;
 };

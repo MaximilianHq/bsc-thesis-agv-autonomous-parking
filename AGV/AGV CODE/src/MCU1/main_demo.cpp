@@ -106,7 +106,7 @@ void setup()
     Serial.println("[MAIN DEMO] Running setup...");
 
     sonar.setup();
-    crane.setup();
+    // crane.setup();
 
     uint16_t cfg;
     if (dwm.dwm_cfg_get(cfg))
@@ -124,7 +124,7 @@ void setup()
 void loop()
 {
     sonar.update();
-    crane.update();
+    // crane.update();
     led_sys.update();
     led_cmd.update();
     sysctrl.update();
@@ -151,9 +151,9 @@ void loop()
 void setup_demo_points()
 {
     demo_points.clear();
-
     // DETTA ÄR POSITIONEN MITTEN AV RUTAN
-    demo_points.push_back({{4000, 0, 0}, 0x01});
+    demo_points.push_back({{3000, 0500, 0}, 'H'});
+    demo_points.push_back({{2850, 2850, 0}, 'V'});
 }
 
 void demo_routine()
