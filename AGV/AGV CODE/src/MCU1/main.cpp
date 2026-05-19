@@ -1,3 +1,5 @@
+#ifndef MCU1_DEMO_MAIN
+
 #include <Arduino.h>
 #include <BluetoothSerial.h>
 #include <ServoEasing.hpp>
@@ -204,3 +206,5 @@ void watchdog_routine()
         last_packet_time = millis();
     }
 }
+
+#endif

@@ -1,3 +1,5 @@
+#ifdef MCU1_DEMO_MAIN
+
 #include <Arduino.h>
 #include <ServoEasing.hpp>
 #include <servo_continious.h>
@@ -162,3 +164,5 @@ void demo_routine()
     sysctrl.begin_demo(demo_points[0]);
     demo_started = true;
 }
+
+#endif
