@@ -67,7 +67,7 @@ Lift crane(PIN_CRANE_SERVO, PIN_CRANE_BEGINSTOP, PIN_CRANE_ENDSTOP, 1, false);
 DWM dwm(Serial2);
 IMU imu(PIN_SDA, PIN_SCL);
 
-SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd, dwm, crane);
+RemoteCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd, dwm, crane);
 
 // ---------- SONAR ----------
 Sonar::SonarConfig sonar_cfg{

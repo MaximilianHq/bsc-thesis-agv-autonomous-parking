@@ -39,6 +39,18 @@ public:
         return _v[i];
     }
 
+    bool operator==(const StaticVector &other) const
+    {
+        if (_count != other._count)
+            return false;
+
+        for (size_t i = 0; i < _count; i++)
+            if (!(_v[i] == other._v[i]))
+                return false;
+
+        return true;
+    }
+
     void push_back(const T &data)
     {
         if (_count >= N)
@@ -146,7 +158,7 @@ public:
     //     Serial.println(p->seq);
     // }
 
-    size_t size() { return _count; }
+    size_t size() const { return _count; }
 
 private:
     size_t _count = 0;

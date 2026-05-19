@@ -159,7 +159,7 @@ bool Comm::write(const Packet &pkt)
     return true;
 }
 
-ProtocolHandler::ProtocolHandler(Comm &comm, SysCtrl &actions)
+ProtocolHandler::ProtocolHandler(Comm &comm, AGVCtrl &actions)
     : _comm(comm), _actions(actions) {}
 
 void ProtocolHandler::update()

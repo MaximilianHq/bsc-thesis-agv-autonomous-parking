@@ -5,12 +5,12 @@
 
 class MotorDriver;
 
-class SysCtrl;
+class AGVCtrl;
 
-class SysCtrl
+class AGVCtrl
 {
 public:
-    SysCtrl(Comm &comm_mcu, MotorDriver &mdriver);
+    AGVCtrl(Comm &comm_mcu, MotorDriver &mdriver);
 
     void on_mcu_pkt_recieved(Comm::Packet &pkt);
     void on_new_motion(const Comm::Packet &pkt);

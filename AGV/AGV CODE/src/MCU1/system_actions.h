@@ -3,47 +3,35 @@
 #include <types.h>
 #include <comm.h>
 #include <static_vector.h>
+#include <functional>
 
 class StatusLED;
+class Comm;
 class DWM;
 class Lift;
 
-class SysCtrl
+class AGVCtrl
 {
 public:
-    SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, DWM &dwm, Lift &crane);
+    AGVCtrl(Comm &comm_mcu, StatusLED &led_sys,
+            StatusLED &led_cmd, DWM &dwm, Lift &crane);
 
-    void update()
-    {
-        _proto_handler_bt.update();
-        _proto_handler_mcu.update();
+    virtual void update();
+    const AgvState *latest_state() const;
 
-        if (_crane_lifting && _crane_done)
-        {
-            _crane_lifting = false;
-            on_lift_done();
-        }
-    };
-
-    // ========== IActions ==========
-    void on_bt_no_connect();
-    void on_bt_pkt_recieved(Comm::Packet &pkt);
     void on_mcu_pkt_recieved(Comm::Packet &pkt);
-    void on_new_motion(Comm::Packet &pkt);
     void on_stop();
-    void on_stop(Comm::Packet &pkt);
-    void on_obstacle_detected(const Position &pos);
-    void on_new_position_data(DwmState &dwm, const ImuState &imu);
-    bool on_startup();
+    virtual void on_stop(Comm::Packet &pkt);
+    virtual void on_obstacle_detected(const Position &pos);
+    virtual void on_new_position_data(DwmState &dwm, const ImuState &imu);
+    virtual bool on_startup();
     void on_lift(bool dir);
     void on_lift_done();
 
-private:
-    Comm &_comm_bt;
+protected:
     Comm &_comm_mcu;
     StaticVector<AgvState, 10> _state;
-    StaticVector<Comm::Packet, 20> _motion_buffert;
-    ProtocolHandler _proto_handler_bt, _proto_handler_mcu;
+    ProtocolHandler _proto_handler_mcu;
 
     StatusLED &_led_sys;
     StatusLED &_led_cmd;
@@ -61,40 +49,96 @@ private:
     bool _crane_lifting = false;
     bool _crane_done = false;
 
-    static float _norm_ang(float ang)
-    {
-        while (ang > PI)
-            ang -= 2.0f * PI;
-        while (ang < -PI)
-            ang += 2.0f * PI;
-        return ang;
-    };
+    static float _norm_ang(float ang);
+    static float _wrap_ang_0_2pi(float ang);
+    static bool _heading_adjustment_allowed(float ang);
+    static float _snap_body_motion_axis(float ang);
 
-    static float _wrap_ang_0_2pi(float ang)
-    {
-        while (ang >= 2.0f * PI)
-            ang -= 2.0f * PI;
-        while (ang < 0.0f)
-            ang += 2.0f * PI;
-        return ang;
-    };
-
-    static bool _heading_adjustment_allowed(float ang)
-    {
-        ang = _norm_ang(ang);
-        const float nearest = roundf(ang / (PI / 2.0f)) * (PI / 2.0f);
-        const float err = fabs(_norm_ang(ang - nearest));
-        return err <= _heading_alignment_tolerance_rad;
-    };
-
-    static float _snap_body_motion_axis(float ang)
-    {
-        ang = _norm_ang(ang);
-        return _norm_ang(roundf(ang / (PI / 2.0f)) * (PI / 2.0f));
-    };
-
-    void _process_bt_packet(Comm::Packet &pkt);
     void _process_mcu_packet(Comm::Packet &pkt);
-    void _next_movement(Comm::Packet &pkt);
     void _to_agv_center(Position &p, float ang) const;
+};
+
+class RemoteCtrl : public AGVCtrl
+{
+public:
+    using AGVCtrl::on_stop;
+
+    RemoteCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys,
+               StatusLED &led_cmd, DWM &dwm, Lift &crane);
+
+    void update() override;
+
+    void on_bt_no_connect();
+    void on_bt_pkt_recieved(Comm::Packet &pkt);
+    void on_stop(Comm::Packet &pkt) override;
+    void on_obstacle_detected(const Position &pos) override;
+    void on_new_position_data(DwmState &dwm, const ImuState &imu) override;
+    bool on_startup() override;
+
+private:
+    void on_new_motion(Comm::Packet &pkt);
+    void _process_bt_packet(Comm::Packet &pkt);
+    bool _next_movement(Comm::Packet &pkt);
+
+    Comm &_comm_bt;
+    StaticVector<Comm::Packet, 20> _motion_buffert;
+    ProtocolHandler _proto_handler_bt;
+};
+
+class LocalCtrl : public AGVCtrl
+{
+public:
+    LocalCtrl(Comm &comm_mcu, StatusLED &led_sys,
+              StatusLED &led_cmd, DWM &dwm, Lift &crane);
+
+    void on_new_move(uint8_t move, uint8_t spd = 0x32);
+};
+
+class DemoCtrl : public LocalCtrl
+{
+public:
+    enum class StepType
+    {
+        Move,
+        LiftUp,
+        LiftDown,
+        WaitUntil,
+        Stop,
+    };
+
+    struct DemoPoint
+    {
+        Position p;
+        uint8_t approach_type = 0x00;
+    };
+
+    using WaitCondition = std::function<bool(const AgvState &state, const DemoPoint &point)>;
+
+    struct DemoStep
+    {
+        StepType type = StepType::Stop;
+        uint8_t move = 0x00;
+        uint8_t speed = 0x00;
+        WaitCondition wait_condition = nullptr;
+    };
+
+    DemoCtrl(Comm &comm_mcu, StatusLED &led_sys,
+             StatusLED &led_cmd, DWM &dwm, Lift &crane);
+
+    void begin_demo(const DemoPoint &point);
+    bool demo_active() const;
+    bool demo_done() const;
+    bool on_startup() override;
+    void update() override;
+
+private:
+    void _build_demo_program(const DemoPoint &point);
+    void _advance_step();
+
+    StaticVector<DemoStep, 16> _program;
+    DemoPoint _active_demo_point;
+    uint8_t _active_step = 0;
+    bool _step_started = false;
+    bool _demo_is_active = false;
+    bool _demo_is_done = false;
 };
