@@ -206,7 +206,8 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu)
 
     const int16_t x = static_cast<int16_t>(upd.pos.x);
     const int16_t y = static_cast<int16_t>(upd.pos.y);
-    const int16_t theta = static_cast<int16_t>(upd.theta * 100); // 2 decimaler
+    const float theta_wrapped = _wrap_ang_0_2pi(upd.theta);
+    const int16_t theta = static_cast<int16_t>(theta_wrapped * 100); // 2 decimaler, 0..2pi
 
     p.data[0] = static_cast<uint8_t>((x >> 8) & 0xFF);
     p.data[1] = static_cast<uint8_t>(x & 0xFF);

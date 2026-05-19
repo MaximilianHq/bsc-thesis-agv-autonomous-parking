@@ -70,6 +70,15 @@ private:
         return ang;
     };
 
+    static float _wrap_ang_0_2pi(float ang)
+    {
+        while (ang >= 2.0f * PI)
+            ang -= 2.0f * PI;
+        while (ang < 0.0f)
+            ang += 2.0f * PI;
+        return ang;
+    };
+
     static bool _heading_adjustment_allowed(float ang)
     {
         ang = _norm_ang(ang);
