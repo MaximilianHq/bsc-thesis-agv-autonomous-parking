@@ -1,15 +1,18 @@
 #include "system_actions.h"
+#include <types.h>
 #include <status_led.h>
-#include <coords.h>
 #include <dwm.h>
+#include "lift.h"
 
-SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd)
+SysCtrl::SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, DWM &dwm, Lift &crane)
     : _comm_bt(comm_bt),
       _comm_mcu(comm_mcu),
       _proto_handler_bt(comm_bt, *this),
       _proto_handler_mcu(comm_mcu, *this),
       _led_sys(led_sys),
-      _led_cmd(led_cmd) {}
+      _led_cmd(led_cmd),
+      _dwm(dwm),
+      _crane(crane) {}
 
 void SysCtrl::on_bt_no_connect()
 {
@@ -38,45 +41,52 @@ void SysCtrl::on_mcu_pkt_recieved(Comm::Packet &pkt)
     _process_mcu_packet(pkt);
 }
 
-void SysCtrl::on_new_motion(Comm::Packet &pkt) { _motion_buffert.push_back(pkt); }
+void SysCtrl::on_new_motion(Comm::Packet &pkt)
+{
+    Comm::Packet clean_pkt = {'D', 0, {}, 2, 0, true};
+    clean_pkt.data[0] = pkt.data[0];
+    clean_pkt.data[1] = pkt.data[1];
+    _motion_buffert.push_back(clean_pkt);
+}
 
 void SysCtrl::on_stop()
 {
-    Comm::Packet p = {'X', _proto_handler_mcu.get_sequence(), {}, 0, 0, true};
-    p.crc = Comm::csum(p);
+    Comm::Packet p = {'X', 0, {}, 0, 0, true};
 
     on_stop(p);
 }
 
 void SysCtrl::on_stop(Comm::Packet &pkt)
 {
-    if (!_forward_to_mcu(pkt))
-        if (g_debug.sysctrl)
-            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: 'stop' to [MCU2]");
+    (void)pkt;
+
+    _motion_buffert.clear();
+    _proto_handler_mcu.clear_send_queue();
+
+    Comm::Packet stop_mcu = {'X', 0, {}, 0, 0, true};
+    Comm::Packet stop_bt = {'X', 0, {}, 0, 0, true};
+
+    if (!_proto_handler_mcu.send_pkt(stop_mcu) && g_debug.sysctrl)
+        Serial.println("[SysCtrl] WATNING - Failed to send command: 'stop' to [MCU2]");
+    if (!_proto_handler_bt.send_pkt(stop_bt) && g_debug.sysctrl)
+        Serial.println("[SysCtrl] WATNING - Failed to send status: 'stop' to [ÖS]");
     _led_cmd.set_status(StatusLED::State::STATUS_CMD_STOPPING);
 }
 
 void SysCtrl::on_obstacle_detected(const Position &pos)
 {
-    Comm::Packet p = {'H', _proto_handler_bt.get_sequence(), {}, 4, 0, true};
+    Comm::Packet p = {'H', 0, {}, 4, 0, true, false};
     p.data[0] = static_cast<uint8_t>((pos.x >> 8) & 0xFF);
     p.data[1] = static_cast<uint8_t>(pos.x & 0xFF);
     p.data[2] = static_cast<uint8_t>((pos.y >> 8) & 0xFF);
     p.data[3] = static_cast<uint8_t>(pos.y & 0xFF);
-    p.crc = Comm::csum(p);
 
-    if (_comm_mcu.write(p))
-    {
-        _proto_handler_bt.iterate_sequence();
-        _proto_handler_bt.add_buffer_sent(p);
-    }
-    else if (g_debug.sysctrl)
-        Serial.println("[SysCtrl] \033[31mWARNING\033[0m - Failed send obstacle position to [ÖS]");
+    _proto_handler_bt.send_pkt(p, false);
 
     _led_cmd.set_status(StatusLED::State::STATUS_OBSTACLE);
 }
 
-void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm_offset)
+void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu)
 {
     if (g_debug.positioning)
     {
@@ -119,7 +129,7 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm
 
     // add dwm offset to agv center
     Position dwm_pos_agv = dwm.pos;
-    abs2agv(dwm_pos_agv, pred_state.theta, dwm_offset);
+    _to_agv_center(dwm_pos_agv, pred_state.theta);
 
     // update body velocities from IMU
     pred_state.vx += imu.ax * imu.dt;
@@ -192,11 +202,12 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm
     _state.push_front(upd);
 
     // send position update
-    Comm::Packet p = {'P', _proto_handler_bt.get_sequence(), {}, 7, 0, true};
+    Comm::Packet p = {'P', 0, {}, 7, 0, true, false};
 
     const int16_t x = static_cast<int16_t>(upd.pos.x);
     const int16_t y = static_cast<int16_t>(upd.pos.y);
-    const int16_t theta = static_cast<int16_t>(upd.theta * 100); // 2 decimaler
+    const float theta_wrapped = _wrap_ang_0_2pi(upd.theta);
+    const int16_t theta = static_cast<int16_t>(theta_wrapped * 100); // 2 decimaler, 0..2pi
 
     p.data[0] = static_cast<uint8_t>((x >> 8) & 0xFF);
     p.data[1] = static_cast<uint8_t>(x & 0xFF);
@@ -209,28 +220,22 @@ void SysCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm
 
     p.data[6] = 0x00;
 
-    p.crc = Comm::csum(p);
-
-    if (_comm_bt.write(p))
-    {
-        _proto_handler_bt.iterate_sequence();
-        _proto_handler_bt.add_buffer_sent(p);
-    }
-    else if (g_debug.sysctrl)
-        Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send AGV position to [ÖS]");
+    !_proto_handler_bt.send_pkt(p, false);
 };
 
-bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
+bool SysCtrl::on_startup()
 {
     if (g_debug.sysctrl)
         Serial.println("[SYSCTRL] Calibrating AGV Angle...");
+
+    _led_cmd.set_status(StatusLED::State::STATUS_BOOT);
 
     DwmState d1, d2;
 
     // Ta första mätvärdet
     for (int i = 0; i < 10; i++)
     {
-        if (dwm.read(d1))
+        if (_dwm.read(d1))
             break;
         else if (i == 9)
             return false;
@@ -238,20 +243,45 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
     }
 
     // Kör fram på MCU2
-    Comm::Packet p = {'D', _proto_handler_mcu.get_sequence(), {0x00, 0x32}, 2, 0, true};
-    p.crc = Comm::csum(p);
-    if (!_forward_to_mcu(p))
+    Comm::Packet p_drive = {'D', 0, {0xD0, 0x32}, 2, 0, true};
+
+    if (!_proto_handler_mcu.send_pkt(p_drive))
     {
         if (g_debug.sysctrl)
-            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed to send command: Drive to [MCU2]");
+            Serial.println("[SYSCTRL] WARNING - Failed to send command: Drive to [MCU2]");
         return false;
     }
+
+    if (g_debug.sysctrl)
+        Serial.println("[SYSCTRL] WARNING - Entering endless loop");
+    do
+    {
+        Comm::Packet mcu_pkt;
+        if (_comm_mcu.read(mcu_pkt))
+            on_mcu_pkt_recieved(mcu_pkt);
+
+        _proto_handler_mcu.update();
+        delay(20);
+    } while (!_proto_handler_mcu.get_sequence().avalible);
+
     delay(2000);
     on_stop();
 
+    if (g_debug.sysctrl)
+        Serial.println("[SYSCTRL] WARNING - Entering endless loop");
+    do
+    {
+        Comm::Packet mcu_pkt;
+        if (_comm_mcu.read(mcu_pkt))
+            on_mcu_pkt_recieved(mcu_pkt);
+
+        _proto_handler_mcu.update();
+        delay(20);
+    } while (!_proto_handler_mcu.get_sequence().avalible);
+
     for (int i = 0; i < 10; i++)
     {
-        if (dwm.read(d2))
+        if (_dwm.read(d2))
             break;
         else if (i == 9)
             return false;
@@ -264,13 +294,81 @@ bool SysCtrl::on_startup(DWM &dwm, float dwm_offset)
     const float dx = static_cast<float>(d2.pos.x - d1.pos.x);
     const float dy = static_cast<float>(d2.pos.y - d1.pos.y);
     s.theta = atan2f(dy, dx);
-    abs2agv(s, dwm_offset);
-    _state.push_back(s);
+
+    if (g_debug.positioning)
+    {
+        Serial.println("[SYSCTRL] Startup angle calibration");
+        Serial.print("[DWM] P1 X: ");
+        Serial.print(d1.pos.x / 1000.0f, 3);
+        Serial.print("  Y: ");
+        Serial.print(d1.pos.y / 1000.0f, 3);
+        Serial.print("  Z: ");
+        Serial.println(d1.pos.z / 1000.0f, 3);
+
+        Serial.print("[DWM] P2 X: ");
+        Serial.print(d2.pos.x / 1000.0f, 3);
+        Serial.print("  Y: ");
+        Serial.print(d2.pos.y / 1000.0f, 3);
+        Serial.print("  Z: ");
+        Serial.println(d2.pos.z / 1000.0f, 3);
+
+        Serial.print("[DWM] DX: ");
+        Serial.print(dx / 1000.0f, 3);
+        Serial.print("  DY: ");
+        Serial.println(dy / 1000.0f, 3);
+
+        Serial.print("[SYSCTRL] Startup ANG_REP103: ");
+        Serial.print(s.theta * 180.0f / PI);
+        Serial.print("  ANG_REL: ");
+        Serial.println(_norm_ang((PI / 2.0f) - s.theta) * 180.0f / PI);
+    }
+
+    _to_agv_center(s.pos, s.theta);
+    _state.clear();
+    _state.push_front(s);
+
+    Comm::Packet p_comp = {'K', 0, {'C'}, 0, 0, true};
+
+    if (!_proto_handler_bt.send_pkt(p_comp) && g_debug.sysctrl)
+        Serial.println("[SysCtrl] WARNING - Failed to send status: 'Calibration Complete' to [ÖS]");
+
+    if (g_debug.sysctrl)
+        Serial.println("[SYSCTRL] WARNING - Entering endless loop");
+    do
+    {
+        Comm::Packet bt_pkt;
+        if (_comm_bt.read(bt_pkt))
+            on_bt_pkt_recieved(bt_pkt);
+
+        _proto_handler_bt.update();
+        delay(20);
+    } while (!_proto_handler_bt.get_sequence().avalible);
 
     if (g_debug.sysctrl)
         Serial.println("[SYSCTRL] Calibration Complete");
 
     return true;
+}
+
+void SysCtrl::on_lift(bool dir)
+{
+    _crane_done = false;
+    if (dir)
+    {
+        Serial.println("[SYSCTRL] Lifting up");
+        _crane.lift(100, _crane_done);
+    }
+    else
+    {
+        Serial.println("[SYSCTRL] Lowering down");
+        _crane.lower(100, _crane_done);
+    }
+}
+
+void SysCtrl::on_lift_done()
+{
+    Comm::Packet p = {'L', 0, {}, 0, 0, true};
+    Serial.println("[SYSCTRL] Lift done");
 }
 
 void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
@@ -284,6 +382,7 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
             Serial.println(pkt.data[0]);
         }
         on_new_motion(pkt);
+        _led_cmd.set_status(StatusLED::State::STATUS_MOVING);
         break;
     case 'K':
         switch (pkt.data[0])
@@ -293,17 +392,19 @@ void SysCtrl::_process_bt_packet(Comm::Packet &pkt)
                 Serial.println("[SYSCTRL] Next movement");
             _next_movement(pkt);
             break;
-        case 'H':
-            _led_cmd.set_status(StatusLED::State::STATUS_RETURNING);
+        case 'C':
+            on_startup();
             break;
-        case 'C': // run calibration // TODO fixa så att sysctrl har dwm och imu
-            // on_startup();
+        case 'L': // lift command
+            on_lift(pkt.data[0] != 0);
+            _crane_lifting = true;
+            _led_sys.set_status(StatusLED::State::STATUS_LIFTING);
             break;
         default:
             break;
         }
         break;
-    case 'X':
+    case 'X': // critical stop
         on_stop(pkt);
         break;
     default:
@@ -324,23 +425,10 @@ void SysCtrl::_process_mcu_packet(Comm::Packet &pkt)
     }
 }
 
-bool SysCtrl::_forward_to_mcu(Comm::Packet &pkt)
-{
-    pkt.seq = _proto_handler_mcu.get_sequence();
-    pkt.crc = Comm::csum(pkt);
-
-    if (!_comm_mcu.write(pkt))
-        return false;
-
-    _proto_handler_mcu.iterate_sequence();
-    _proto_handler_mcu.add_buffer_sent(pkt);
-    return true;
-}
-
 void SysCtrl::_next_movement(Comm::Packet &pkt)
 {
     if (_motion_buffert.size())
-        if (_forward_to_mcu(_motion_buffert[0]))
+        if (_proto_handler_mcu.send_pkt(_motion_buffert[0]))
         {
             _motion_buffert.pop(0);
 
@@ -352,19 +440,19 @@ void SysCtrl::_next_movement(Comm::Packet &pkt)
         {
             on_stop();
             if (g_debug.sysctrl)
-                Serial.println("[SYSCTRL] \033[31mWARNING\033[0m - Failed to send command: 'next movement' to [MCU2]");
+                Serial.println("[SYSCTRL] WARNING - Failed to send command: 'next movement' to [MCU2]");
         }
     else
     {
-        Comm::Packet p = {'E', _proto_handler_bt.get_sequence(), {'N', pkt.seq}, 1, 0, true};
-        p.crc = Comm::csum(p);
+        Comm::Packet p = {'E', 0, {'N', pkt.seq}, 1, 0, true};
 
-        if (_comm_mcu.write(p))
-        {
-            _proto_handler_bt.iterate_sequence();
-            _proto_handler_bt.add_buffer_sent(p);
-        }
-        else if (g_debug.sysctrl)
-            Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send no movement error to [ÖS]");
+        if (!_proto_handler_bt.send_pkt(p) && g_debug.sysctrl)
+            Serial.println("[SYSCTRL] WARNING - Failed send no movement error to [ÖS]");
     }
+}
+
+void SysCtrl::_to_agv_center(Position &p, float ang) const
+{
+    p.x = p.x - _dwm_offset * cosf(ang);
+    p.y = p.y - _dwm_offset * sinf(ang);
 }

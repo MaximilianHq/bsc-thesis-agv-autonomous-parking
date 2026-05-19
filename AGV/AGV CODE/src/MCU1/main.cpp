@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <BluetoothSerial.h>
 #include <ServoEasing.hpp>
+#include <servo_continious.h>
 #include <WiFi.h>
 #include <types.h>
 #include <ota.h>
@@ -9,6 +10,7 @@
 #include <status_led.h>
 #include <imu.h>
 #include <dwm.h>
+#include "lift.h"
 #include "system_actions.h"
 #include "sonar.h"
 
@@ -28,6 +30,8 @@
 #define PIN_SHREG_CLK 25
 // CRANE
 #define PIN_CRANE_SERVO 23
+#define PIN_CRANE_ENDSTOP 36
+#define PIN_CRANE_BEGINSTOP 39
 // IMU
 #define PIN_SCL 22
 #define PIN_SDA 21
@@ -35,8 +39,6 @@
 // ========== DEFINITIONS ==========
 #define UART_BAUD 115200
 #define WATCHDOG 500 // ms
-
-constexpr float DWM_OFFSET = 75.0f; // mm
 
 constexpr int SONAR_RANGE = 150; // mm
 constexpr int SONAR_SPEED = 150; // mm
@@ -59,7 +61,13 @@ StatusLED led_cmd(sreg, SRegHandler::pin_sreg::QD,
                   SRegHandler::pin_sreg::QF,
                   true);
 
-SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd);
+Lift crane(PIN_CRANE_SERVO, PIN_CRANE_BEGINSTOP, PIN_CRANE_ENDSTOP, 1, false);
+
+// ---------- POS ----------
+DWM dwm(Serial2);
+IMU imu(PIN_SDA, PIN_SCL);
+
+SysCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd, dwm, crane);
 
 // ---------- SONAR ----------
 Sonar::SonarConfig sonar_cfg{
@@ -75,10 +83,6 @@ Sonar::SonarConfig sonar_cfg{
     false};
 Sonar sonar(sonar_cfg, sysctrl);
 
-// ---------- POS ----------
-DWM dwm(Serial2);
-IMU imu(PIN_SDA, PIN_SCL);
-
 // ========== GLOBALS ==========
 Debug g_debug;
 unsigned long last_packet_time = 0;
@@ -93,6 +97,7 @@ void setup()
     sreg.setup();
     led_sys.setup();
     led_cmd.setup();
+    led_cmd.set_status(StatusLED::State::STATUS_BOOT);
 
     // ========== UART ==========
     Serial.begin(UART_BAUD, SERIAL_8N1); // PC
@@ -114,6 +119,9 @@ void setup()
     // ========== SONAR ==========
     sonar.setup();
 
+    // ========== CRANE ==========
+    // crane.setup();
+
     // ========== POS ==========
     uint16_t cfg;
     if (dwm.dwm_cfg_get(cfg))
@@ -122,16 +130,13 @@ void setup()
 
     // ========== END ==========
     Serial.println("[MAIN] Setup finished");
-    led_sys.set_status(StatusLED::State::STATUS_READY);
 
     // ========== CALIBRATION ==========
-    if (!sysctrl.on_startup(dwm, DWM_OFFSET))
-        Serial.println("[SYSCTRL] \033[31mWARNING\033[0m - Calibration Failed");
+    // if (!sysctrl.on_startup())
+    //     Serial.println("[SYSCTRL] WARNING - Calibration Failed");
 
     // watchdog start
     last_packet_time = millis();
-
-    // sysctrl.test_move();
 }
 
 void loop()
@@ -141,13 +146,15 @@ void loop()
     //  read BT. packet: ös movement, ös command
     //  $TCXXYYTTC\n or $TCCC\n
 
-    // blt_status_routine();
+    blt_status_routine();
     // watchdog_routine();
 
     // ========== UPDATES ==========
     sonar.update();
+    // crane.update();
     led_sys.update();
     led_cmd.update();
+    sysctrl.update();
 
     // ========== CODE ==========
 
@@ -171,14 +178,12 @@ void loop()
     if (dwm.read(d))
     {
         if (imu.read(i))
-            sysctrl.on_new_position_data(d, i, DWM_OFFSET);
+            sysctrl.on_new_position_data(d, i);
         else if (g_debug.imu)
             Serial.println("[IMU] no read");
     }
     else if (g_debug.dwm)
         Serial.println("[DWM] no read");
-
-    delay(200);
 }
 
 void blt_status_routine()
@@ -195,7 +200,7 @@ void watchdog_routine()
     {
         sysctrl.on_stop();
         if (g_debug.mcu1)
-            Serial.println("[WATCHDOG] \033[31mWARNING\033[0m - Stopping AGV");
+            Serial.println("[WATCHDOG] WARNING - Stopping AGV");
         last_packet_time = millis();
     }
 }

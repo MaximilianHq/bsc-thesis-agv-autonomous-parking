@@ -6,12 +6,24 @@
 
 class StatusLED;
 class DWM;
-class IMU;
+class Lift;
 
 class SysCtrl
 {
 public:
-    SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd);
+    SysCtrl(Comm &comm_bt, Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, DWM &dwm, Lift &crane);
+
+    void update()
+    {
+        _proto_handler_bt.update();
+        _proto_handler_mcu.update();
+
+        if (_crane_lifting && _crane_done)
+        {
+            _crane_lifting = false;
+            on_lift_done();
+        }
+    };
 
     // ========== IActions ==========
     void on_bt_no_connect();
@@ -21,38 +33,48 @@ public:
     void on_stop();
     void on_stop(Comm::Packet &pkt);
     void on_obstacle_detected(const Position &pos);
-    void on_new_position_data(DwmState &dwm, const ImuState &imu, float dwm_offset);
-    bool on_startup(DWM &dwm, float dwm_offset);
-
-    void test_move()
-    {
-        Comm::Packet p = {'D', _proto_handler_bt.get_sequence(), {0x03, 0x32}, 2, 0, true};
-        p.crc = Comm::csum(p);
-
-        if (!_forward_to_mcu(p))
-            if (g_debug.sysctrl)
-                Serial.println("[SysCtrl] \033[31mWATNING\033[0m - Failed send test move command to [ÖS]");
-    };
+    void on_new_position_data(DwmState &dwm, const ImuState &imu);
+    bool on_startup();
+    void on_lift(bool dir);
+    void on_lift_done();
 
 private:
     Comm &_comm_bt;
     Comm &_comm_mcu;
+    StaticVector<AgvState, 10> _state;
+    StaticVector<Comm::Packet, 20> _motion_buffert;
+    ProtocolHandler _proto_handler_bt, _proto_handler_mcu;
+
     StatusLED &_led_sys;
     StatusLED &_led_cmd;
 
-    StaticVector<AgvState, 10> _state;
-    float _err_co_dwm = 0.25f;
-    float _err_co_imu = 0.05f;
+    DWM &_dwm;
+    const float _dwm_offset = 5.0f;
+    const float _err_co_dwm = 0.75f;
+    const float _err_co_imu = 0.10f;
     float _last_body_move_ang = 0.0f;
     static constexpr float _heading_dist_threshold_mm = 50.0f;
     static constexpr float _heading_speed_threshold_mm_s = 100.0f;
     static constexpr float _heading_alignment_tolerance_rad = PI / 18.0f; // 10 degrees
+
+    Lift &_crane;
+    bool _crane_lifting = false;
+    bool _crane_done = false;
 
     static float _norm_ang(float ang)
     {
         while (ang > PI)
             ang -= 2.0f * PI;
         while (ang < -PI)
+            ang += 2.0f * PI;
+        return ang;
+    };
+
+    static float _wrap_ang_0_2pi(float ang)
+    {
+        while (ang >= 2.0f * PI)
+            ang -= 2.0f * PI;
+        while (ang < 0.0f)
             ang += 2.0f * PI;
         return ang;
     };
@@ -71,12 +93,8 @@ private:
         return _norm_ang(roundf(ang / (PI / 2.0f)) * (PI / 2.0f));
     };
 
-    StaticVector<Comm::Packet, 20> _motion_buffert;
-
-    ProtocolHandler _proto_handler_bt, _proto_handler_mcu;
-
     void _process_bt_packet(Comm::Packet &pkt);
     void _process_mcu_packet(Comm::Packet &pkt);
-    bool _forward_to_mcu(Comm::Packet &pkt);
     void _next_movement(Comm::Packet &pkt);
+    void _to_agv_center(Position &p, float ang) const;
 };
