@@ -39,31 +39,32 @@ struct AgvMotion
 struct Debug
 {
     const bool sysctrl = true;
-    const bool positioning = false;
+    const bool positioning = true;
     const bool dwm = false;
     const bool imu = true;
     const bool comm = false;
     const bool mcu1 = true;
     const bool mcu2 = true;
-    const bool sonar = true;
+    const bool sonar = false;
+    const bool crane = true;
     const bool driver = true;
 };
 
 extern Debug g_debug;
 
-static void pds(uint8_t *arr, int base = HEX, size_t len = 0, String msg = "")
+static void pds(const uint8_t *arr, size_t len, String msg = "", int base = HEX)
 {
     Serial.print(msg);
-    Serial.print(len);
-    Serial.print("/");
-    Serial.print(sizeof(len));
-    Serial.print(": ");
+    if (msg.length() > 0)
+        Serial.print(": ");
 
-    for (size_t i = 0; i < (len != 0) ? len : sizeof(arr); i++)
+    for (size_t i = 0; i < len; i++)
     {
         if (arr[i] < 0x10)
             Serial.print("0");
         Serial.print(arr[i], base);
-        Serial.print(" ");
+        if (i + 1 < len)
+            Serial.print(" ");
     }
+    Serial.println();
 };
