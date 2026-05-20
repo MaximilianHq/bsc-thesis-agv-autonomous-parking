@@ -627,11 +627,24 @@ DemoCtrl::DemoCtrl(Comm &comm_mcu, StatusLED &led_sys, StatusLED &led_cmd, DWM &
 
 void DemoCtrl::begin_demo(const DemoPoint &point)
 {
+    if (!_home_pos_valid)
+    {
+        const AgvState *state = latest_state();
+        if (state != nullptr)
+        {
+            _home_pos = state->pos;
+            _home_pos_valid = true;
+        }
+    }
+
     _active_demo_point = point;
     _active_step = 0;
     _step_started = false;
     _demo_is_active = true;
     _demo_is_done = false;
+    _theta_err_valid = false;
+    _theta_err_has_improved = false;
+    _last_theta_abs_err = 0.0f;
     _build_demo_program(point);
 }
 
@@ -646,21 +659,79 @@ bool DemoCtrl::on_startup()
     _step_started = false;
     _demo_is_active = false;
     _demo_is_done = false;
+    _theta_err_valid = false;
+    _theta_err_has_improved = false;
+    _last_theta_abs_err = 0.0f;
 
-    return LocalCtrl::on_startup();
+    const bool ok = LocalCtrl::on_startup();
+    const AgvState *state = latest_state();
+    if (ok && state != nullptr)
+    {
+        _home_pos = state->pos;
+        _home_pos_valid = true;
+    }
+
+    return ok;
 }
 
 bool DemoCtrl::_theta_within_margin(float theta, float target_theta, float margin_deg)
 {
     const float margin_rad = margin_deg * PI / 180.0f;
-    const float err = _norm_ang(theta - target_theta);
-    return fabs(err) <= margin_rad;
+    return _theta_abs_err(theta, target_theta) <= margin_rad;
+}
+
+float DemoCtrl::_theta_abs_err(float theta, float target_theta)
+{
+    return fabs(_norm_ang(theta - target_theta));
 }
 
 uint8_t DemoCtrl::_align_cmd_for_target(float theta, float target_theta)
 {
     const float err = _norm_ang(target_theta - theta);
     return (err >= 0.0f) ? 0xD9 : 0xD8;
+}
+
+bool DemoCtrl::_handle_align_to_theta(DemoStep &step, const char *label)
+{
+    const AgvState *state = latest_state();
+    if (state == nullptr)
+        return false;
+
+    if (_theta_within_margin(state->theta, step.target_theta))
+    {
+        if (g_debug.sysctrl)
+        {
+            Serial.print("[DEMO] Step ");
+            Serial.print(_active_step);
+            Serial.print(": ");
+            Serial.print(label);
+            Serial.print(" satisfied at theta_deg=");
+            Serial.println(state->theta * 180.0f / PI);
+        }
+        on_stop();
+        _align_cmd = 0x00;
+        _advance_step();
+        return true;
+    }
+
+    const uint8_t desired_cmd = _align_cmd_for_target(state->theta, step.target_theta);
+    if (desired_cmd != _align_cmd)
+    {
+        _align_cmd = desired_cmd;
+        if (g_debug.sysctrl)
+        {
+            Serial.print("[DEMO] Step ");
+            Serial.print(_active_step);
+            Serial.print(": ");
+            Serial.print(label);
+            Serial.print(" correcting cmd=0x");
+            Serial.println(_align_cmd, HEX);
+        }
+        on_new_move(_align_cmd, step.speed == 0x00 ? 0x20 : step.speed);
+        return false;
+    }
+
+    return false;
 }
 
 bool DemoCtrl::_y_within_margin(int16_t y, int16_t target_y, int16_t margin_mm)
@@ -719,6 +790,28 @@ void DemoCtrl::update()
                 command_issued = true;
                 break;
 
+            case StepType::MoveUntilTheta:
+            {
+                const AgvState *state = latest_state();
+                if (g_debug.sysctrl)
+                {
+                    Serial.print("[DEMO] Step ");
+                    Serial.print(_active_step);
+                    Serial.print(": MoveUntilTheta cmd=0x");
+                    Serial.print(step.move, HEX);
+                    Serial.print(" target_deg=");
+                    Serial.println(step.target_theta * 180.0f / PI);
+                }
+                _align_cmd = 0x00;
+                _theta_err_valid = state != nullptr;
+                _theta_err_has_improved = false;
+                if (_theta_err_valid)
+                    _last_theta_abs_err = _theta_abs_err(state->theta, step.target_theta);
+                on_new_move(step.move, step.speed);
+                command_issued = true;
+                break;
+            }
+
             case StepType::LiftUp:
                 if (g_debug.sysctrl)
                 {
@@ -774,37 +867,29 @@ void DemoCtrl::update()
                 advanced = true;
                 break;
 
-            case StepType::AlignToPi:
-            {
-                const AgvState *state = latest_state();
-                if (state == nullptr)
-                    break;
-
-                if (_theta_within_margin(state->theta, PI))
-                {
-                    if (g_debug.sysctrl)
-                    {
-                        Serial.print("[DEMO] Step ");
-                        Serial.print(_active_step);
-                        Serial.println(": AlignToPi already satisfied");
-                    }
-                    on_stop();
-                    _align_cmd = 0x00;
-                    _advance_step();
-                    advanced = true;
-                    break;
-                }
-
-                _align_cmd = _align_cmd_for_target(state->theta, PI);
+            case StepType::AlignToTheta:
                 if (g_debug.sysctrl)
                 {
                     Serial.print("[DEMO] Step ");
                     Serial.print(_active_step);
-                    Serial.print(": AlignToPi cmd=0x");
-                    Serial.println(_align_cmd, HEX);
+                    Serial.print(": AlignToTheta target_deg=");
+                    Serial.println(step.target_theta * 180.0f / PI);
                 }
-                on_new_move(_align_cmd, step.speed == 0x00 ? 0x20 : step.speed);
-                command_issued = true;
+                advanced = _handle_align_to_theta(step, "AlignToTheta");
+                command_issued = !advanced;
+                break;
+
+            case StepType::AlignToPi:
+            {
+                if (g_debug.sysctrl)
+                {
+                    Serial.print("[DEMO] Step ");
+                    Serial.print(_active_step);
+                    Serial.println(": AlignToPi");
+                }
+                step.target_theta = PI;
+                advanced = _handle_align_to_theta(step, "AlignToPi");
+                command_issued = !advanced;
                 break;
             }
 
@@ -844,6 +929,18 @@ void DemoCtrl::update()
                 break;
             }
 
+            case StepType::Delay:
+                if (g_debug.sysctrl)
+                {
+                    Serial.print("[DEMO] Step ");
+                    Serial.print(_active_step);
+                    Serial.print(": Delay ms=");
+                    Serial.println(step.delay_ms);
+                }
+                _delay_start_ms = millis();
+                command_issued = true;
+                break;
+
             case StepType::Stop:
                 if (g_debug.sysctrl)
                 {
@@ -863,40 +960,73 @@ void DemoCtrl::update()
             _advance_step();
             advanced = true;
         }
-        else if (step.type == StepType::AlignToPi)
+        else if (step.type == StepType::MoveUntilTheta)
         {
             const AgvState *state = latest_state();
-            if (state != nullptr && _theta_within_margin(state->theta, PI))
+            if (state != nullptr && _theta_within_margin(state->theta, step.target_theta))
             {
                 if (g_debug.sysctrl)
                 {
                     Serial.print("[DEMO] Step ");
                     Serial.print(_active_step);
-                    Serial.print(": AlignToPi satisfied at theta_deg=");
+                    Serial.print(": MoveUntilTheta satisfied at theta_deg=");
                     Serial.println(state->theta * 180.0f / PI);
                 }
                 on_stop();
                 _align_cmd = 0x00;
+                _theta_err_valid = false;
+                _theta_err_has_improved = false;
                 _advance_step();
                 advanced = true;
             }
             else if (state != nullptr)
             {
-                const uint8_t desired_cmd = _align_cmd_for_target(state->theta, PI);
-                if (desired_cmd != _align_cmd)
+                const float theta_abs_err = _theta_abs_err(state->theta, step.target_theta);
+                const float err_hysteresis = 0.5f * PI / 180.0f;
+                const bool theta_error_improved = _theta_err_valid && theta_abs_err < _last_theta_abs_err - err_hysteresis;
+                const bool theta_error_growing = _theta_err_has_improved && theta_abs_err > _last_theta_abs_err + err_hysteresis;
+
+                if (!_theta_err_valid)
+                    _last_theta_abs_err = theta_abs_err;
+                else if (theta_error_improved)
                 {
-                    _align_cmd = desired_cmd;
-                    if (g_debug.sysctrl)
+                    _last_theta_abs_err = theta_abs_err;
+                    _theta_err_has_improved = true;
+                }
+                _theta_err_valid = true;
+
+                if (theta_error_growing)
+                {
+                    const uint8_t desired_cmd = _align_cmd_for_target(state->theta, step.target_theta);
+                    _last_theta_abs_err = theta_abs_err;
+                    if (desired_cmd != _align_cmd)
                     {
-                        Serial.print("[DEMO] Step ");
-                        Serial.print(_active_step);
-                        Serial.print(": AlignToPi correcting cmd=0x");
-                        Serial.println(_align_cmd, HEX);
+                        _align_cmd = desired_cmd;
+                        if (g_debug.sysctrl)
+                        {
+                            Serial.print("[DEMO] Step ");
+                            Serial.print(_active_step);
+                            Serial.print(": MoveUntilTheta correcting cmd=0x");
+                            Serial.print(_align_cmd, HEX);
+                            Serial.print(" err_deg=");
+                            Serial.println(theta_abs_err * 180.0f / PI);
+                        }
+                        on_new_move(_align_cmd, step.speed == 0x00 ? 0x20 : step.speed);
+                        command_issued = true;
                     }
-                    on_new_move(_align_cmd, step.speed == 0x00 ? 0x20 : step.speed);
-                    command_issued = true;
                 }
             }
+        }
+        else if (step.type == StepType::AlignToTheta)
+        {
+            advanced = _handle_align_to_theta(step, "AlignToTheta");
+            command_issued = !advanced;
+        }
+        else if (step.type == StepType::AlignToPi)
+        {
+            step.target_theta = PI;
+            advanced = _handle_align_to_theta(step, "AlignToPi");
+            command_issued = !advanced;
         }
         else if (step.type == StepType::AlignToCenter)
         {
@@ -933,6 +1063,14 @@ void DemoCtrl::update()
                 }
             }
         }
+        else if (step.type == StepType::Delay)
+        {
+            if (millis() - _delay_start_ms >= step.delay_ms)
+            {
+                _advance_step();
+                advanced = true;
+            }
+        }
         else if (step.type == StepType::WaitUntil &&
                  step.wait_condition != nullptr)
         {
@@ -966,7 +1104,7 @@ void DemoCtrl::_build_demo_program(const DemoPoint &point)
     const uint8_t spd = 50;
     const int16_t car_len = 730;       // TODO: set actual car length in mm
     const int16_t garage_mid_y = 1700; // TODO: set actual garage midpoint on x
-    const Position home = latest_state()->pos;
+    const Position home = _home_pos_valid ? _home_pos : latest_state()->pos;
 
     switch (point.approach_type)
     {
@@ -979,17 +1117,11 @@ void DemoCtrl::_build_demo_program(const DemoPoint &point)
                             [](const AgvState &state, const DemoPoint &point) -> bool
                             {
                                 (void)point;
-                                return state.pos.x <= point.p.x - car_len;
+                                return state.pos.x <= point.p.x - car_len * 3 / 4;
                             }});
 
         // Lateral arc left
-        _program.push_back({StepType::Move, 0xDD, spd, nullptr});
-        _program.push_back({StepType::WaitUntil, 0x00, 0x00,
-                            [](const AgvState &state, const DemoPoint &point) -> bool
-                            {
-                                (void)point;
-                                return DemoCtrl::_theta_within_margin(state.theta, 3.0f * PI / 2.0f);
-                            }});
+        _program.push_back({StepType::MoveUntilTheta, 0xDD, spd, nullptr, 0, 3.0f * PI / 2.0f});
 
         // Backward
         _program.push_back({StepType::Move, 0xD1, spd, nullptr});
@@ -1001,6 +1133,7 @@ void DemoCtrl::_build_demo_program(const DemoPoint &point)
                             }});
 
         _program.push_back({StepType::Stop, 0xD0, 0x00, nullptr});
+        _program.push_back({StepType::Delay, 0x00, 0x00, nullptr, 0, 0.0f, 1000});
         // _program.push_back({StepType::LiftDown, 0x00, 0x00, nullptr});
 
         // Forward
@@ -1013,13 +1146,7 @@ void DemoCtrl::_build_demo_program(const DemoPoint &point)
                             }});
 
         // Rotate right
-        _program.push_back({StepType::Move, 0xD8, spd, nullptr});
-        _program.push_back({StepType::WaitUntil, 0x00, 0x00,
-                            [](const AgvState &state, const DemoPoint &point) -> bool
-                            {
-                                (void)point;
-                                return DemoCtrl::_theta_within_margin(state.theta, PI);
-                            }});
+        _program.push_back({StepType::MoveUntilTheta, 0xD8, spd, nullptr, 0, PI});
 
         // Backward
         _program.push_back({StepType::Move, 0xD1, spd, nullptr});
@@ -1045,13 +1172,7 @@ void DemoCtrl::_build_demo_program(const DemoPoint &point)
                             }});
 
         // Lateral arc right
-        _program.push_back({StepType::Move, 0xDC, spd, nullptr});
-        _program.push_back({StepType::WaitUntil, 0x00, 0x00,
-                            [](const AgvState &state, const DemoPoint &point) -> bool
-                            {
-                                (void)point;
-                                return DemoCtrl::_theta_within_margin(state.theta, PI / 2.0f);
-                            }});
+        _program.push_back({StepType::MoveUntilTheta, 0xDC, spd, nullptr, 0, PI / 2.0f});
 
         // Backward
         _program.push_back({StepType::Move, 0xD1, spd, nullptr});
@@ -1063,15 +1184,9 @@ void DemoCtrl::_build_demo_program(const DemoPoint &point)
                             }});
 
         // Lateral arc left
-        _program.push_back({StepType::Move, 0xDD, spd, nullptr});
-        _program.push_back({StepType::WaitUntil, 0x00, 0x00,
-                            [](const AgvState &state, const DemoPoint &point) -> bool
-                            {
-                                (void)point;
-                                return DemoCtrl::_theta_within_margin(state.theta, PI);
-                            }});
+        _program.push_back({StepType::MoveUntilTheta, 0xDD, spd, nullptr, 0, PI});
 
-        _program.push_back({StepType::Stop, 0xD0, 0x00, nullptr});
+        _program.push_back({StepType::Delay, 0x00, 0x00, nullptr, 0, 0.0f, 1000});
         // _program.push_back({StepType::LiftDown, 0x00, 0x00, nullptr});
 
         // Forward
@@ -1080,7 +1195,7 @@ void DemoCtrl::_build_demo_program(const DemoPoint &point)
                             [garage_mid_y](const AgvState &state, const DemoPoint &point) -> bool
                             {
                                 (void)point;
-                                return state.pos.x <= point.p.x - car_len;
+                                return state.pos.x <= point.p.x - car_len * 2 / 3;
                             }});
 
         // Align to garage center on y-axis
@@ -1118,6 +1233,7 @@ void DemoCtrl::_build_demo_program(const DemoPoint &point)
 
     _program.push_back({StepType::Stop, 0xD0, 0x00, nullptr});
     // _program.push_back({StepType::LiftUp, 0x00, 0x00, nullptr});
+    _program.push_back({StepType::Delay, 0x00, 0x00, nullptr, 0, 0.0f, 2000});
 }
 
 void DemoCtrl::_advance_step()

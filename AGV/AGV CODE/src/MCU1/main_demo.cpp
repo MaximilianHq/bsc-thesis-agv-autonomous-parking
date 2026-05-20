@@ -80,8 +80,10 @@ Sonar sonar(sonar_cfg, sysctrl);
 
 // ========== GLOBALS ==========
 Debug g_debug;
-StaticVector<DemoCtrl::DemoPoint, 1> demo_points;
-bool demo_started = false;
+StaticVector<DemoCtrl::DemoPoint, 10> demo_points;
+size_t active_demo_point = 0;
+bool demo_route_started = false;
+bool demo_route_complete = false;
 
 // ========== PROTOTYPES ==========
 void setup_demo_points();
@@ -152,17 +154,34 @@ void setup_demo_points()
 {
     demo_points.clear();
     // DETTA ÄR POSITIONEN MITTEN AV RUTAN
-    demo_points.push_back({{3000, 0500, 0}, 'H'});
-    demo_points.push_back({{2850, 2850, 0}, 'V'});
+    demo_points.push_back({{3000, 400, 0}, 'H'});
+    demo_points.push_back({{2850, 3000, 0}, 'V'});
 }
 
 void demo_routine()
 {
-    if (demo_started || demo_points.size() == 0)
+    if (demo_route_complete || demo_points.size() == 0 || sysctrl.demo_active())
         return;
 
-    sysctrl.begin_demo(demo_points[0]);
-    demo_started = true;
+    if (!demo_route_started)
+    {
+        active_demo_point = 0;
+        demo_route_started = true;
+        sysctrl.begin_demo(demo_points[active_demo_point]);
+        return;
+    }
+
+    if (!sysctrl.demo_done())
+        return;
+
+    active_demo_point++;
+    if (active_demo_point < demo_points.size())
+    {
+        sysctrl.begin_demo(demo_points[active_demo_point]);
+        return;
+    }
+
+    demo_route_complete = true;
 }
 
 #endif

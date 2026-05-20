@@ -102,12 +102,15 @@ public:
     enum class StepType
     {
         Move,
+        MoveUntilTheta,
         LiftUp,
         LiftDown,
         WaitUntil,
         RecalibrateAngle,
+        AlignToTheta,
         AlignToPi,
         AlignToCenter,
+        Delay,
         Stop,
     };
 
@@ -126,6 +129,8 @@ public:
         uint8_t speed = 0x00;
         WaitCondition wait_condition = nullptr;
         int16_t target_y = 0;
+        float target_theta = 0.0f;
+        uint16_t delay_ms = 0;
     };
 
     DemoCtrl(Comm &comm_mcu, StatusLED &led_sys,
@@ -139,18 +144,26 @@ public:
 
 private:
     static bool _theta_within_margin(float theta, float target_theta, float margin_deg = 1.5f);
+    static float _theta_abs_err(float theta, float target_theta);
     static uint8_t _align_cmd_for_target(float theta, float target_theta);
+    bool _handle_align_to_theta(DemoStep &step, const char *label);
     static bool _y_within_margin(int16_t y, int16_t target_y, int16_t margin_mm = 20);
     static uint8_t _center_cmd_for_target(int16_t y, int16_t target_y);
     void _build_demo_program(const DemoPoint &point);
     void _advance_step();
 
-    StaticVector<DemoStep, 24> _program;
+    StaticVector<DemoStep, 40> _program;
     DemoPoint _active_demo_point;
+    Position _home_pos;
     uint8_t _active_step = 0;
+    unsigned long _delay_start_ms = 0;
+    bool _home_pos_valid = false;
     bool _step_started = false;
     bool _demo_is_active = false;
     bool _demo_is_done = false;
     uint8_t _align_cmd = 0x00;
     uint8_t _center_cmd = 0x00;
+    bool _theta_err_valid = false;
+    bool _theta_err_has_improved = false;
+    float _last_theta_abs_err = 0.0f;
 };
