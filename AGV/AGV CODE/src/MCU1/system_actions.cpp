@@ -219,7 +219,7 @@ bool AGVCtrl::on_startup()
         delay(20);
     } while (!_proto_handler_mcu.get_sequence().avalible);
 
-    delay(2000);
+    delay(3000);
     on_stop();
 
     if (g_debug.sysctrl)
@@ -1103,7 +1103,7 @@ void DemoCtrl::_build_demo_program(const DemoPoint &point)
     _program.clear();
     const uint8_t spd = 50;
     const int16_t car_len = 730;       // TODO: set actual car length in mm
-    const int16_t garage_mid_y = 1700; // TODO: set actual garage midpoint on x
+    const int16_t garage_mid_y = 1500; // TODO: set actual garage midpoint on x
     const Position home = _home_pos_valid ? _home_pos : latest_state()->pos;
 
     switch (point.approach_type)
@@ -1146,7 +1146,7 @@ void DemoCtrl::_build_demo_program(const DemoPoint &point)
                             }});
 
         // Rotate right
-        _program.push_back({StepType::MoveUntilTheta, 0xD8, spd, nullptr, 0, PI});
+        _program.push_back({StepType::MoveUntilTheta, 0xD8, spd / 2, nullptr, 0, PI});
 
         // Backward
         _program.push_back({StepType::Move, 0xD1, spd, nullptr});
@@ -1220,7 +1220,7 @@ void DemoCtrl::_build_demo_program(const DemoPoint &point)
     // Adjust angle
     _program.push_back({StepType::AlignToPi, 0x00, 0x20, nullptr});
     // Align to garage center on y-axis
-    _program.push_back({StepType::AlignToCenter, 0x00, spd, nullptr, garage_mid_y});
+    _program.push_back({StepType::AlignToCenter, 0x00, 0x20, nullptr, garage_mid_y});
 
     // Backward
     _program.push_back({StepType::Move, 0xD1, spd, nullptr});

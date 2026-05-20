@@ -39,7 +39,7 @@ struct AgvMotion
 struct Debug
 {
     const bool sysctrl = true;
-    const bool positioning = true;
+    const bool positioning = false;
     const bool dwm = false;
     const bool imu = true;
     const bool comm = false;
