@@ -31,6 +31,7 @@ public:
 protected:
     Comm &_comm_mcu;
     StaticVector<AgvState, 10> _state;
+    StaticVector<DwmState, 5> _dwm_history;
     ProtocolHandler _proto_handler_mcu;
 
     StatusLED &_led_sys;
@@ -38,7 +39,7 @@ protected:
 
     DWM &_dwm;
     const float _dwm_offset = 5.0f;
-    const float _err_co_dwm = 0.95f;
+    const float _err_co_dwm = 0.85f;
     const float _err_co_imu = 0.00f;
     float _last_body_move_ang = 0.0f;
     static constexpr float _heading_dist_threshold_mm = 50.0f;
@@ -55,6 +56,7 @@ protected:
     static float _snap_body_motion_axis(float ang);
 
     bool _read_dwm_average(DwmState &avg, uint8_t samples = 10);
+    DwmState _average_recent_dwm();
     void _process_mcu_packet(Comm::Packet &pkt);
     void _to_agv_center(Position &p, float ang) const;
 };

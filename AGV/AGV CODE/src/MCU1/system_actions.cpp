@@ -34,6 +34,31 @@ const AgvState *AGVCtrl::latest_state() const
     return &_state[0];
 }
 
+DwmState AGVCtrl::_average_recent_dwm()
+{
+    DwmState avg;
+    const size_t count = _dwm_history.size();
+    if (count == 0)
+        return avg;
+
+    int32_t sum_x = 0;
+    int32_t sum_y = 0;
+    int32_t sum_z = 0;
+
+    for (size_t i = 0; i < count; i++)
+    {
+        sum_x += _dwm_history[i].pos.x;
+        sum_y += _dwm_history[i].pos.y;
+        sum_z += _dwm_history[i].pos.z;
+    }
+
+    avg.pos.x = static_cast<int16_t>(sum_x / static_cast<int32_t>(count));
+    avg.pos.y = static_cast<int16_t>(sum_y / static_cast<int32_t>(count));
+    avg.pos.z = static_cast<int16_t>(sum_z / static_cast<int32_t>(count));
+    avg.q = _dwm_history[0].q;
+    return avg;
+}
+
 void AGVCtrl::on_mcu_pkt_recieved(Comm::Packet &pkt)
 {
     _proto_handler_mcu.handle(pkt);
@@ -68,6 +93,9 @@ void AGVCtrl::on_obstacle_detected(const Position &pos) { _led_cmd.set_status(St
 
 void AGVCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu)
 {
+    _dwm_history.push_front(dwm);
+    const DwmState dwm_avg = _average_recent_dwm();
+
     if (g_debug.positioning)
     {
         Serial.println("[SYSCTRL] Received values");
@@ -92,7 +120,7 @@ void AGVCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu)
     if (_state.size() == 0)
     {
         AgvState init_state;
-        init_state.pos = dwm.pos;
+        init_state.pos = dwm_avg.pos;
         init_state.theta = 0;
         init_state.t_ms = millis();
         _state.push_front(init_state);
@@ -108,7 +136,7 @@ void AGVCtrl::on_new_position_data(DwmState &dwm, const ImuState &imu)
     pred_state.theta = _norm_ang(prev_state.theta + imu.wz * imu.dt);
 
     // add dwm offset to agv center
-    Position dwm_pos_agv = dwm.pos;
+    Position dwm_pos_agv = dwm_avg.pos;
     _to_agv_center(dwm_pos_agv, pred_state.theta);
 
     // update body velocities from IMU
@@ -274,6 +302,7 @@ bool AGVCtrl::on_startup()
 
     _to_agv_center(s.pos, s.theta);
     _state.clear();
+    _dwm_history.clear();
     _state.push_front(s);
 
     return true;
@@ -608,6 +637,7 @@ bool LocalCtrl::on_startup()
 
     _to_agv_center(s.pos, s.theta);
     _state.clear();
+    _dwm_history.clear();
     _state.push_front(s);
 
     return true;
