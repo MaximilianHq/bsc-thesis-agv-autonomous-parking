@@ -5,6 +5,14 @@ using an **Automated Guided Vehicle (AGV)** and a **Supervisory System (ÖS)**.
 
 Developed in collaboration with **Autopark AB**.
 
+<p align="center">
+  <img src="docs/images/agv-prototype.png" width="500">
+</p>
+
+<p align="center">
+  <i>AGV prototype used for autonomous parking demonstrations</i>
+</p>
+
 ---
 
 ## Overview
@@ -53,6 +61,10 @@ The AGV is responsible for:
 
 The AGV software is developed using **PlatformIO** and runs on an embedded microcontroller architecture.
 
+<p align="center">
+  <img src="docs/images/agv-system-diagram.png" width="850">
+</p>
+
 ### Supervisory System (ÖS)
 
 The supervisory system is responsible for:
@@ -63,7 +75,11 @@ The supervisory system is responsible for:
 - GUI visualization
 - Task coordination
 
-The supervisory system is implemented in **Java**.
+The supervisory system is developed in **Java**.
+
+<p align="center">
+  <img src="docs/images/supervisory-system-diagram.png" width="850">
+</p>
 
 ---
 
@@ -82,7 +98,12 @@ The supervisory system is implemented in **Java**.
 │   ├── Bluetooth/         # Wireless communication
 │   └── GUI/               # Supervisory system interface
 │
-├── System overview.png
+├── docs/
+│   └── images/
+│       ├── agv-prototype.png
+│       ├── agv-system-diagram.png
+│       └── supervisory-system-diagram.png
+│
 └── TODO.md
 ```
 
