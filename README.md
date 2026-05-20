@@ -6,7 +6,7 @@ using an **Automated Guided Vehicle (AGV)** and a **Supervisory System (ÖS)**.
 Developed in collaboration with **Autopark AB**.
 
 <p align="center">
-  <img src="docs/images/agv-prototype.png" width="500">
+  <img src="docs/images/agv-prototype.jpg" width="500">
 </p>
 
 <p align="center">
