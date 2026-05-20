@@ -89,7 +89,6 @@ The supervisory system is developed in **Java**.
 .
 ├── AGV/
 │   ├── AGV CODE/          # PlatformIO embedded software
-│   ├── common/            # Shared resources
 │   ├── DCDC/              # Power electronics
 │   ├── Hbrygga/           # H-bridge hardware
 │   └── Moderkort/         # Main control board
@@ -98,10 +97,8 @@ The supervisory system is developed in **Java**.
 │   ├── Bluetooth/         # Wireless communication
 │   └── GUI/               # Supervisory system interface
 │
-├── docs/
-│   └── images/
-│
-└── TODO.md
+└── docs/
+    └── images/
 ```
 
 ---
