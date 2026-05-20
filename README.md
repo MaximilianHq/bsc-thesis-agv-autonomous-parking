@@ -100,9 +100,6 @@ The supervisory system is developed in **Java**.
 │
 ├── docs/
 │   └── images/
-│       ├── agv-prototype.png
-│       ├── agv-system-diagram.png
-│       └── supervisory-system-diagram.png
 │
 └── TODO.md
 ```
