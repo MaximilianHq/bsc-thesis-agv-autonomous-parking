@@ -154,8 +154,11 @@ void setup_demo_points()
 {
     demo_points.clear();
     // DETTA ÄR POSITIONEN MITTEN AV RUTAN
-    demo_points.push_back({{3000, 400, 0}, 'H'});
+    demo_points.push_back({{4000, 3000, 0}, 'V'});
     demo_points.push_back({{2850, 3000, 0}, 'V'});
+    demo_points.push_back({{3000, 400, 0}, 'H'});
+    demo_points.push_back({{2350, 3000, 0}, 'V'});
+    demo_points.push_back({{1700, 400, 0}, 'H'});
 }
 
 void demo_routine()
