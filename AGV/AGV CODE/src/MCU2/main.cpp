@@ -42,7 +42,7 @@ MotorDriver::MotorDriverConfig cfg = {
 MotorDriver md(cfg);
 
 Comm comm_mcu(Serial1, "MCU");
-SysCtrl sysctrl(comm_mcu, md);
+AGVCtrl sysctrl(comm_mcu, md);
 
 // ========== GLOBALS ==========
 Debug g_debug;

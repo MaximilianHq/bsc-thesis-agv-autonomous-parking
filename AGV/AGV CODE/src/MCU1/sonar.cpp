@@ -4,7 +4,7 @@
 #include "system_actions.h"
 #include "sonar.h"
 
-Sonar::Sonar(const SonarConfig &cfg, SysCtrl &actions)
+Sonar::Sonar(const SonarConfig &cfg, AGVCtrl &actions)
     : _servo(cfg.servo_offset,
              cfg.min_servo_ang,
              cfg.max_servo_ang,
@@ -62,8 +62,6 @@ bool Sonar::update()
     {
 
         _distance = _duration * .343 / 2; // mm
-        Serial.print("dis = ");
-        Serial.println(_distance);
 
         if (_distance <= _sonar_range) // critical behaviour
         {

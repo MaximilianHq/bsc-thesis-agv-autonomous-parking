@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <types.h>
+#include <initializer_list>
 
 template <typename T, size_t N>
 
@@ -8,6 +9,15 @@ class StaticVector
 {
 public:
     StaticVector() {}
+
+    StaticVector(std::initializer_list<T> list)
+    {
+        if (list.size() > N)
+            _raise_error("[FATAL ERROR] StaticVector initializer list too large");
+
+        for (const T &item : list)
+            _v[_count++] = item;
+    }
 
     StaticVector(const StaticVector &v) : _count(v._count)
     {
@@ -27,6 +37,18 @@ public:
         if (i >= _count)
             _raise_error("[FATAL ERROR] Index out of bounds");
         return _v[i];
+    }
+
+    bool operator==(const StaticVector &other) const
+    {
+        if (_count != other._count)
+            return false;
+
+        for (size_t i = 0; i < _count; i++)
+            if (!(_v[i] == other._v[i]))
+                return false;
+
+        return true;
     }
 
     void push_back(const T &data)
@@ -136,7 +158,7 @@ public:
     //     Serial.println(p->seq);
     // }
 
-    size_t size() { return _count; }
+    size_t size() const { return _count; }
 
 private:
     size_t _count = 0;

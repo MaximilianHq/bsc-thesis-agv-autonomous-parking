@@ -3,7 +3,7 @@
 #include <types.h>
 #include <static_vector.h>
 
-class SysCtrl;
+class AGVCtrl;
 
 class Comm
 {
@@ -49,7 +49,7 @@ private:
 class ProtocolHandler
 {
 public:
-    ProtocolHandler(Comm &comm, SysCtrl &actions);
+    ProtocolHandler(Comm &comm, AGVCtrl &actions);
 
     struct Sequence
     {
@@ -68,7 +68,7 @@ private:
     static Comm::Packet _make_ack(const Comm::Packet &pkt);
 
     Comm &_comm;
-    SysCtrl &_actions;
+    AGVCtrl &_actions;
 
     uint8_t _seq = 0;
     bool _avalible = true;

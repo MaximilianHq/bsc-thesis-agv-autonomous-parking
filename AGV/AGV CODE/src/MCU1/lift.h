@@ -4,7 +4,7 @@
 #include <types.h>
 #include <servo_continious.h>
 
-class SysCtrl;
+class AGVCtrl;
 
 class Lift
 {

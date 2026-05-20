@@ -1,12 +1,9 @@
-#ifndef MCU1_DEMO_MAIN
+#ifdef MCU1_DEMO_MAIN
 
 #include <Arduino.h>
-#include <BluetoothSerial.h>
 #include <ServoEasing.hpp>
 #include <servo_continious.h>
-#include <WiFi.h>
 #include <types.h>
-#include <ota.h>
 #include <comm.h>
 #include <sreg_handler.h>
 #include <status_led.h>
@@ -40,16 +37,12 @@
 
 // ========== DEFINITIONS ==========
 #define UART_BAUD 115200
-#define WATCHDOG 500 // ms
 
 constexpr int SONAR_RANGE = 150; // mm
 constexpr int SONAR_SPEED = 150; // mm
 constexpr int SONAR_ANGLE = 75;  // ∓ deg
 
 // ---------- COMM ----------
-BluetoothSerial SerialBT;
-
-Comm comm_bt(SerialBT, "BT");
 Comm comm_mcu(Serial1, "MCU");
 
 // ---------- LEDS ----------
@@ -69,7 +62,7 @@ Lift crane(PIN_CRANE_SERVO, PIN_CRANE_BEGINSTOP, PIN_CRANE_ENDSTOP, 1, false);
 DWM dwm(Serial2);
 IMU imu(PIN_SDA, PIN_SCL);
 
-RemoteCtrl sysctrl(comm_bt, comm_mcu, led_sys, led_cmd, dwm, crane);
+DemoCtrl sysctrl(comm_mcu, led_sys, led_cmd, dwm, crane);
 
 // ---------- SONAR ----------
 Sonar::SonarConfig sonar_cfg{
@@ -87,94 +80,63 @@ Sonar sonar(sonar_cfg, sysctrl);
 
 // ========== GLOBALS ==========
 Debug g_debug;
-unsigned long last_packet_time = 0;
+StaticVector<DemoCtrl::DemoPoint, 10> demo_points;
+size_t active_demo_point = 0;
+bool demo_route_started = false;
+bool demo_route_complete = false;
 
 // ========== PROTOTYPES ==========
-void blt_status_routine();
-void watchdog_routine();
+void setup_demo_points();
+void demo_routine();
 
 void setup()
 {
-    // ========== STATE ==========
     sreg.setup();
     led_sys.setup();
     led_cmd.setup();
     led_cmd.set_status(StatusLED::State::STATUS_BOOT);
 
-    // ========== UART ==========
     Serial.begin(UART_BAUD, SERIAL_8N1); // PC
     Serial1.begin(UART_BAUD, SERIAL_8N1,
                   PIN_MTM_TXD, PIN_MTM_RXD); // MCU2
     Serial2.begin(UART_BAUD, SERIAL_8N1,
                   PIN_DWM_TXD, PIN_DWM_RXD); // DWM
-    Serial.setTimeout(30);                   // PC
-    Serial1.setTimeout(30);                  // MCU2
-    Serial2.setTimeout(30);                  // DWM
+    Serial.setTimeout(30);
+    Serial1.setTimeout(30);
+    Serial2.setTimeout(30);
 
-    Serial.println("[MAIN] Running setup...");
+    Serial.println("[MAIN DEMO] Running setup...");
 
-    // ========== NETWORK ==========
-    SerialBT.begin("AGV_BT_G2"); // ÖS
-    Serial.println("[BT] Bluethooth active");
-    // ota_begin("QBit", "internet");
-
-    // ========== SONAR ==========
     sonar.setup();
-
-    // ========== CRANE ==========
     // crane.setup();
 
-    // ========== POS ==========
     uint16_t cfg;
     if (dwm.dwm_cfg_get(cfg))
         Serial.println("[DWM] cfg_get ok");
+
     imu.setup();
+    setup_demo_points();
 
-    // ========== END ==========
-    Serial.println("[MAIN] Setup finished");
+    Serial.println("[MAIN DEMO] Setup finished");
 
-    // ========== CALIBRATION ==========
-    // if (!sysctrl.on_startup())
-    //     Serial.println("[SYSCTRL] WARNING - Calibration Failed");
-
-    // watchdog start
-    last_packet_time = millis();
+    if (!sysctrl.on_startup())
+        Serial.println("[SYSCTRL] WARNING - Calibration Failed");
 }
 
 void loop()
 {
-    // ========== ROUTINES ==========
-    // ota_handle();
-    //  read BT. packet: ös movement, ös command
-    //  $TCXXYYTTC\n or $TCCC\n
-
-    blt_status_routine();
-    // watchdog_routine();
-
-    // ========== UPDATES ==========
     sonar.update();
     // crane.update();
     led_sys.update();
     led_cmd.update();
     sysctrl.update();
 
-    // ========== CODE ==========
+    demo_routine();
 
-    // ---------- COMM ----------
-    // Read from Bluetooth and process packet
-    Comm::Packet bt_pkt;
-    if (comm_bt.read(bt_pkt))
-    {
-        sysctrl.on_bt_pkt_recieved(bt_pkt);
-        last_packet_time = millis();
-    }
-
-    // Read from MCU2 and process packet
     Comm::Packet mcu_pkt;
     if (comm_mcu.read(mcu_pkt))
         sysctrl.on_mcu_pkt_recieved(mcu_pkt);
 
-    // ---------- DWM ----------
     DwmState d;
     ImuState i;
     if (dwm.read(d))
@@ -188,23 +150,41 @@ void loop()
         Serial.println("[DWM] no read");
 }
 
-void blt_status_routine()
+void setup_demo_points()
 {
-    if (SerialBT.hasClient())
-        led_sys.set_status(StatusLED::State::STATUS_BLE_CONNECTED);
-    else
-        sysctrl.on_bt_no_connect();
+    demo_points.clear();
+    // DETTA ÄR POSITIONEN MITTEN AV RUTAN
+    demo_points.push_back({{3000, 450, 0}, 'H'});
+    demo_points.push_back({{1800, 450, 0}, 'H'});
+    demo_points.push_back({{4000, 3000, 0}, 'V'});
+    demo_points.push_back({{2950, 3000, 0}, 'V'});
+    demo_points.push_back({{2100, 3000, 0}, 'V'});
 }
 
-void watchdog_routine()
+void demo_routine()
 {
-    if (millis() - last_packet_time > WATCHDOG)
+    if (demo_route_complete || demo_points.size() == 0 || sysctrl.demo_active())
+        return;
+
+    if (!demo_route_started)
     {
-        sysctrl.on_stop();
-        if (g_debug.mcu1)
-            Serial.println("[WATCHDOG] WARNING - Stopping AGV");
-        last_packet_time = millis();
+        active_demo_point = 0;
+        demo_route_started = true;
+        sysctrl.begin_demo(demo_points[active_demo_point]);
+        return;
     }
+
+    if (!sysctrl.demo_done())
+        return;
+
+    active_demo_point++;
+    if (active_demo_point < demo_points.size())
+    {
+        sysctrl.begin_demo(demo_points[active_demo_point]);
+        return;
+    }
+
+    demo_route_complete = true;
 }
 
 #endif
